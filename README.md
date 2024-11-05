@@ -3,7 +3,6 @@
 [![Swift](https://img.shields.io/badge/Swift-UI-orange)](https://developer.apple.com/xcode/swiftui/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-green)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)](https://www.mongodb.com/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A social networking app that connects food enthusiasts and helps them discover great local eats.
 
@@ -85,24 +84,7 @@ cd backend
 npm install
 ```
 
-5. Set up environment variables
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
 
 ## 📝 Documentation
 
 For detailed documentation about the API and component usage, please refer to the [Wiki](wiki-link).
-
-## 🤝 Contributing
-
-We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📞 Support
-
-For support, please email support@findmyfood.com or join our [Discord community](discord-link).
