@@ -1,8 +1,6 @@
-// ContentView.swift
-
 import SwiftUI
 
-struct ContentView: View {
+struct MainContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
     
     var body: some View {
