@@ -13,7 +13,7 @@ struct WelcomeView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.white)
-                        .foregroundColor(.orange)
+                        .foregroundColor(Color.accentColor)
                         .cornerRadius(10)
                 }
                 
@@ -32,7 +32,7 @@ struct WelcomeView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.orange)
+            .background(Color.accentColor)
         }
     }
 }

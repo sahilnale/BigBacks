@@ -16,7 +16,7 @@ struct MapView: View {
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 44))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.accentColor)
                         .background(Color.white)
                         .clipShape(Circle())
                         .shadow(radius: 4)

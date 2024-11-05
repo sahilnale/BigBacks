@@ -12,8 +12,10 @@ struct FeedView: View {
             .navigationBarItems(trailing: Button(action: {
                 // Implement search
             }) {
-                Image(systemName: "magnifyingglass")
+                Image(systemName: "magnifyinglass")
             })
+            
         }
+        
     }
 }

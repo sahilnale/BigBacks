@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct MainTabView: View {
+    init() {
+            UITabBar.appearance().backgroundColor = UIColor.white
+        }
     var body: some View {
         TabView {
             MapView()
@@ -17,6 +20,6 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Friends", systemImage: "person.2")
                 }
-        }
+        }.accentColor(.accentColor)
     }
 }

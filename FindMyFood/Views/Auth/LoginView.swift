@@ -9,7 +9,7 @@ struct LoginView: View {
         VStack(spacing: 20) {
             Text("Login")
                 .font(.largeTitle)
-                .foregroundColor(.orange)
+                .foregroundColor(Color.accentColor)
             
             TextField("Email address", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -22,19 +22,19 @@ struct LoginView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color.orange)
+            .background(Color.accentColor)
             .foregroundColor(.white)
             .cornerRadius(10)
             
             Button("Forgot password?") {
                 // Implement forgot password
             }
-            .foregroundColor(.orange)
+            .foregroundColor(Color.accentColor)
             
             HStack {
                 Text("Don't have an account?")
                 NavigationLink("Sign up here", destination: SignUpView())
-                    .foregroundColor(.orange)
+                    .foregroundColor(Color.accentColor)
             }
         }
         .padding()

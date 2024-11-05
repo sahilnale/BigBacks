@@ -11,7 +11,7 @@ struct SignUpView: View {
         VStack(spacing: 20) {
             Text("Sign Up")
                 .font(.largeTitle)
-                .foregroundColor(.orange)
+                .foregroundColor(Color.accentColor)
             
             TextField("First Name", text: $firstName)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -33,14 +33,14 @@ struct SignUpView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color.orange)
+            .background(Color.accentColor)
             .foregroundColor(.white)
             .cornerRadius(10)
             
             HStack {
                 Text("Already have an account?")
                 NavigationLink("Login here", destination: LoginView())
-                    .foregroundColor(.orange)
+                    .foregroundColor(Color.accentColor)
             }
         }
         .padding()
