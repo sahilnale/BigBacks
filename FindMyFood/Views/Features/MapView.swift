@@ -32,18 +32,26 @@ class MapViewModel: UIViewController{
         let map = MKMapView()
         return map
     }()
+    private var userPin: MKPointAnnotation?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         view.addSubview(map)
         
-        LocationManager.shared.getUserLocation { [weak self] location in
+        LocationManager.shared.startUpdatingLocation { [weak self] location in
             DispatchQueue.main.async {
                 guard let strongSelf = self else { return }
-                let pin = MKPointAnnotation()
-                pin.coordinate = location.coordinate
-                strongSelf.map.setRegion(MKCoordinateRegion(center: location.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.03)), animated: true)
-                strongSelf.map.addAnnotation(pin)
+                
+                if let userPin = strongSelf.userPin {
+                    userPin.coordinate = location.coordinate
+                }
+                else {
+                    let newPin = MKPointAnnotation()
+                    newPin.coordinate = location.coordinate
+                    strongSelf.userPin = newPin
+                    strongSelf.map.addAnnotation(newPin)
+                }
+                strongSelf.map.setRegion(MKCoordinateRegion(center: location.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.003, longitudeDelta: 0.003)), animated: true)
             }
         }
     }

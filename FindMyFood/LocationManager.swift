@@ -15,19 +15,31 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     
     var completion: ((CLLocation)->Void)?
     
-    public func getUserLocation(completion: @escaping((CLLocation)->Void)) {
-        self.completion = completion
-        manager.requestWhenInUseAuthorization()
+    override init() {
+        super.init()
         manager.delegate = self
-        manager.startUpdatingLocation()
+        manager.desiredAccuracy = kCLLocationAccuracyBest
     }
+    
+//    public func getUserLocation(completion: @escaping((CLLocation)->Void)) {
+//        self.completion = completion
+//        manager.requestWhenInUseAuthorization()
+//        manager.delegate = self
+//        manager.startUpdatingLocation()
+//    }
+    
+    public func startUpdatingLocation(completion: @escaping((CLLocation)->Void)) {
+            self.completion = completion
+            manager.requestWhenInUseAuthorization()
+            manager.startUpdatingLocation()
+        }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.first else {
             return
         }
         completion?(location)
-        manager.stopUpdatingLocation()
+        //manager.stopUpdatingLocation()
         
     }
 }
