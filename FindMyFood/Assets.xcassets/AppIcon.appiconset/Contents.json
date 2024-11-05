@@ -1,6 +1,7 @@
 {
   "images" : [
     {
+      "filename" : "httpsgithub.commodi2meetBigBacks.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -12,6 +13,7 @@
           "value" : "dark"
         }
       ],
+      "filename" : "httpsgithub.commodi2meetBigBacks 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -23,6 +25,7 @@
           "value" : "tinted"
         }
       ],
+      "filename" : "httpsgithub.commodi2meetBigBacks 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
