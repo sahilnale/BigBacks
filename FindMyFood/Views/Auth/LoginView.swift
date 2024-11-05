@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var email = ""
+    @State private var username = ""
     @State private var password = ""
     
     var body: some View {
@@ -11,7 +11,7 @@ struct LoginView: View {
                 .font(.largeTitle)
                 .foregroundColor(Color.accentColor)
             
-            TextField("Email address", text: $email)
+            TextField("Username", text: $username)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
             SecureField("Password", text: $password)

@@ -2,7 +2,7 @@ import SwiftUI
 
 class AuthViewModel: ObservableObject {
     @Published var isLoggedIn = false
-    @Published var email = ""
+    @Published var username = ""
     @Published var password = ""
     
     func login() {
@@ -10,7 +10,7 @@ class AuthViewModel: ObservableObject {
         isLoggedIn = true
     }
     
-    func signUp(firstName: String, lastName: String, email: String, password: String) {
+    func signUp(firstName: String, lastName: String, username: String, email: String, password: String) {
         // Implement signup logic
         isLoggedIn = true
     }

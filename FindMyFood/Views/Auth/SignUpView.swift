@@ -3,6 +3,7 @@ import SwiftUI
 struct SignUpView: View {
     @State private var firstName = ""
     @State private var lastName = ""
+    @State private var username = ""
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
@@ -17,6 +18,9 @@ struct SignUpView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
             TextField("Last Name", text: $lastName)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+            
+            TextField("Username", text: $username)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
             TextField("Email address", text: $email)
