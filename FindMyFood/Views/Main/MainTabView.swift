@@ -20,6 +20,10 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Friends", systemImage: "person.2")
                 }
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.crop.circle")
+                }
         }.accentColor(.accentColor)
     }
 }
