@@ -14,6 +14,7 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  pendingRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   posts: [PostSchema],
   profilePicture: { type: String },
 });
