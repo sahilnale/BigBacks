@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import cors from 'cors';
 
 import connectDB from './mongodb/connect.js';
+import connectAWS from './s3/connect.js';
 import userRoutes from './routes/userRoutes.js';
 
 dotenv.config();
@@ -21,6 +22,7 @@ const startServer = async() => {
 
     try {
         connectDB(process.env.MONGODB_URL);
+        connectAWS();
         app.listen(8080, () => console.log('Server has started on port'))
     } catch (error){
         console.log(error);

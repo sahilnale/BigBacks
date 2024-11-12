@@ -83,6 +83,7 @@ router.post('/:id/friendRequest/:friendId', async (req, res) => {
             user.friendRequests.push(friendId);
             friend.pendingRequests.push(id);
             await user.save();
+            await friend.save();
         }
 
 
