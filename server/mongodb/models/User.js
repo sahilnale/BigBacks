@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const PostSchema = new mongoose.Schema({
-  image: { type: String, required: true },
+  imageUrl: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
   review: { type: String, required: true },
   location: { type: String, required: true },

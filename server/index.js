@@ -5,6 +5,7 @@ import cors from 'cors';
 import connectDB from './mongodb/connect.js';
 import connectAWS from './s3/connect.js';
 import userRoutes from './routes/userRoutes.js';
+import postRoutes from './routes/postRoutes.js';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(express.json({limit: '50 mb'}));
 
 app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/post', postRoutes);
 
 app.get('/', async (req, res)  => {
     res.send('Testing');
