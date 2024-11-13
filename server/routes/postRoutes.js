@@ -36,7 +36,6 @@ router.post('/upload/:userId', upload.single('image'), async (req, res) => {
             Key: imageKey,
             Body: req.file.buffer,
             ContentType: req.file.mimetype,
-            ACL: 'public-read'
         };
         
         await s3.send(new PutObjectCommand(uploadParams));
