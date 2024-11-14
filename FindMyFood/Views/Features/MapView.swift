@@ -27,33 +27,18 @@ import MapKit
 //    }
 //}
 
-class MapViewModel: UIViewController{
+
+class MapViewModel: UIViewController {
     private let map: MKMapView = {
         let map = MKMapView()
+        map.showsUserLocation = true
+        map.userTrackingMode = .followWithHeading // Keeps the user's location centered on the map
         return map
     }()
-    private var userPin: MKPointAnnotation?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         view.addSubview(map)
-        
-        LocationManager.shared.startUpdatingLocation { [weak self] location in
-            DispatchQueue.main.async {
-                guard let strongSelf = self else { return }
-                
-                if let userPin = strongSelf.userPin {
-                    userPin.coordinate = location.coordinate
-                }
-                else {
-                    let newPin = MKPointAnnotation()
-                    newPin.coordinate = location.coordinate
-                    strongSelf.userPin = newPin
-                    strongSelf.map.addAnnotation(newPin)
-                }
-                strongSelf.map.setRegion(MKCoordinateRegion(center: location.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.003, longitudeDelta: 0.003)), animated: true)
-            }
-        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -68,6 +53,7 @@ struct MapView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: MapViewModel, context: Context) {
-        // Handle any updates you need to make to the view controller here
+        // Handle any updates to the view controller here
     }
 }
+
