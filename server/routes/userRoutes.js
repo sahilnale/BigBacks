@@ -171,4 +171,123 @@ router.post('/:id/profile-pic', upload.single('image'), async (req, res) => {
     }
 });
 
+//Additional routes added 
+// Reject a friend request - This works!!
+router.post('/:id/rejectFriend/:friendId', async (req, res) => {
+    try {
+        // Extracting the current user's id and the id of the user who sent the friend request
+        const { id, friendId } = req.params;
+
+        // Find the current user and the friend who sent the request in the database
+        const user = await User.findById(id);
+        const friend = await User.findById(friendId);
+
+        // If either user is not found, return a 404 error
+        if (!user || !friend) return res.status(404).json({ message: 'User not found' });
+
+        // Remove the friend's id from the user's friendRequests array
+        user.friendRequests = user.friendRequests.filter(reqId => reqId.toString() !== friendId);
+        
+        // Remove the user's id from the friend's pendingRequests array
+        friend.pendingRequests = friend.pendingRequests.filter(reqId => reqId.toString() !== id);
+
+        // Save changes to both user and friend
+        await user.save();
+        await friend.save();
+
+        // Send success response
+        res.status(200).json({ message: 'Friend request rejected' });
+    } catch (error) {
+        // Handle any errors that occur and send a 500 status with an error message
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Remove a friend from the friends list - This works!!
+router.post('/:id/removeFriend/:friendId', async (req, res) => {
+    try {
+        // Extracting the ids of the current user and the friend to be removed
+        const { id, friendId } = req.params;
+
+        // Find both users in the database
+        const user = await User.findById(id);
+        const friend = await User.findById(friendId);
+
+        // If either user is not found, return a 404 error
+        if (!user || !friend) return res.status(404).json({ message: 'User not found' });
+
+        // Remove the friendId from the user's friends list
+        user.friends = user.friends.filter(friendId => friendId.toString() !== friend._id.toString());
+        
+        // Remove the user's id from the friend's friends list
+        friend.friends = friend.friends.filter(friendId => friendId.toString() !== user._id.toString());
+
+        // Save changes to both user and friend
+        await user.save();
+        await friend.save();
+
+        // Send success response
+        res.status(200).json({ message: 'Friend removed successfully' });
+    } catch (error) {
+        // Handle any errors that occur and send a 500 status with an error message
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Retrieve all friends of a user - This works!!
+router.get('/:id/friends', async (req, res) => {
+    try {
+        // Find the user by id and populate the friends field to get full friend information
+        const user = await User.findById(req.params.id).populate('friends');
+
+        // If the user is not found, return a 404 error
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Return the user's friends as a JSON response
+        res.json(user.friends);
+    } catch (error) {
+        // Handle any errors that occur and send a 500 status with an error message
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Cancel a sent friend request - This works!!
+router.post('/:id/cancelRequest/:friendId', async (req, res) => {
+    try {
+        // Extracting the ids of the user canceling the request and the user who received it
+        const { id, friendId } = req.params;
+        
+        // Find both users (sender and receiver) in the database
+        const sender = await User.findById(id);
+        const receiver = await User.findById(friendId);
+
+        // If either user is not found, return a 404 error
+        if (!sender || !receiver) return res.status(404).json({ message: 'User not found' });
+
+        // Check if the request exists: friendId should be in sender's pendingRequests,
+        // and sender's id should be in receiver's friendRequests
+        if (sender.pendingRequests.includes(friendId) && receiver.friendRequests.includes(id)) {
+            // Remove the friendId from the sender's pendingRequests list
+            sender.pendingRequests = sender.pendingRequests.filter(reqId => reqId.toString() !== friendId);
+            
+            // Remove the sender's id from the receiver's friendRequests list
+            receiver.friendRequests = receiver.friendRequests.filter(reqId => reqId.toString() !== id);
+
+            // Save changes to both sender and receiver
+            await sender.save();
+            await receiver.save();
+
+            // Send success response
+            res.status(200).json({ message: 'Friend request canceled' });
+        } else {
+            // If no such friend request exists, send a 400 error response
+            res.status(400).json({ message: 'Friend request not found' });
+        }
+    } catch (error) {
+        // Handle any errors that occur and send a 500 status with an error message
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
 export default router;
