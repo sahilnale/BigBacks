@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import {Post, User} from '../mongodb/models/User.js';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
@@ -77,6 +77,25 @@ router.get('/:id', async (req, res) => {
         res.json(post);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+//deleting a specific post
+router.delete('/:id', async(req, res) => {
+    try {
+        const post = await Post.findByIdAndDelete(req.params.id);
+        const imageUrl = post.imageUrl;
+        const imageKey = imageUrl.split('.com/')[1]; //gets the key of the post to delete it on s3
+        const deleteParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: imageKey,
+        };
+        await s3.send(new DeleteObjectCommand(deleteParams));
+        if(!post) return res.status(404).json({message: 'Post not found'});
+        res.json("Post deleted");
+    }
+    catch (error) {
+        req.status(500).json({message: error.message});
     }
 });
 
