@@ -1,11 +1,23 @@
 import express from 'express';
 import * as dotenv from 'dotenv';
-
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { User } from '../mongodb/models/User.js';
 
 dotenv.config();
 
+const s3 = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
+});
+
 const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 //creates a new user
 router.post('/', async (req, res) => {
@@ -127,6 +139,35 @@ router.post('/:id/acceptFriend/:friendId', async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+router.post('/:id/profile-pic', upload.single('image'), async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Generate a unique filename for the profile picture
+        const imageKey = `profile_pics/${uuidv4()}_${req.file.originalname}`;
+
+        const uploadParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: imageKey,
+            Body: req.file.buffer,
+            ContentType: req.file.mimetype,
+        };
+
+        // Upload image to S3
+        await s3.send(new PutObjectCommand(uploadParams));
+
+        // Update the user's profile picture URL in MongoDB
+        user.profilePicture = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${imageKey}`;
+        await user.save();
+
+        res.status(200).json({ message: 'Profile picture uploaded successfully', profilePicUrl: user.profilePicUrl });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error uploading profile picture' });
     }
 });
 
