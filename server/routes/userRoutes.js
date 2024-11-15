@@ -289,5 +289,18 @@ router.post('/:id/cancelRequest/:friendId', async (req, res) => {
     }
 });
 
+router.get('/:usName', async (req, res) => {
+    try {
+        const user = await User.findOne({username: req.params.usName});
+
+        // If the user is not found, return a 404 error
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json(user);
+    } catch (error) {
+        // Handle any errors that occur and send a 500 status with an error message
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 export default router;
