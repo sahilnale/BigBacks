@@ -34,6 +34,7 @@ router.post('/', async (req, res) => {
             username,
             email,
             password: hashedPassword,
+            loggedIn: false,
 
         });
         await user.save();
@@ -58,6 +59,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Incorrect password' });
         }
         // If successful, respond with user info or a token (for authentication)
+        user.loggedIn = true;
         res.status(200).json({ message: 'Login successful', userId: user._id });
     } catch (error) {
         res.status(500).json({ message: error.message });

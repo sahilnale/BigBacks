@@ -18,6 +18,7 @@ const UserSchema = new mongoose.Schema({
   pendingRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   posts: [PostSchema],
   profilePicture: { type: String },
+  loggedIn: {type: Boolean},
 });
 
 const User = mongoose.model('User', UserSchema);
