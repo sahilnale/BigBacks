@@ -33,6 +33,15 @@ struct WelcomeView: View {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.accentColor)
+            .navigationBarHidden(true)
         }
+    }
+}
+
+// Preview Provider
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+            .environmentObject(AuthViewModel())
     }
 }

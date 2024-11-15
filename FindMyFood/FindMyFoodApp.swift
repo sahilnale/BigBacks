@@ -1,17 +1,15 @@
-//
-//  FindMyFoodApp.swift
-//  FindMyFood
-//
-//  Created by Sahil  on 11/4/24.
-//
-
 import SwiftUI
 
 @main
 struct FindMyFoodApp: App {
+    @StateObject private var authViewModel = AuthViewModel()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationView {
+                ContentView()
+            }
+            .environmentObject(authViewModel)
         }
     }
 }
