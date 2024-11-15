@@ -62,14 +62,22 @@ struct CreatePostView: View {
                         }
                         .navigationTitle("Add Post")
                         .navigationBarTitleDisplayMode(.inline)
-                        .navigationBarItems(leading: Button(action: {
-                            // Back action
-                        }) {
-                            Image(systemName: "arrow.left")
-                                .foregroundColor(.black)
-                        })
+//                        .navigationBarItems(leading: Button(action: {
+//                            // Back action
+//                        }) {
+//                            Image(systemName: "arrow.left")
+//                                .foregroundColor(.black)
+//                        })
                     }
                 }
+
+
+ //MARK: - Preview
+struct MainTabView_Previews: PreviewProvider {
+    static var previews: some View {
+        MainTabView()
+    }
+}
             
             
             
