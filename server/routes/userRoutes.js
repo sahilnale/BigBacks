@@ -4,7 +4,7 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { User } from '../mongodb/models/User.js';
-
+import bcrypt from 'bcrypt';
 dotenv.config();
 
 const s3 = new S3Client({
@@ -18,15 +18,49 @@ const s3 = new S3Client({
 const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+const emailRegex = /^[^\s@]+@[^\s@]+\.(com|org|net|edu|gov|mil|co|io|info|biz|me|us|ca|uk|in)$/i;
 
 //creates a new user
 router.post('/', async (req, res) => {
     try {
-        const user = new User(req.body);
+        const { name, username, email, password, } = req.body;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ message: 'Invalid email format' });
+        }
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        const user = new User({
+            name,
+            username,
+            email,
+            password: hashedPassword,
+
+        });
         await user.save();
         res.status(201).json(user);
     } catch (error) {
         res.status(400).json({ message: error.message });
+    }
+});
+
+router.post('/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Compare the provided password with the stored hashed password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Incorrect password' });
+        }
+        // If successful, respond with user info or a token (for authentication)
+        res.status(200).json({ message: 'Login successful', userId: user._id });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 
@@ -283,6 +317,19 @@ router.post('/:id/cancelRequest/:friendId', async (req, res) => {
             // If no such friend request exists, send a 400 error response
             res.status(400).json({ message: 'Friend request not found' });
         }
+    } catch (error) {
+        // Handle any errors that occur and send a 500 status with an error message
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.get('/:usName', async (req, res) => {
+    try {
+        const user = await User.findOne({username: req.params.usName});
+
+        // If the user is not found, return a 404 error
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json(user);
     } catch (error) {
         // Handle any errors that occur and send a 500 status with an error message
         res.status(500).json({ message: error.message });
