@@ -6,6 +6,8 @@ struct MainTabView: View {
     }
     
     var body: some View {
+        NavigationView {
+            
         TabView {
             ZStack {
                 MapView()
@@ -31,9 +33,8 @@ struct MainTabView: View {
                             .offset(x: 2) // Move the button slightly to the right
                             
                             // "+" Button
-                            Button(action: {
-                                // Action for the "+" button
-                            }) {
+                            
+                            NavigationLink(destination: CreatePostView()) {
                                 Image(systemName: "plus")
                                     .font(.system(size: 30))
                                     .foregroundColor(.white)
@@ -41,6 +42,10 @@ struct MainTabView: View {
                                     .background(Color.accentColor)
                                     .clipShape(Circle())
                                     .shadow(radius: 10)
+                            }
+                                    
+                        
+                                
                             }
                         }
                         .padding(.bottom, 10)
@@ -72,8 +77,8 @@ struct MainTabView: View {
 }
 
 // MARK: - Preview
-struct MainTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        MainTabView()
-    }
-}
+//struct MainTabView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        MainTabView()
+//    }
+//}

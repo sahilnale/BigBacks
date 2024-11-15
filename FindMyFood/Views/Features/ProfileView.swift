@@ -38,7 +38,7 @@ struct ProfileView: View {
                 // Add more views as needed
             }
             .navigationTitle("Profile")
-            .navigationBarItems(trailing: NavigationLink(destination: CreatePostView()) {
+            .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
                 Image(systemName: "pencil")
                     .font(.system(size: 20)) // Customize size of the pencil icon
             })
