@@ -1,13 +1,15 @@
 import SwiftUI
 
 struct MainView: View {
+    private let mapViewModel = MapViewModel() // Create an instance of MapViewModel
+    
     var body: some View {
         ZStack {
-            // Background: Your existing MapView
-            MapView()
+            // MapView with the MapViewModel
+            MapView(viewModel: mapViewModel)
                 .edgesIgnoringSafeArea(.all)
             
-            // Overlay UI Elements
+            // Overlay UI
             VStack {
                 Spacer() // Push buttons to the bottom
                 
@@ -17,8 +19,8 @@ struct MainView: View {
                     VStack(spacing: 15) {
                         // Recenter Button
                         Button(action: {
-                            // Action to trigger recentering (to be implemented)
-                            print("Recenter button tapped")
+                            // Call the recenterMap method on the MapViewModel
+                            mapViewModel.recenterMap()
                         }) {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 20))
@@ -49,4 +51,3 @@ struct MainView: View {
         }
     }
 }
-

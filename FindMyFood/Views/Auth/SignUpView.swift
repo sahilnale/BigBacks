@@ -11,6 +11,7 @@ struct SignUpView: View {
     @State private var showPasswordMismatch = false
     @State private var isSignedUp = false
     @State private var navigateToMainView = false
+    private let mapViewModel = MapViewModel() // Instance of MapViewModel
     
     private var isFormValid: Bool {
         !name.isEmpty &&
@@ -54,33 +55,38 @@ struct SignUpView: View {
                     .foregroundColor(.red)
                     .font(.caption)
             }
-            Button(action: {
-                guard password == confirmPassword else {
-                    showPasswordMismatch = true
-                    return
-                }
-                authViewModel.signUp(
-                    name: name,
-                    username: username,
-                    email: email,
-                    password: password
-                )
-            }) {
-                if authViewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    NavigationLink(destination: MapView()) {
+            
+            NavigationLink(
+                destination: MapView(viewModel: mapViewModel),
+                isActive: $navigateToMainView
+            ) {
+                Button(action: {
+                    guard password == confirmPassword else {
+                        showPasswordMismatch = true
+                        return
+                    }
+                    authViewModel.signUp(
+                        name: name,
+                        username: username,
+                        email: email,
+                        password: password
+                    )
+                    navigateToMainView = true
+                }) {
+                    if authViewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
                         Text("Sign Up")
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                .disabled(!isFormValid || authViewModel.isLoading)
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(10)
-            .disabled(!isFormValid || authViewModel.isLoading)
             
             HStack {
                 Text("Already have an account?")
@@ -95,7 +101,6 @@ struct SignUpView: View {
             }
             .onChange(of: authViewModel.isLoggedIn) { newValue in
                 if newValue {
-                    // Dismiss all presented views and return to root view
                     dismiss()
                 }
             }
