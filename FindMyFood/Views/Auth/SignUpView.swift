@@ -53,29 +53,32 @@ struct SignUpView: View {
                     .foregroundColor(.red)
                     .font(.caption)
             }
-            NavigationLink(destination: MainTabView(), isActive: $shouldNavigate) {
-                           EmptyView()
-                       }
-                       
-                       Button(action: {
-                           authViewModel.signUp(name: name, username: username, email: email, password: password) { success in
-                               if success {
-                                   shouldNavigate = true
-                               }
-                           }
-                       }) {
-                           if authViewModel.isLoading {
-                               ProgressView()
-                           } else {
-                               Text("Sign up")
-                                   .frame(maxWidth: .infinity)
-                                   .padding()
-                                   .background(isFormValid ? Color.accentColor : Color.gray)
-                                   .foregroundColor(.white)
-                                   .cornerRadius(10)
-                           }
-                       }
-            .disabled(!isFormValid || authViewModel.isLoading)
+
+            NavigationStack {
+                Button(action: {
+                    authViewModel.signUp(name: name, username: username, email: email, password: password) { success in
+                        if success {
+                            shouldNavigate = true
+                        }
+                    }
+                }) {
+                    if authViewModel.isLoading {
+                        ProgressView()
+                    } else {
+                        Text("Sign up")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isFormValid ? Color.accentColor : Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                }
+                .disabled(!isFormValid || authViewModel.isLoading)
+                .navigationDestination(isPresented: $shouldNavigate) {
+                    MainTabView()
+                }
+            }
+            
             
             HStack {
                 Text("Already have an account?")

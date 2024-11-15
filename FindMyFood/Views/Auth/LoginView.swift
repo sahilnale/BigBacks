@@ -20,13 +20,9 @@ struct LoginView: View {
             
             SecureField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-            
-            
-            NavigationView {
+
+            NavigationStack {
                 VStack {
-                    NavigationLink(destination: MainView(), isActive: $canNavigate) {
-                        EmptyView() // Acts as a hidden navigation trigger
-                    }
                     Button(action: {
                         authViewModel.login(username: username, password: password) { success in
                             if success {
@@ -47,6 +43,9 @@ struct LoginView: View {
                     .foregroundColor(.white)
                     .cornerRadius(10)
                     .disabled(username.isEmpty || password.isEmpty || authViewModel.isLoading)
+                }
+                .navigationDestination(isPresented: $canNavigate) {
+                    MainView()
                 }
             }
             
