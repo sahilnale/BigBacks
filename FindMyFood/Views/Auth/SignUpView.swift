@@ -9,6 +9,7 @@ struct SignUpView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showPasswordMismatch = false
+    @State private var shouldNavigate = false
     
     private var isFormValid: Bool {
         !name.isEmpty &&
@@ -52,24 +53,27 @@ struct SignUpView: View {
                     .foregroundColor(.red)
                     .font(.caption)
             }
-            
-            Button(action: {
-                guard password == confirmPassword else {
-                    showPasswordMismatch = true
-                    return
-                }
-                authViewModel.signUp(
-                    name: name,
-                    username: username,
-                    email: email,
-                    password: password
-                )
-            }) {
-                if authViewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Sign Up")
+            NavigationLink(destination: MainTabView(), isActive: $shouldNavigate) {
+                Button(action: {
+                    guard password == confirmPassword else {
+                        showPasswordMismatch = true
+                        return
+                    }
+                    authViewModel.signUp(
+                        name: name,
+                        username: username,
+                        email: email,
+                        password: password
+                    )
+                    shouldNavigate = true
+                    
+                }) {
+                    if authViewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Text("Sign up")
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -84,17 +88,17 @@ struct SignUpView: View {
                 NavigationLink("Login here", destination: LoginView())
                     .foregroundColor(Color.accentColor)
             }
-        }
-        .padding()
-        .alert("Error", isPresented: $authViewModel.showError) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(authViewModel.error?.errorDescription ?? "An unknown error occurred")
-        }
-        .onChange(of: authViewModel.isLoggedIn) { newValue in
-            if newValue {
-                // Dismiss all presented views and return to root view
-                dismiss()
+            .padding()
+            .alert("Error", isPresented: $authViewModel.showError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(authViewModel.error?.errorDescription ?? "An unknown error occurred")
+            }
+            .onChange(of: authViewModel.isLoggedIn) { newValue in
+                if newValue {
+                    // Dismiss all presented views and return to root view
+                    dismiss()
+                }
             }
         }
     }

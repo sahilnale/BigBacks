@@ -193,6 +193,7 @@ import SwiftUI
 import MapKit
 import CoreLocation
 
+
 class MapViewModel: UIViewController, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     private let map: MKMapView = {
@@ -220,8 +221,20 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate {
         map.frame = view.bounds
     }
     
+    // Public method to recenter the map
+    func recenterMap() {
+        guard let location = locationManager.location else { return }
+        
+        let region = MKCoordinateRegion(
+            center: location.coordinate,
+            latitudinalMeters: 1000,
+            longitudinalMeters: 1000
+        )
+        map.setRegion(region, animated: true)
+    }
+    
     // CLLocationManagerDelegate method
-    func locationManager( manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         
         // Center the map on the user's current location
@@ -236,14 +249,16 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate {
         locationManager.stopUpdatingLocation()
     }
     
-    func locationManager( manager: CLLocationManager, didFailWithError error: Error) {
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Failed to get location: \(error.localizedDescription)")
     }
 }
 
 struct MapView: UIViewControllerRepresentable {
+    let viewModel: MapViewModel // Pass the MapViewModel instance
+
     func makeUIViewController(context: Context) -> MapViewModel {
-        return MapViewModel()
+        return viewModel
     }
 
     func updateUIViewController(_ uiViewController: MapViewModel, context: Context) {
