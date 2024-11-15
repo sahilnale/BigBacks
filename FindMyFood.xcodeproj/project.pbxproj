@@ -397,7 +397,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FindMyFood/Preview Content\"";
-				DEVELOPMENT_TEAM = 6MDSVB396P;
+				DEVELOPMENT_TEAM = 765L43LCY9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "pls share!";
@@ -430,7 +430,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FindMyFood/Preview Content\"";
-				DEVELOPMENT_TEAM = 6MDSVB396P;
+				DEVELOPMENT_TEAM = 765L43LCY9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "pls share!";

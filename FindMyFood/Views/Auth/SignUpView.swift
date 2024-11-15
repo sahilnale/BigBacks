@@ -9,6 +9,8 @@ struct SignUpView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showPasswordMismatch = false
+    @State private var isSignedUp = false
+    @State private var navigateToMainView = false
     
     private var isFormValid: Bool {
         !name.isEmpty &&
@@ -52,39 +54,39 @@ struct SignUpView: View {
                     .foregroundColor(.red)
                     .font(.caption)
             }
-            
-            Button(action: {
-                guard password == confirmPassword else {
-                    showPasswordMismatch = true
-                    return
+                Button(action: {
+                    guard password == confirmPassword else {
+                        showPasswordMismatch = true
+                        return
+                    }
+                    authViewModel.signUp(
+                        name: name,
+                        username: username,
+                        email: email,
+                        password: password
+                    )
+                }) {
+                    if authViewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        NavigationLink(destination: MapView()) {
+                            Text("Sign Up")
+                        }
+                    }
                 }
-                authViewModel.signUp(
-                    name: name,
-                    username: username,
-                    email: email,
-                    password: password
-                )
-            }) {
-                if authViewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Sign Up")
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(10)
-            .disabled(!isFormValid || authViewModel.isLoading)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                .disabled(!isFormValid || authViewModel.isLoading)
             
             HStack {
                 Text("Already have an account?")
                 NavigationLink("Login here", destination: LoginView())
                     .foregroundColor(Color.accentColor)
             }
-        }
         .padding()
         .alert("Error", isPresented: $authViewModel.showError) {
             Button("OK", role: .cancel) { }
