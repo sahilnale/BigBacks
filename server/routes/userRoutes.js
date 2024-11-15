@@ -60,6 +60,7 @@ router.post('/login', async (req, res) => {
         }
         // If successful, respond with user info or a token (for authentication)
         user.loggedIn = true;
+        await user.save();
         res.status(200).json({ message: 'Login successful', userId: user._id });
     } catch (error) {
         res.status(500).json({ message: error.message });
