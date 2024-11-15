@@ -2,8 +2,9 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var email = ""
+    @State private var username = ""
     @State private var password = ""
+    @State private var canNavigate = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -11,7 +12,7 @@ struct LoginView: View {
                 .font(.largeTitle)
                 .foregroundColor(Color.accentColor)
             
-            TextField("Email", text: $email)
+            TextField("Username", text: $username)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -20,22 +21,34 @@ struct LoginView: View {
             SecureField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
-            Button(action: {
-                authViewModel.login(email: email, password: password)
-            }) {
-                if authViewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Login")
+            
+            NavigationView {
+                VStack {
+                    NavigationLink(destination: MainView(), isActive: $canNavigate) {
+                        EmptyView() // Acts as a hidden navigation trigger
+                    }
+                    Button(action: {
+                        authViewModel.login(username: username, password: password) { success in
+                            if success {
+                                canNavigate = true
+                            }
+                        }
+                    }) {
+                        if authViewModel.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Login")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .disabled(username.isEmpty || password.isEmpty || authViewModel.isLoading)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(10)
-            .disabled(email.isEmpty || password.isEmpty || authViewModel.isLoading)
             
             Button("Forgot password?") {
                 // Implement forgot password
