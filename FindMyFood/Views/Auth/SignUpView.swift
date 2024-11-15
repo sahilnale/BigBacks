@@ -1,12 +1,24 @@
 import SwiftUI
 
 struct SignUpView: View {
-    @State private var firstName = ""
-    @State private var lastName = ""
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var name = ""
     @State private var username = ""
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+    @State private var showPasswordMismatch = false
+    
+    private var isFormValid: Bool {
+        !name.isEmpty &&
+        !username.isEmpty &&
+        !email.isEmpty &&
+        !password.isEmpty &&
+        !confirmPassword.isEmpty &&
+        password == confirmPassword &&
+        password.count >= 8
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -14,32 +26,58 @@ struct SignUpView: View {
                 .font(.largeTitle)
                 .foregroundColor(Color.accentColor)
             
-            TextField("First Name", text: $firstName)
+            TextField("Full Name", text: $name)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-            
-            TextField("Last Name", text: $lastName)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .autocorrectionDisabled()
             
             TextField("Username", text: $username)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
             
             TextField("Email address", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.emailAddress)
             
-            SecureField("Password", text: $password)
+            TextField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
-            SecureField("Confirm Password", text: $confirmPassword)
+            TextField("Confirm Password", text: $confirmPassword)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
-            Button("Sign Up") {
-                // Implement sign up
+            if password != confirmPassword && !confirmPassword.isEmpty {
+                Text("Passwords do not match")
+                    .foregroundColor(.red)
+                    .font(.caption)
+            }
+            
+            Button(action: {
+                guard password == confirmPassword else {
+                    showPasswordMismatch = true
+                    return
+                }
+                authViewModel.signUp(
+                    name: name,
+                    username: username,
+                    email: email,
+                    password: password
+                )
+            }) {
+                if authViewModel.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Text("Sign Up")
+                }
             }
             .frame(maxWidth: .infinity)
             .padding()
             .background(Color.accentColor)
             .foregroundColor(.white)
             .cornerRadius(10)
+            .disabled(!isFormValid || authViewModel.isLoading)
             
             HStack {
                 Text("Already have an account?")
@@ -48,5 +86,16 @@ struct SignUpView: View {
             }
         }
         .padding()
+        .alert("Error", isPresented: $authViewModel.showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(authViewModel.error?.errorDescription ?? "An unknown error occurred")
+        }
+        .onChange(of: authViewModel.isLoggedIn) { newValue in
+            if newValue {
+                // Dismiss all presented views and return to root view
+                dismiss()
+            }
+        }
     }
 }

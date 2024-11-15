@@ -1,16 +1,15 @@
-// ContentView.swift
-
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     var body: some View {
-        if authViewModel.isLoggedIn {
-            MainTabView()
-        } else {
-            WelcomeView()
-                .environmentObject(authViewModel)
+        Group {
+            if authViewModel.isLoggedIn {
+                MainTabView()
+            } else {
+                WelcomeView()
+            }
         }
     }
 }
