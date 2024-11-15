@@ -11,27 +11,30 @@ class AuthViewModel: ObservableObject {
         currentUser != nil
     }
     
-    func login(email: String, password: String) {
+    func login(username: String, password: String, completion: @escaping (Bool) -> Void) {
         isLoading = true
         
         Task {
             do {
-                let user = try await NetworkManager.shared.login(email: email, password: password)
+                let user = try await NetworkManager.shared.login(username: username, password: password)
                 self.currentUser = user
                 self.isLoading = false
+                completion(true)
             } catch let error as NetworkError {
                 self.error = error
                 self.showError = true
                 self.isLoading = false
+                completion(false)
             } catch {
                 self.error = .serverError(error.localizedDescription)
                 self.showError = true
                 self.isLoading = false
+                completion(false)
             }
         }
     }
     
-    func signUp(name: String, username: String, email: String, password: String) {
+    func signUp(name: String, username: String, email: String, password: String, completion: @escaping (Bool) -> Void) {
         isLoading = true
         
         Task {
@@ -44,14 +47,24 @@ class AuthViewModel: ObservableObject {
                 )
                 self.currentUser = user
                 self.isLoading = false
+                login(username: username, password: password) { success in
+                    if success {
+                        print("Login successful!")
+                    } else {
+                        print("Login failed.")
+                    }
+                }
+                completion(true)
             } catch let error as NetworkError {
                 self.error = error
                 self.showError = true
                 self.isLoading = false
+                completion(false)
             } catch {
                 self.error = .serverError(error.localizedDescription)
                 self.showError = true
                 self.isLoading = false
+                completion(false)
             }
         }
     }

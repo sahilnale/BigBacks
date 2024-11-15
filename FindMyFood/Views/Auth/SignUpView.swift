@@ -54,33 +54,27 @@ struct SignUpView: View {
                     .font(.caption)
             }
             NavigationLink(destination: MainTabView(), isActive: $shouldNavigate) {
-                Button(action: {
-                    guard password == confirmPassword else {
-                        showPasswordMismatch = true
-                        return
-                    }
-                    authViewModel.signUp(
-                        name: name,
-                        username: username,
-                        email: email,
-                        password: password
-                    )
-                    shouldNavigate = true
-                    
-                }) {
-                    if authViewModel.isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Sign up")
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(10)
+                           EmptyView()
+                       }
+                       
+                       Button(action: {
+                           authViewModel.signUp(name: name, username: username, email: email, password: password) { success in
+                               if success {
+                                   shouldNavigate = true
+                               }
+                           }
+                       }) {
+                           if authViewModel.isLoading {
+                               ProgressView()
+                           } else {
+                               Text("Sign up")
+                                   .frame(maxWidth: .infinity)
+                                   .padding()
+                                   .background(isFormValid ? Color.accentColor : Color.gray)
+                                   .foregroundColor(.white)
+                                   .cornerRadius(10)
+                           }
+                       }
             .disabled(!isFormValid || authViewModel.isLoading)
             
             HStack {
