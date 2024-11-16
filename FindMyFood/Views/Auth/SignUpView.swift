@@ -44,9 +44,13 @@ struct SignUpView: View {
             
             TextField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
             
             TextField("Confirm Password", text: $confirmPassword)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
             
             if password != confirmPassword && !confirmPassword.isEmpty {
                 Text("Passwords do not match")
@@ -54,7 +58,6 @@ struct SignUpView: View {
                     .font(.caption)
             }
 
-            NavigationStack {
                 Button(action: {
                     authViewModel.signUp(name: name, username: username, email: email, password: password) { success in
                         if success {
@@ -77,7 +80,6 @@ struct SignUpView: View {
                 .navigationDestination(isPresented: $shouldNavigate) {
                     MainTabView()
                 }
-            }
             
             
             HStack {

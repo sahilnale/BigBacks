@@ -20,8 +20,9 @@ struct LoginView: View {
             
             SecureField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
 
-            NavigationStack {
                 VStack {
                     Button(action: {
                         authViewModel.login(username: username, password: password) { success in
@@ -47,7 +48,6 @@ struct LoginView: View {
                 .navigationDestination(isPresented: $canNavigate) {
                     MainView()
                 }
-            }
             
             Button("Forgot password?") {
                 // Implement forgot password

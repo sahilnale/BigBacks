@@ -3,9 +3,10 @@ import SwiftUI
 struct WelcomeView: View {
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            VStack(spacing: 10) {
                 Text("FindMyFood")
-                    .font(.largeTitle)
+                    .font(.system(.largeTitle, design: .serif))
+                    .fontWeight(.bold)
                     .foregroundColor(.white)
                 
                 NavigationLink(destination: LoginView()) {

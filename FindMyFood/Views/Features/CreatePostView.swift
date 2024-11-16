@@ -8,13 +8,13 @@ struct CreatePostView: View {
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
-            Image(systemName: "person.circle.fill")
+            Image(systemName: "square.fill")
                 .resizable()
                 .scaledToFit()
                 .frame(height: 200)
                 .cornerRadius(10)
             
-            Text("Search for restaurants..")
+            Text("Search for restaurants...")
                 .padding()
                 .background(Color(UIColor.systemGray6))
                 .cornerRadius(10)
@@ -22,7 +22,7 @@ struct CreatePostView: View {
             HStack {
                 ForEach(1...5, id: \.self) { index in
                 Image(systemName: index <= rating ? "star.fill" : "star")
-                        .foregroundColor(index <= rating ? .orange : .gray)
+                        .foregroundColor(index <= rating ? .accentColor : .gray)
                         .onTapGesture {
                         rating = index
                             }

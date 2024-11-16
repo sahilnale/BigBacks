@@ -32,9 +32,7 @@ struct MainView: View {
                         }
                         
                         // Add Button
-                        Button(action: {
-                            print("Add button tapped")
-                        }) {
+                        NavigationLink(destination: CreatePostView()) {
                             Image(systemName: "plus")
                                 .font(.system(size: 30))
                                 .foregroundColor(.accentColor)
