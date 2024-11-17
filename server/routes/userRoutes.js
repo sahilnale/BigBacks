@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { User } from '../mongodb/models/User.js';
+import { User, Post } from '../mongodb/models/User.js';
 import bcrypt from 'bcrypt';
 dotenv.config();
 
@@ -326,7 +326,8 @@ router.post('/:id/cancelRequest/:friendId', async (req, res) => {
     }
 });
 
-router.get('/:usName', async (req, res) => {
+//This is for retrieving the user info by username
+router.get('/getByUsername/:usName', async (req, res) => {
     try {
         const user = await User.findOne({username: req.params.usName});
 
@@ -339,5 +340,24 @@ router.get('/:usName', async (req, res) => {
     }
 });
 
+//This is for returning the feed of the user(latest posts of friends)
+router.get('/getFeed/:id', async(req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        const friendsList = user.friends;
+        let feed = [];
+        for (let index = 0; index < friendsList.length; index++) {
+            const friend = await User.findById(friendsList[index]);
+            if(friend && friend.posts){
+                feed = feed.concat(friend.posts);
+            }
+        }
+        feed.sort((a, b)=> b.timestamp - a.timestamp);
+        res.json(feed);
+    }
+    catch(error){
+        res.status(500).json({message: error.message});
+    }
+});
 
 export default router;
