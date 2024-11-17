@@ -29,9 +29,22 @@
 		BAC974342CD9AC6700DD929B /* FindMyFoodUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FindMyFoodUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		1BF55CFF2CE9DEB200BBFAD5 /* Exceptions for "FindMyFood" folder in "FindMyFood" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BAC974192CD9AC6300DD929B /* FindMyFood */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		BAC9741C2CD9AC6300DD929B /* FindMyFood */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1BF55CFF2CE9DEB200BBFAD5 /* Exceptions for "FindMyFood" folder in "FindMyFood" target */,
+			);
 			path = FindMyFood;
 			sourceTree = "<group>";
 		};
@@ -400,6 +413,7 @@
 				DEVELOPMENT_TEAM = 765L43LCY9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FindMyFood/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "pls share!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "share location pls!!!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -433,6 +447,7 @@
 				DEVELOPMENT_TEAM = 765L43LCY9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FindMyFood/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "pls share!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "share location pls!!!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
