@@ -2,12 +2,12 @@ import Foundation
 
 class NetworkManager {
     static let shared = NetworkManager()
-    private let baseURL = "http://localhost:8080/api/v1/user"
+    private let baseURL = "http://localhost:8080/api/v1/"
     
     private init() {}
     
     func login(username: String, password: String) async throws -> User {
-        let endpoint = "\(baseURL)/login"
+        let endpoint = "\(baseURL)/user/login"
         guard let url = URL(string: endpoint) else {
             throw NetworkError.invalidURL
         }
@@ -45,7 +45,7 @@ class NetworkManager {
     }
     
     func getCurrentUser(userId: String) async throws -> User {
-        let endpoint = "\(baseURL)/\(userId)"
+        let endpoint = "\(baseURL)/user/\(userId)"
         guard let url = URL(string: endpoint) else {
             throw NetworkError.invalidURL
         }
@@ -67,7 +67,7 @@ class NetworkManager {
     }
     // MARK: - Authentication
     func signUp(name: String, username: String, email: String, password: String) async throws -> User {
-        let endpoint = "\(baseURL)/"
+        let endpoint = "\(baseURL)/user/"
         guard let url = URL(string: endpoint) else {
             throw NetworkError.invalidURL
         }
