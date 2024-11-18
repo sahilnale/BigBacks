@@ -10,6 +10,12 @@ const PostSchema = new mongoose.Schema({
     type: Number,
     default: 0, // Starts with 0 likes
   },
+  likedBy: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', // References users who liked this post
+    },
+  ],
   starRating: {
     type: Number,
     min: 0,
@@ -18,18 +24,56 @@ const PostSchema = new mongoose.Schema({
   },
   comments: [
     {
-        userId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User', // Reference to the user who made the comment
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', // Reference to the user who made the comment
+      },
+      text: {
+        type: String,
+        trim: true,
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+      likes: {
+        type: Number,
+        default: 0, // Likes for the comment start at 0
+      },
+      likedBy: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User', // Users who liked the comment
         },
-        text: {
+      ],
+      replies: [
+        {
+          userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User', // Reference to the user who made the reply
+          },
+          text: {
             type: String,
             trim: true,
-        },
-        timestamp: {
+            required: true,
+          },
+          timestamp: {
             type: Date,
             default: Date.now,
+          },
+          likes: {
+            type: Number,
+            default: 0, // Likes for the reply start at 0
+          },
+          likedBy: [
+            {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: 'User', // Users who liked the reply
+            },
+          ],
         },
+      ],
     },
   ],
 
