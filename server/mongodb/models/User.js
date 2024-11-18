@@ -6,6 +6,33 @@ const PostSchema = new mongoose.Schema({
   review: { type: String, required: true },
   location: { type: String, required: true },
   restaurantName: { type: String, required: true },
+  likes: {
+    type: Number,
+    default: 0, // Starts with 0 likes
+  },
+  starRating: {
+    type: Number,
+    min: 0,
+    max: 5, // Star rating between 0 to 5
+    default: 0, // Default no rating
+  },
+  comments: [
+    {
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User', // Reference to the user who made the comment
+        },
+        text: {
+            type: String,
+            trim: true,
+        },
+        timestamp: {
+            type: Date,
+            default: Date.now,
+        },
+    },
+  ],
+
 });
 
 const UserSchema = new mongoose.Schema({
