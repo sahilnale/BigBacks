@@ -53,7 +53,8 @@ class RestaurantSearchViewModel: NSObject, ObservableObject, CLLocationManagerDe
 
 struct RestaurantSearchView: View {
     @StateObject private var viewModel = RestaurantSearchViewModel()
-    
+    @Environment(\.dismiss) private var dismiss // Add dismiss environment variable
+
     var body: some View {
         NavigationView {
             VStack {
@@ -103,10 +104,19 @@ struct RestaurantSearchView: View {
                     }
                 }
                 
-                
                 Spacer()
             }
             .navigationTitle("Find Nearby Places")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss() // Dismiss the view
+                    }) {
+                        Image(systemName: "arrow.left")
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            }
         }
     }
 }
