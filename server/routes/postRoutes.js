@@ -99,4 +99,46 @@ router.delete('/:id', async(req, res) => {
     }
 });
 
+
+// Like a post
+router.post('/:postId/like', async (req, res) => {
+    const { postId } = req.params;
+    const { userId } = req.body;
+
+    // Ensure userId is a valid ObjectId
+    // if (!mongoose.Types.ObjectId.isValid(userId)) {
+    //     return res.status(400).send('Invalid userId');
+    // }
+
+    try {
+        const post = await Post.findById(postId);
+        if (!post) return res.status(404).send('Post not found');
+
+        let liked = false;
+
+        if (post.likedBy.includes(userId)) {
+            // If the user already liked the post, remove the like
+            post.likedBy.pull(userId);  // Removes the userId from the likedBy array
+            post.likes--;  // Decrement the like count
+        } else {
+            // Otherwise, add the like
+            post.likedBy.push(userId);
+            post.likes++;
+            liked = true;
+        }
+
+        // Save the updated post
+        await post.save();
+
+        // Return the updated number of likes and the liked status
+        res.status(200).send({
+            likesCount: post.likes,
+            liked
+        });
+    } catch (err) {
+        res.status(500).send({ error: err.message });
+    }
+});
+
+
 export default router;
