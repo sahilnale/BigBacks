@@ -6,6 +6,77 @@ const PostSchema = new mongoose.Schema({
   review: { type: String, required: true },
   location: { type: String, required: true },
   restaurantName: { type: String, required: true },
+  likes: {
+    type: Number,
+    default: 0, // Starts with 0 likes
+  },
+  likedBy: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', // References users who liked this post
+    },
+  ],
+  starRating: {
+    type: Number,
+    min: 0,
+    max: 5, // Star rating between 0 to 5
+    default: 0, // Default no rating
+  },
+  comments: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', // Reference to the user who made the comment
+      },
+      text: {
+        type: String,
+        trim: true,
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+      likes: {
+        type: Number,
+        default: 0, // Likes for the comment start at 0
+      },
+      likedBy: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User', // Users who liked the comment
+        },
+      ],
+      replies: [
+        {
+          userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User', // Reference to the user who made the reply
+          },
+          text: {
+            type: String,
+            trim: true,
+            required: true,
+          },
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+          likes: {
+            type: Number,
+            default: 0, // Likes for the reply start at 0
+          },
+          likedBy: [
+            {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: 'User', // Users who liked the reply
+            },
+          ],
+        },
+      ],
+    },
+  ],
+
 });
 
 const UserSchema = new mongoose.Schema({
