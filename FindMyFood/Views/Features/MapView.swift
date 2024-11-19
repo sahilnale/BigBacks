@@ -154,3 +154,7 @@ struct MapView: UIViewControllerRepresentable {
         // Handle any updates to the view controller here
     }
 }
+
+//#Preview {
+//    MapViewModel()
+//}

@@ -43,3 +43,7 @@ struct FriendsView: View {
         }
     }
 }
+
+#Preview {
+    FriendsView()
+}
