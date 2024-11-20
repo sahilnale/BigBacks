@@ -35,12 +35,12 @@ const startServer = async () => {
         connectAWS();
 
         // Start the HTTPS server
-        https.createServer(httpsOptions, app).listen(443, () => {
+        https.createServer(httpsOptions, app).listen(8080, () => {
             console.log('HTTPS server started on port 443');
         });
 
         // Optional: Start HTTP server to redirect to HTTPS
-        app.listen(8080, () => {
+        app.listen(8081, () => {
             console.log('HTTP server started on port 8080');
         });
     } catch (error) {
