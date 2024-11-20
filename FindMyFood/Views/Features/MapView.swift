@@ -40,29 +40,62 @@ class CustomPopupView: UIView {
         layer.borderColor = UIColor.lightGray.cgColor
         
         // Title label
-        titleLabel.font = UIFont.boldSystemFont(ofSize: 18)
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 30)
         titleLabel.textAlignment = .center
+        
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Image view
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
+        
         imageView.layer.cornerRadius = 8
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
         // Reviewer name
-        reviewerNameLabel.font = UIFont.systemFont(ofSize: 14)
-        reviewerNameLabel.textColor = .darkGray
+        reviewerNameLabel.font = UIFont.systemFont(ofSize: 25)
+        reviewerNameLabel.textColor = .orange
         reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
         
+        
+        
+        // Create star images (filled and empty)
+        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.yellow, renderingMode: .alwaysOriginal)
+        let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
+
+        // Array to hold star image views
+        var starImageViews: [UIImageView] = []
+
+        // Create 5 star image views
+        for _ in 0..<5 {
+            let starImageView = UIImageView()
+            starImageView.translatesAutoresizingMaskIntoConstraints = false
+            starImageViews.append(starImageView)
+            addSubview(starImageView)
+        }
+
+        // Function to set the rating (e.g., 3/5 stars)
+        func setRating(_ rating: Int) {
+            for i in 0..<5 {
+                if i < rating {
+                    starImageViews[i].image = filledStarImage  // Set filled star
+                } else {
+                    starImageViews[i].image = emptyStarImage  // Set empty star
+                }
+            }
+        }
+
+        // Call setRating with the desired rating, for example, 3/5
+        setRating(3)
+        
         // Rating label
-        ratingLabel.font = UIFont.systemFont(ofSize: 14)
-        ratingLabel.textColor = .systemYellow
-        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+//        ratingLabel.font = UIFont.systemFont(ofSize: 25)
+//        ratingLabel.textColor = .orange
+//        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Comment label
-        commentLabel.font = UIFont.systemFont(ofSize: 12)
-        commentLabel.textColor = .darkGray
+        commentLabel.font = UIFont.systemFont(ofSize: 25)
+        commentLabel.textColor = .orange
         commentLabel.numberOfLines = 0
         commentLabel.translatesAutoresizingMaskIntoConstraints = false
         
@@ -70,36 +103,49 @@ class CustomPopupView: UIView {
         addSubview(titleLabel)
         addSubview(imageView)
         addSubview(reviewerNameLabel)
-        addSubview(ratingLabel)
+     
         addSubview(commentLabel)
         
-        // Layout
         NSLayoutConstraint.activate([
-            // Title label at the top
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 2),
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
-            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            
-            // Image view centered below the title
-            imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 0.1),
-            imageView.centerXAnchor.constraint(equalTo: centerXAnchor),  // This centers the image view horizontally
-            imageView.widthAnchor.constraint(equalToConstant: 300),  // You can adjust the width as needed
-            imageView.heightAnchor.constraint(equalToConstant: 300),
-            
-            // Reviewer name label below the image view
-            reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 8),
-            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            
-            // Rating label to the right of the reviewer name
-            ratingLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 8),
-            ratingLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            
-            // Comment label below the reviewer name and rating
-            commentLabel.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 4),
-            commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            commentLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8)
-        ])
+        
+            // Title Label at the Top
+                titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 5),
+                titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+                titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+                
+                // Image View Below the Title
+                imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 5),
+                imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
+                imageView.widthAnchor.constraint(equalToConstant: 300),
+                imageView.heightAnchor.constraint(equalToConstant: 300),
+                
+                // Reviewer Name Below the Image
+                reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 20),
+                reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+                
+                // Star Rating Below the Reviewer Name
+                starImageViews[0].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+                starImageViews[0].leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+                
+                starImageViews[1].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+                starImageViews[1].leadingAnchor.constraint(equalTo: starImageViews[0].trailingAnchor, constant: 4),
+                
+                starImageViews[2].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+                starImageViews[2].leadingAnchor.constraint(equalTo: starImageViews[1].trailingAnchor, constant: 4),
+                
+                starImageViews[3].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+                starImageViews[3].leadingAnchor.constraint(equalTo: starImageViews[2].trailingAnchor, constant: 4),
+                
+                starImageViews[4].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+                starImageViews[4].leadingAnchor.constraint(equalTo: starImageViews[3].trailingAnchor, constant: 4),
+                    
+                
+                // Comment Label Below Reviewer Name and Rating
+                commentLabel.topAnchor.constraint(equalTo: starImageViews[0].bottomAnchor, constant: 20),
+                commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+                commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+                commentLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8)
+            ])
     }
 
     
@@ -258,7 +304,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         // Create a new popup view
         let popupView = CustomPopupView()
-        popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 260, width: 350, height: 600)
+        popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 300, width: 350, height: 600)
         
         // Adjust the size and position
         popupView.layer.cornerRadius = 10
