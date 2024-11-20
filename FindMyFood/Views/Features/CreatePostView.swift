@@ -84,13 +84,21 @@ struct CreatePostView: View {
                 
                 // Manually Change Location
                 Button(action: {
-                    customLocation = nil
-                    showRestaurantPicker = true
+                    showRestaurantPicker = true // Show the RestaurantSearchView
                 }) {
                     Text("Change Location")
                         .foregroundColor(.blue)
                         .font(.system(size: 16, weight: .semibold))
                         .frame(alignment: .center)
+                }
+                .sheet(isPresented: $showRestaurantPicker) {
+                    NearbyRestaurantPicker(
+                        userLocation: customLocation ?? CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194), // Default location
+                        onRestaurantSelected: { name in
+                            restaurantName = name
+                            showRestaurantPicker = false
+                        }
+                    )
                 }
                 
                 ZStack(alignment: .topLeading) {
