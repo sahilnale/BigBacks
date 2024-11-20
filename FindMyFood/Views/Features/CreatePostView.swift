@@ -18,6 +18,8 @@ struct CreatePostView: View {
     @State private var showRestaurantPicker = false
     @State private var customLocation: CLLocationCoordinate2D? = nil
     @State private var navigateToFeed = false
+    @State private var navigateToMain = false
+    
     
     var body: some View {
         NavigationStack {
@@ -116,10 +118,19 @@ struct CreatePostView: View {
                 
                 Spacer()
             }
-            .navigationDestination(isPresented: $navigateToFeed) {
-                FeedView()
-            }
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: {
+                            // Action for the back button
+                            navigateToMain = true
+                        }) {
+                            HStack {
+                                Image(systemName: "chevron.backward")
+                                Text("Back")
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: postReview) {
                         Text("Post")
@@ -143,7 +154,14 @@ struct CreatePostView: View {
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(sourceType: sourceType, selectedImage: $selectedImage, imageLocation: $imageLocation)
             }
+            .navigationDestination(isPresented: $navigateToFeed) {
+                        FeedView()
+                    }
+            .navigationDestination(isPresented: $navigateToMain) {
+                        MainTabView()
+                    }
         }
+        .navigationBarBackButtonHidden(true)
     }
     
     private func postReview() {
@@ -302,11 +320,16 @@ struct CreatePostView: View {
             }
         }
     }
-    
-    // MARK: - Preview
-    struct CreatePost_Previews: PreviewProvider {
-        static var previews: some View {
-            CreatePostView()
-        }
-    }
 }
+    
+//     MARK: - Preview
+//    struct CreatePost_Previews: PreviewProvider {
+//        static var previews: some View {
+//            CreatePostView()
+//            }
+//        }
+//    }
+    
+//#Preview {
+//    CreatePostView()
+//}
