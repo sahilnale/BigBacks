@@ -15,36 +15,48 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+// Define API routes
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/post', postRoutes);
 
+// Default route
 app.get('/', async (req, res) => {
-    res.send('Testing HTTPS!');
+    res.send('Welcome to the HTTPS-secured API!');
 });
 
-// Load self-signed certificate (for testing purposes)
-const httpsOptions = {
-    key: fs.readFileSync('server.key'), // Path to your private key
-    cert: fs.readFileSync('server.cert'), // Path to your certificate
+// Redirect HTTP to HTTPS (middleware for HTTP server)
+const redirectToHttps = (req, res) => {
+    const host = req.headers.host.replace(/:\d+/, ''); // Remove port if present
+    res.redirect(`https://${host}${req.url}`);
 };
 
 const startServer = async () => {
     try {
-        // Connect to databases
-        connectDB(process.env.MONGODB_URL);
+        // Connect to MongoDB and AWS S3
+        console.log('Connecting to databases...');
+        await connectDB(process.env.MONGODB_URL);
         connectAWS();
+        console.log('Databases connected successfully.');
+
+        // Load HTTPS certificate and key
+        const httpsOptions = {
+            key: fs.readFileSync(process.env.HTTPS_KEY_PATH || 'server.key'),
+            cert: fs.readFileSync(process.env.HTTPS_CERT_PATH || 'server.cert'),
+        };
 
         // Start the HTTPS server
-        https.createServer(httpsOptions, app).listen(8080, () => {
-            console.log('HTTPS server started on port 443');
+        https.createServer(httpsOptions, app).listen(process.env.HTTPS_PORT || 443, () => {
+            console.log(`HTTPS server running on port ${process.env.HTTPS_PORT || 443}`);
         });
 
-        // Optional: Start HTTP server to redirect to HTTPS
-        app.listen(8081, () => {
-            console.log('HTTP server started on port 8080');
+        // Start the HTTP server to redirect to HTTPS
+        const httpApp = express();
+        httpApp.use('*', redirectToHttps); // Redirect all HTTP traffic
+        httpApp.listen(process.env.HTTP_PORT || 80, () => {
+            console.log(`HTTP server running on port ${process.env.HTTP_PORT || 80}`);
         });
     } catch (error) {
-        console.log(error);
+        console.error('Error starting the server:', error.message);
     }
 };
 

@@ -2,8 +2,34 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>34.239.184.207</key>
+	<string></string>
+	<key>CFBundleGetInfoString</key>
+	<string>NSExceptionAllowsInsecureHTTPLoads</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsArbitraryLoadsUsageDescription</key>
+		<string>NSExceptionDomains</string>
+		<key>NSExceptionAllowsInsecureHTTPLoads</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>34.239.184.207</key>
+			<dict/>
+			<key>New item</key>
+			<string></string>
+		</dict>
+		<key>NSExceptionRequiresForwardSecrecy</key>
+		<false/>
+		<key>NSIncludesSubdomains</key>
+		<true/>
+	</dict>
 	<key>NSExceptionAllowsInsecureHTTPLoads</key>
-	<string>YES</string>
+	<true/>
+	<key>NSExceptionRequiresForwardSecrecy</key>
+	<string>NO</string>
 	<key>NSIncludesSubdomains</key>
 	<string>YES</string>
 </dict>

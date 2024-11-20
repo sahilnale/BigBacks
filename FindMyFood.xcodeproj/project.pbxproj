@@ -414,7 +414,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FindMyFood/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to take photos.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = NSExceptionAllowsInsecureHTTPLoads;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "pls share!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "share location pls!!!";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need access to your photo library to upload photos";
@@ -450,7 +453,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FindMyFood/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to take photos.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = NSExceptionAllowsInsecureHTTPLoads;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "pls share!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "share location pls!!!";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need access to your photo library to upload photos";
