@@ -33,6 +33,7 @@ struct MainTabView: View {
             }
             .accentColor(.accentColor)
         }
+        .navigationBarBackButtonHidden(true)
     }
 }
 
