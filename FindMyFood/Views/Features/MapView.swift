@@ -76,12 +76,12 @@ class CustomPopupView: UIView {
         // Layout
         NSLayoutConstraint.activate([
             // Title label at the top
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 0.1),
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 2),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
             titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             
             // Image view centered below the title
-            imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
+            imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 0.1),
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),  // This centers the image view horizontally
             imageView.widthAnchor.constraint(equalToConstant: 300),  // You can adjust the width as needed
             imageView.heightAnchor.constraint(equalToConstant: 300),
@@ -143,7 +143,6 @@ class ImageAnnotationView: MKAnnotationView {
 }
 
 // Map View Model
-// Map View Model
 class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
     private let locationManager = CLLocationManager()
     private let map: MKMapView = {
@@ -170,18 +169,13 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         // Configure map view delegate
         map.delegate = self
         
+        
+        // Add tap gesture recognizer to dismiss the popup
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
+        map.addGestureRecognizer(tapGesture)
+        
         // Add image annotation for San Francisco
         loadImageAnnotation()
-        
-        // Add double-tap gesture recognizer for annotations
-        let doubleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
-        doubleTapRecognizer.numberOfTapsRequired = 2
-        map.addGestureRecognizer(doubleTapRecognizer)
-        
-        // Add tap gesture recognizer to dismiss the popup when clicking outside
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
-        tapGesture.cancelsTouchesInView = false // Allow other gestures to be recognized
-        map.addGestureRecognizer(tapGesture)
     }
     
     override func viewDidLayoutSubviews() {
@@ -249,84 +243,56 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             annotationView?.annotation = imageAnnotation
             annotationView?.image = imageAnnotation.image
             
-            // Add a button to the annotation's callout
-            let button = UIButton(type: .detailDisclosure)
-            button.addTarget(self, action: #selector(annotationButtonTapped(_:)), for: .touchUpInside)
-            annotationView?.rightCalloutAccessoryView = button
-            
             return annotationView
         }
         
         return nil
     }
     
-    // Handle annotation button tap
-    @objc func annotationButtonTapped(_ sender: UIButton) {
-        print("Callout button tapped!")
-        // Handle further actions like navigating to a detailed view
-    }
-
-    // Handle double-tap gesture on the map (not on annotations)
-    @objc func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
-        let touchPoint = recognizer.location(in: map)
-        let touchMapCoordinate = map.convert(touchPoint, toCoordinateFrom: map)
+    // Show popup when annotation is selected
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        guard let annotation = view.annotation as? ImageAnnotation else { return }
         
-        // Check if the double-tap is close to any annotation
-        let annotations = map.annotationsWithinRect(in: map.visibleMapRect)
-        for annotation in annotations {
-            if let imageAnnotation = annotation as? ImageAnnotation {
-                let threshold = 0.1 // Define a threshold for how close the tap should be
-                if abs(imageAnnotation.coordinate.latitude - touchMapCoordinate.latitude) < threshold &&
-                   abs(imageAnnotation.coordinate.longitude - touchMapCoordinate.longitude) < threshold {
-                    
-                    // Remove existing popup views
-                    currentPopupView?.removeFromSuperview()
-                    
-                    // Create a new popup view
-                    let popupView = CustomPopupView()
-                    popupView.frame = CGRect(x: map.bounds.midX - 165, y: map.bounds.midY - 250, width: 350, height: 600)
-                    
-                    // Adjust the size and position
-                    popupView.layer.cornerRadius = 10
-                    popupView.layer.masksToBounds = true
-                    
-                    // Populate the popup with annotation details
-                    popupView.setDetails(
-                        title: imageAnnotation.title ?? "Restaurant Name",
-                        image: imageAnnotation.image,
-                        reviewerName: "Nitin",
-                        rating: "imageAnnotation.rating",
-                        comment: "this shit ass"
-                    )
-                    
-                    // Add the popup to the map
-                    map.addSubview(popupView)
-                    
-                    // Set the current popup view for dismissal
-                    currentPopupView = popupView
-                    return
-                }
+        // Remove any existing popup
+        currentPopupView?.removeFromSuperview()
+        
+        // Create a new popup view
+        let popupView = CustomPopupView()
+        popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 260, width: 350, height: 600)
+        
+        // Adjust the size and position
+        popupView.layer.cornerRadius = 10
+        popupView.layer.masksToBounds = true
+        
+        // Populate the popup with annotation details
+        popupView.setDetails(
+            title: annotation.title ?? "Restaurant Name",
+            image: annotation.image,
+            reviewerName: "Nitin",
+            rating: "annotation.rating", // Replace with a real rating if available
+            comment: "This is a placeholder comment."
+        )
+        
+        // Add the popup to the map
+        map.addSubview(popupView)
+        
+        // Set the current popup view for dismissal
+        currentPopupView = popupView
+    }
+    
+    // Handle tap on the map to dismiss popup
+        @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
+            let touchPoint = recognizer.location(in: map)
+            
+            // Check if the touch is outside the current popup view
+            if let popupView = currentPopupView, !popupView.frame.contains(touchPoint) {
+                // Remove the popup
+                popupView.removeFromSuperview()
+                currentPopupView = nil
             }
         }
-    }
-    
-    // Dismiss the popup if tapping anywhere outside the popup
-    @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
-        let touchPoint = recognizer.location(in: map)
-        
-        // Check if the touch is within the bounds of the current popup view
-        if let popupView = currentPopupView, !popupView.frame.contains(touchPoint) {
-            // Remove the popup
-            popupView.removeFromSuperview()
-            currentPopupView = nil
-        }
-    }
-    
-    // MKMapViewDelegate method to handle annotation selection
-    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-        // You can use this to handle custom logic on annotation selection
-    }
 }
+
 
 // Utility extension for MKMapView to get annotations in a given map rectangle
 extension MKMapView {
