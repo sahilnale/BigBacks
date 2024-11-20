@@ -320,11 +320,16 @@ struct CreatePostView: View {
             }
         }
     }
-    
-    // MARK: - Preview
-    struct CreatePost_Previews: PreviewProvider {
-        static var previews: some View {
-            CreatePostView()
-        }
-    }
 }
+    
+//     MARK: - Preview
+//    struct CreatePost_Previews: PreviewProvider {
+//        static var previews: some View {
+//            CreatePostView()
+//            }
+//        }
+//    }
+    
+//#Preview {
+//    CreatePostView()
+//}
