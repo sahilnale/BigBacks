@@ -262,6 +262,38 @@ router.post('/:postId/comments/:commentId/replies', async (req, res) => {
     }
 });
 
+//Frontend Integrations
+
+//Saving the star rating for each post
+// router.post('/posts/:id/rating', async (req, res) => {
+//     const postId = req.params.id;
+//     const { rating } = req.body; // Expecting rating in the body of the request
+
+//     if (rating < 0 || rating > 5) {
+//         return res.status(400).json({ error: "Invalid rating, it should be between 0 and 5" });
+//     }
+
+//     try {
+//         // Find the post by ID and update its starRating
+//         const post = await Post.findByIdAndUpdate(
+//             postId,
+//             { starRating: rating },
+//             { new: true } // Return the updated post
+//         );
+
+//         if (!post) {
+//             return res.status(404).json({ error: "Post not found" });
+//         }
+
+//         return res.json(post);
+//     } catch (error) {
+//         console.error(error);
+//         return res.status(500).json({ error: "Failed to update the rating" });
+//     }
+// });
+
+
+
 
 
 
