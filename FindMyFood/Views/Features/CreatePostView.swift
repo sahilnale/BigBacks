@@ -681,41 +681,90 @@ struct CreatePostView: View {
             }
             
             func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+                // Print out ALL keys in the info dictionary
+                print("ALL INFO KEYS: \(info.keys)")
+                
                 if let image = info[.originalImage] as? UIImage {
                     parent.selectedImage = image
                     
-                    // Try to get location for both camera and library
+                    // Try different methods to extract location
+                    
+                    // Method 1: Try PHAsset
                     if let asset = info[.phAsset] as? PHAsset {
+                        print("PHAsset found: \(asset)")
                         if let location = asset.location {
+                            print("Location from PHAsset: \(location)")
                             parent.imageLocation = location
                             reverseGeocode(location)
                         } else {
+                            print("No location in PHAsset")
                             parent.locationDisplay = "Location not found"
                         }
-                    } else if parent.sourceType == .camera {
-                        // For camera, try to get location
-                        let locationManager = CLLocationManager()
-                        if let currentLocation = locationManager.location {
-                            parent.imageLocation = currentLocation
-                            reverseGeocode(currentLocation)
-                        } else {
-                            parent.locationDisplay = "Location not found"
+                    }
+                    
+                    // Method 2: Try UIImagePickerController.InfoKey.mediaMetadata
+                    if let metadata = info[.mediaMetadata] as? [String: Any] {
+                        print("Metadata: \(metadata)")
+                        // Some apps extract location from EXIF data here
+                    }
+                    
+                    // Method 3: Try URL-based location extraction
+                    if let imageURL = info[.imageURL] as? URL {
+                        print("Image URL: \(imageURL)")
+                        
+                        if let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, nil) {
+                            let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any]
+                            print("Image Properties: \(String(describing: imageProperties))")
+                            
+                            // Try to extract GPS coordinates from EXIF
+                            if let gpsDict = imageProperties?[kCGImagePropertyGPSDictionary as String] as? [String: Any],
+                               let latitude = gpsDict[kCGImagePropertyGPSLatitude as String] as? Double,
+                               let longitude = gpsDict[kCGImagePropertyGPSLongitude as String] as? Double {
+                                let location = CLLocation(latitude: latitude, longitude: longitude)
+                                print("Location from EXIF: \(location)")
+                                parent.imageLocation = location
+                                reverseGeocode(location)
+                            }
                         }
+                    }
+                    
+                    // If no location found by any method
+                    if parent.imageLocation == nil {
+                        print("No location found by any method")
+                        parent.locationDisplay = "Location not found"
                     }
                 }
                 
                 parent.dismiss()
             }
+
             
             private func reverseGeocode(_ location: CLLocation) {
                 let geocoder = CLGeocoder()
                 geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
                     guard let self = self else { return }
                     
-                    if let placemark = placemarks?.first {
+                    if let error = error as? CLError {
+                        print("Geocoding failed: \(error.localizedDescription)")
+                        
+                        // Handle specific CLError cases
+                        switch error.code {
+                        case .network:
+                            print("Network issue during geocoding.")
+                        case .geocodeFoundNoResult:
+                            print("No results found for the location.")
+                        case .geocodeCanceled:
+                            print("Geocoding was canceled.")
+                        default:
+                            print("Unknown geocoding error: \(error.code.rawValue)")
+                        }
+                        
+                        DispatchQueue.main.async {
+                            self.parent.locationDisplay = "Location not found"
+                        }
+                    } else if let placemark = placemarks?.first {
                         DispatchQueue.main.async {
                             var locationName = "Unknown Location"
-                            
                             if let name = placemark.name {
                                 locationName = name
                             } else if let locality = placemark.locality, let thoroughfare = placemark.thoroughfare {
@@ -727,14 +776,10 @@ struct CreatePostView: View {
                             print("Geocoded Location: \(locationName)")
                             self.parent.locationDisplay = locationName
                         }
-                    } else {
-                        print("Geocoding failed: \(error?.localizedDescription ?? "Unknown error")")
-                        DispatchQueue.main.async {
-                            self.parent.locationDisplay = "Location not found"
-                        }
                     }
                 }
             }
+
             
             func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
                 parent.dismiss()
