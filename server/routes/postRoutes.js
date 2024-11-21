@@ -195,25 +195,31 @@ router.post('/:postId/comments', async (req, res) => {
 });
 
 
-// // Delete a comment
-// router.delete('/:postId/comments/:commentId', async (req, res) => {
-//     const { postId, commentId } = req.params;
+// Delete a comment
+router.delete('/:postId/comments/:commentId', async (req, res) => {
+    const { postId, commentId } = req.params;
 
-//     try {
-//         const post = await Post.findById(postId);
-//         if (!post) return res.status(404).json({ message: 'Post not found' });
+    try {
+        const post = await Post.findById(postId);
+        if (!post) return res.status(404).json({ message: 'Post not found' });
 
-//         const comment = post.comments.id(commentId);
-//         if (!comment) return res.status(404).json({ message: 'Comment not found' });
+        // Find the index of the comment
+        const commentIndex = post.comments.findIndex(
+            (comment) => comment.commentId.toString() === commentId
+        );
 
-//         comment.remove();
-//         await post.save();
+        if (commentIndex === -1) return res.status(404).json({ message: 'Comment not found' });
 
-//         res.status(200).json({ message: 'Comment deleted' });
-//     } catch (error) {
-//         res.status(500).json({ message: error.message });
-//     }
-// });
+        // Remove the comment from the array
+        post.comments.splice(commentIndex, 1);
+        await post.save();
+
+        res.status(200).json({ message: 'Comment deleted' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 
 
