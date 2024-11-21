@@ -220,6 +220,47 @@ router.delete('/:postId/comments/:commentId', async (req, res) => {
     }
 });
 
+// Reply to a comment
+router.post('/:postId/comments/:commentId/replies', async (req, res) => {
+    const { postId, commentId } = req.params;
+    const { userId, text } = req.body;
+
+    if (!text) return res.status(400).json({ message: 'Reply text is required' });
+
+    try {
+        const post = await Post.findById(postId);
+        if (!post) {
+            console.error(`Post with ID ${postId} not found.`);
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Convert commentId to ObjectId to properly search in the array
+        const commentObjectId = new mongoose.Types.ObjectId(commentId);
+
+        // Find the comment by matching commentId explicitly
+        const comment = post.comments.find(c => c.commentId.toString() === commentObjectId.toString());
+        if (!comment) {
+            console.error(`Comment with ID ${commentId} not found in post ${postId}.`);
+            console.log('Comments in Post:', post.comments);
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+
+        // Create the reply
+        const reply = {
+            userId: new mongoose.Types.ObjectId(userId), // Ensure userId is an ObjectId
+            text,
+            timestamp: Date.now(),
+        };
+
+        comment.replies.push(reply);
+        await post.save();
+
+        res.status(201).json({ message: 'Reply added', reply });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
 
 
 
