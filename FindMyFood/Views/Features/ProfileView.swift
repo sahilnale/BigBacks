@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel // Inject the AuthViewModel instance
+
     private let columns = [
         GridItem(.flexible()),
         GridItem(.flexible()),
@@ -35,7 +37,20 @@ struct ProfileView: View {
                     )
                     .padding()
                 
-                // Add more views as needed
+                Spacer()
+                
+                // Logout Button
+                Button(action: {
+                    authViewModel.logout()
+                }) {
+                    Text("Logout")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, maxHeight: 50)
+                        .background(Color.red)
+                        .cornerRadius(10)
+                        .padding([.leading, .trailing], 20)
+                }
             }
             .navigationTitle("Profile")
             .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
@@ -45,6 +60,8 @@ struct ProfileView: View {
         }
     }
 }
+
 #Preview {
     ProfileView()
+        .environmentObject(AuthViewModel()) // Ensure the AuthViewModel is passed to the view
 }
