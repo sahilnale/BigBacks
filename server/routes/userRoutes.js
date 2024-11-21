@@ -68,14 +68,51 @@ router.post('/login', async (req, res) => {
 });
 
 //Returns all users of find my food
+// router.get('/', async (req, res) => {
+//     try {
+//         const users = await User.find();
+//         res.json(users);
+//     } catch (error) {
+//         res.status(500).json({ message: error.message });
+//     }
+// });
+
+// Returns all users with their posts including likes count and likedBy
 router.get('/', async (req, res) => {
     try {
-        const users = await User.find();
-        res.json(users);
+      const users = await User.find()
+        .populate({
+          path: 'posts', // Populate the `posts` field in the User schema
+          populate: [
+            {
+              path: 'likedBy', // Populate the `likedBy` field in each post
+              model: 'User',
+              select: 'name username email', // Customize fields to include from the `User` model
+            },
+            {
+              path: 'comments.userId', // Populate `userId` for comments
+              model: 'User',
+              select: 'name username email',
+            },
+            {
+              path: 'comments.replies.userId', // Populate `userId` for replies
+              model: 'User',
+              select: 'name username email',
+            },
+          ],
+        })
+        .select('name username email password posts') // Include posts and password in the response for debugging
+        .lean(); // Use `.lean()` to return plain JavaScript objects
+  
+      res.status(200).json(users); // Send populated users as response
     } catch (error) {
-        res.status(500).json({ message: error.message });
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: error.message });
     }
-});
+  });
+  
+  
+  
 
 //Retrieves a certain user by id
 router.get('/:id', async (req, res) => {

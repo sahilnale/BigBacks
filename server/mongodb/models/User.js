@@ -88,7 +88,12 @@ const UserSchema = new mongoose.Schema({
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   pendingRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  posts: [PostSchema],
+  posts: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post', // This tells Mongoose that the posts field will store ObjectId references to Post documents
+    },
+  ],
   profilePicture: { type: String },
   loggedIn: {type: Boolean},
 });
