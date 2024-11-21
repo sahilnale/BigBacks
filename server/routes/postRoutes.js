@@ -167,5 +167,33 @@ router.get('/:postId/liked-users', async (req, res) => {
     }
 });
 
+// Add a comment to a post
+router.post('/:postId/comments', async (req, res) => {
+    const { postId } = req.params;
+    const { userId, text } = req.body;
+
+    if (!text) return res.status(400).json({ message: 'Comment text is required' });
+
+    try {
+        const post = await Post.findById(postId);
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+
+        const comment = {
+            userId: new mongoose.Types.ObjectId(userId),
+            text,
+            timestamp: Date.now(),
+        };
+
+        post.comments.push(comment);
+        await post.save();
+
+        res.status(201).json({ message: 'Comment added', comment });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+
 
 export default router;
