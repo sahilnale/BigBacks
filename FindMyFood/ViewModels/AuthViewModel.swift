@@ -2,13 +2,34 @@ import SwiftUI
 
 @MainActor
 class AuthViewModel: ObservableObject {
-    @Published var currentUser: User?
+    @Published var currentUser: User? {
+        didSet {
+            // Save currentUser to UserDefaults when it changes
+            if let user = currentUser {
+                if let encodedUser = try? JSONEncoder().encode(user) {
+                    UserDefaults.standard.set(encodedUser, forKey: "currentUser")
+                }
+            } else {
+                // Clear UserDefaults if user logs out
+                UserDefaults.standard.removeObject(forKey: "currentUser")
+            }
+        }
+    }
+    
     @Published var error: NetworkError?
     @Published var isLoading = false
     @Published var showError = false
     
     var isLoggedIn: Bool {
         currentUser != nil
+    }
+    
+    init() {
+        // Restore currentUser from UserDefaults on initialization
+        if let savedUserData = UserDefaults.standard.data(forKey: "currentUser"),
+           let decodedUser = try? JSONDecoder().decode(User.self, from: savedUserData) {
+            self.currentUser = decodedUser
+        }
     }
     
     func login(username: String, password: String, completion: @escaping (Bool) -> Void) {
@@ -70,7 +91,7 @@ class AuthViewModel: ObservableObject {
     }
     
     func logout() {
-        currentUser = nil
+        currentUser = nil // This triggers the `didSet` and clears UserDefaults
     }
     
     // Helper method to validate email format
