@@ -149,7 +149,6 @@ router.post('/:postId/like/:userId', async (req, res) => {
 });
 
 
-
 // Route to get all users who liked a post
 router.get('/:postId/liked-users', async (req, res) => {
     const { postId } = req.params;
@@ -178,20 +177,43 @@ router.post('/:postId/comments', async (req, res) => {
         const post = await Post.findById(postId);
         if (!post) return res.status(404).json({ message: 'Post not found' });
 
+        // Create a new comment object with a generated commentId
         const comment = {
-            userId: new mongoose.Types.ObjectId(userId),
+            commentId: new mongoose.Types.ObjectId(), // Auto-generates a new ObjectId
+            userId: new mongoose.Types.ObjectId(userId), // Converts string userId to ObjectId
             text,
             timestamp: Date.now(),
         };
 
-        post.comments.push(comment);
-        await post.save();
+        post.comments.push(comment); // Add the comment to the post's comments array
+        await post.save(); // Save the updated post
 
         res.status(201).json({ message: 'Comment added', comment });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
+
+// // Delete a comment
+// router.delete('/:postId/comments/:commentId', async (req, res) => {
+//     const { postId, commentId } = req.params;
+
+//     try {
+//         const post = await Post.findById(postId);
+//         if (!post) return res.status(404).json({ message: 'Post not found' });
+
+//         const comment = post.comments.id(commentId);
+//         if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+//         comment.remove();
+//         await post.save();
+
+//         res.status(200).json({ message: 'Comment deleted' });
+//     } catch (error) {
+//         res.status(500).json({ message: error.message });
+//     }
+// });
 
 
 
