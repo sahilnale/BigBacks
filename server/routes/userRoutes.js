@@ -101,7 +101,7 @@ router.get('/', async (req, res) => {
             },
           ],
         })
-        .select('name username email password posts') // Include posts and password in the response for debugging
+        .select() // Include posts and password in the response for debugging
         .lean(); // Use `.lean()` to return plain JavaScript objects
   
       res.status(200).json(users); // Send populated users as response

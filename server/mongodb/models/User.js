@@ -25,6 +25,10 @@ const PostSchema = new mongoose.Schema({
   },
   comments: [
     {
+      commentId: {
+        type: mongoose.Schema.Types.ObjectId, // Unique ID for each comment
+        default: new mongoose.Types.ObjectId, // Automatically generate an ObjectId
+      },
       userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User', // Reference to the user who made the comment
