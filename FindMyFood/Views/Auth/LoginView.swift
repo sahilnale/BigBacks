@@ -46,7 +46,7 @@ struct LoginView: View {
                     .disabled(username.isEmpty || password.isEmpty || authViewModel.isLoading)
                 }
                 .navigationDestination(isPresented: $canNavigate) {
-                    MainView()
+                    MainTabView()
                 }
             
             Button("Forgot password?") {

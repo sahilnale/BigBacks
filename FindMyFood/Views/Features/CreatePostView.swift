@@ -20,6 +20,9 @@ struct CreatePostView: View {
     @State private var navigateToFeed = false
     @State private var navigateToMain = false
     @State private var locationDisplay: String = "Location not found"
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedTab: Int
+
     
     var body: some View {
         NavigationStack {
@@ -71,7 +74,7 @@ struct CreatePostView: View {
                     
                     Text(locationDisplay)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundColor(Color.primary)
                 }
                 .frame(alignment: .center)
                 
@@ -121,25 +124,37 @@ struct CreatePostView: View {
                 Spacer()
             }
             .toolbar {
+                //ToolbarItem(placement: .navigationBarLeading) {
+//                    Button(action: {
+//                        navigateToMain = true
+//                    }) {
+//                        HStack {
+//                            Image(systemName: "chevron.backward")
+//                            Text("Back")
+//                        }
+//                        .foregroundColor(.accentColor)
+//                    }
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        navigateToMain = true
-                    }) {
-                        HStack {
-                            Image(systemName: "chevron.backward")
-                            Text("Back")
-                        }
-                        .foregroundColor(.blue)
-                    }
+                                Button(action: {
+                                    dismiss()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "chevron.backward")
+                                        Text("Back")
+                                    }
+                                    .foregroundColor(.accentColor)
+                                }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: postReview) {
-                        Text("Post")
-                            .font(.headline)
-                            .foregroundColor(postText.isEmpty || selectedImage == nil ? .gray : .blue)
-                    }
-                    .disabled(postText.isEmpty || selectedImage == nil)
-                }
+                   Button(action: {
+                       postReview()
+                   }) {
+                       Text("Post")
+                           .font(.headline)
+                           .foregroundColor(postText.isEmpty || selectedImage == nil ? .gray : .accentColor)
+                   }
+                   .disabled(postText.isEmpty || selectedImage == nil)
+               }
             }
             .confirmationDialog("Choose Image Source", isPresented: $showPhotoOptions) {
                 Button("Take a Photo") {
@@ -163,9 +178,6 @@ struct CreatePostView: View {
             }
             .navigationDestination(isPresented: $navigateToFeed) {
                 FeedView()
-            }
-            .navigationDestination(isPresented: $navigateToMain) {
-                MainTabView()
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -197,8 +209,8 @@ struct CreatePostView: View {
         print("Restaurant Name: \(restaurantName)")
         print("Post Text: \(postText)")
         print("Rating: \(rating)")
-        
-        navigateToFeed = true
+        dismiss()
+        selectedTab = 1 // Switch to Feed tab
     }
 
     
@@ -361,7 +373,7 @@ struct CreatePostView: View {
             request.naturalLanguageQuery = "Restaurants"
             request.region = MKCoordinateRegion(
                 center: userLocation,
-                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+                span: MKCoordinateSpan(latitudeDelta: 0.007, longitudeDelta: 0.007)
             )
             
             let search = MKLocalSearch(request: request)
@@ -377,6 +389,3 @@ struct CreatePostView: View {
     }
 }
 
-#Preview {
-    CreatePostView()
-}

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MainView: View {
     private let mapViewModel = MapViewModel() // Create an instance of MapViewModel
-    
+    @Binding var selectedTab: Int
     var body: some View {
         ZStack {
             // MapView with the MapViewModel
@@ -32,7 +32,7 @@ struct MainView: View {
                         }
                         
                         // Add Button
-                        NavigationLink(destination: CreatePostView()) {
+                        NavigationLink(destination: CreatePostView(selectedTab: $selectedTab)) {
                             Image(systemName: "plus")
                                 .font(.system(size: 30))
                                 .foregroundColor(.accentColor)
@@ -50,6 +50,6 @@ struct MainView: View {
     }
 }
 
-#Preview {
-    MainView()
-}
+//#Preview {
+//    MainView()
+//}
