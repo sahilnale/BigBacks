@@ -10,11 +10,6 @@ struct FeedView: View {
                 }
             }
             .navigationTitle("Feed")
-            .navigationBarItems(trailing: Button(action: {
-                // Implement search
-            }) {
-                Image(systemName: "magnifyingglass")
-            })
             
         }
         .navigationBarBackButtonHidden(true)
@@ -32,9 +27,6 @@ struct FeedView: View {
                 }
             }
         }
-        .navigationDestination(isPresented: $navigateToMain) {
-                    MainTabView()
-                }
     }
 }
 
