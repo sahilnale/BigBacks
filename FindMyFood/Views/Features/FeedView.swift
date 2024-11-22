@@ -13,20 +13,20 @@ struct FeedView: View {
             
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    // Action for the back button
-                    navigateToMain = true
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.backward")
-                        Text("Back")
-                    }
-                    .foregroundColor(.accentColor)
-                }
-            }
-        }
+//        .toolbar {
+//            ToolbarItem(placement: .navigationBarLeading) {
+//                Button(action: {
+//                    // Action for the back button
+//                    navigateToMain = true
+//                }) {
+//                    HStack {
+//                        Image(systemName: "chevron.backward")
+//                        Text("Back")
+//                    }
+//                    .foregroundColor(.accentColor)
+//                }
+//            }
+//        }
     }
 }
 
