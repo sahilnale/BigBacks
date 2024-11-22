@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel // Inject the AuthViewModel instance
-
+    
     private let columns = [
         GridItem(.flexible()),
         GridItem(.flexible()),
@@ -11,52 +11,54 @@ struct ProfileView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 100))
-                Text("Name")
-                    .font(.headline)
-                Text("@username")
-                    .font(.subheadline)
-                
-                // Light grey rounded box containing the 4x3 grid
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(Color(.systemGray5))
-                    .frame(height: 400) // Adjust height to fit 4 rows comfortably
-                    .overlay(
-                        LazyVGrid(columns: columns, spacing: 15) {
-                            ForEach(0..<12) { _ in
-                                Image(systemName: "person.circle.fill") // Replace with user's image array
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                        }
-                        .padding()
-                    )
-                    .padding()
-                
-                Spacer()
-                
-                // Logout Button
-                Button(action: {
-                    authViewModel.logout()
-                }) {
-                    Text("Logout")
+            ScrollView{
+                VStack {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 100))
+                    Text("Name")
                         .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity, maxHeight: 50)
-                        .background(Color.red)
-                        .cornerRadius(10)
-                        .padding([.leading, .trailing], 20)
+                    Text("@username")
+                        .font(.subheadline)
+                    
+                    // Light grey rounded box containing the 4x3 grid
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(Color(.systemGray5))
+                        .frame(height: 400) // Adjust height to fit 4 rows comfortably
+                        .overlay(
+                            LazyVGrid(columns: columns, spacing: 15) {
+                                ForEach(0..<12) { _ in
+                                    Image(systemName: "person.circle.fill") // Replace with user's image array
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 80, height: 80)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                            }
+                                .padding()
+                        )
+                        .padding()
+                    
+                    Spacer()
+                    
+                    // Logout Button
+                    Button(action: {
+                        authViewModel.logout()
+                    }) {
+                        Text("Logout")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(minWidth: 40, maxWidth: .infinity, minHeight: 40, maxHeight: .infinity)
+                            .background(Color.accentColor)
+                            .cornerRadius(10)
+                            .padding()
+                    }
                 }
+                .navigationTitle("Profile")
+                .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 20)) // Customize size of the pencil icon
+                })
             }
-            .navigationTitle("Profile")
-            .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
-                Image(systemName: "pencil")
-                    .font(.system(size: 20)) // Customize size of the pencil icon
-            })
         }
     }
 }
