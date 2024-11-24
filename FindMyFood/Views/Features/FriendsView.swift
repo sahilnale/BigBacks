@@ -3,6 +3,7 @@ import SwiftUI
 struct FriendsView: View {
     @State private var showingFriendRequests = false
     @State private var showingAddFriend = false // New state for add friend sheet
+    let currentUserId: String  // Add this property
     
     var body: some View {
         NavigationView {
@@ -42,7 +43,7 @@ struct FriendsView: View {
             }
             .sheet(isPresented: $showingAddFriend) {
                 NavigationView {
-                    AddFriendView()
+                    AddFriendView(currentUserId: currentUserId)
                 }
             }
         }
@@ -105,111 +106,190 @@ struct AddFriendView: View {
     @Environment(\.dismiss) var dismiss
     @State private var searchText = ""
     @State private var isSearching = false
-    @State private var searchResults: [UserProfile] = []
-    
-    // Model for user profile data
-    struct UserProfile: Identifiable {
-        let id: String
-        let username: String
-        let displayName: String
-        var isRequestSent: Bool
-    }
+    @State private var searchResults: [User] = []
+    @State private var errorMessage: String?
+    let currentUserId: String
     
     var body: some View {
         VStack {
-            // Search bar
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.gray)
-                
-                TextField("Search by username...", text: $searchText)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .onChange(of: searchText) { newValue in
-                        // MARK: - Backend Implementation
-                        // Implement your search logic here
-                        // 1. Debounce the search input
-                        // 2. Make API call to search users
-                        // 3. Update searchResults array
-                    }
-                
-                if !searchText.isEmpty {
-                    Button(action: {
-                        searchText = ""
-                        searchResults = []
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.gray)
-                    }
-                }
+            SearchBarView(searchText: $searchText) {
+                performSearch(searchText)
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .background(Color(.systemGray6))
-            .cornerRadius(10)
-            .padding()
-            
-            // Search results list
-            List {
-                if isSearching {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                            .padding()
-                        Spacer()
-                    }
-                } else if searchResults.isEmpty && !searchText.isEmpty {
-                    HStack {
-                        Spacer()
-                        Text("No users found")
-                            .foregroundColor(.gray)
-                            .padding()
-                        Spacer()
-                    }
-                } else {
-                    ForEach(searchResults) { user in
-                        HStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.blue)
-                            
-                            VStack(alignment: .leading) {
-                                Text(user.displayName)
-                                    .font(.headline)
-                                Text("@\(user.username)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                            }
-                            
-                            Spacer()
-                            
-                            Button(action: {
-                                // MARK: - Backend Implementation
-                                // Implement send friend request logic here
-                                // 1. Make API call to send friend request
-                                // 2. Update UI to show pending state
-                            }) {
-                                Text(user.isRequestSent ? "Pending" : "Add")
-                                    .foregroundColor(user.isRequestSent ? .gray : .blue)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(user.isRequestSent ? Color(.systemGray5) : Color(.systemBlue).opacity(0.1))
-                                    .cornerRadius(20)
-                            }
-                            .disabled(user.isRequestSent)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-            }
-            .listStyle(PlainListStyle())
+            SearchResultsListView(
+                isSearching: isSearching,
+                searchResults: searchResults,
+                searchText: searchText,
+                currentUserId: currentUserId,
+                errorMessage: $errorMessage
+            )
+        }
+        .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
         .navigationTitle("Add Friends")
-        .navigationBarItems(trailing: Button("Done") {
-            dismiss()
-        })
+        .navigationBarItems(trailing: Button("Done") { dismiss() })
+       // .onChange(of: searchText) { performSearch($0) }
+    }
+    
+    private func performSearch(_ query: String) {
+        Task {
+            if !query.isEmpty {
+                isSearching = true
+                do {
+                    print("Searching for user with query: \(query)")
+                    let results = try await NetworkManager.shared.searchUsers(query: query)
+                    print("Search results: \(results)")
+                    searchResults = results
+                } catch {
+                    print("Search error: \(error)")
+                    errorMessage = error.localizedDescription
+                }
+                isSearching = false
+            } else {
+                searchResults = []
+            }
+        }
     }
 }
 
-#Preview {
-    FriendsView()
+// MARK: - Supporting Views
+private struct SearchBarView: View {
+    @Binding var searchText: String
+    var onSearch: () -> Void
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+            
+            TextField("Search by username...", text: $searchText)
+                .textFieldStyle(PlainTextFieldStyle())
+                .onSubmit(onSearch)
+            
+            if !searchText.isEmpty {
+                Button(action: { searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+        .padding()
+    }
 }
+
+private struct SearchResultsListView: View {
+    let isSearching: Bool
+    let searchResults: [User]
+    let searchText: String
+    let currentUserId: String
+    @Binding var errorMessage: String?
+    
+    var body: some View {
+        List {
+            if isSearching {
+                SearchLoadingView()
+            } else if searchResults.isEmpty && !searchText.isEmpty {
+                EmptyResultsView()
+            } else {
+                ForEach(searchResults) { user in
+                    UserRowView(user: user, currentUserId: currentUserId, errorMessage: $errorMessage)
+                }
+            }
+        }
+        .listStyle(PlainListStyle())
+    }
+}
+
+private struct SearchLoadingView: View {
+    var body: some View {
+        HStack {
+            Spacer()
+            ProgressView()
+                .padding()
+            Spacer()
+        }
+    }
+}
+
+private struct EmptyResultsView: View {
+    var body: some View {
+        HStack {
+            Spacer()
+            Text("No users found")
+                .foregroundColor(.gray)
+                .padding()
+            Spacer()
+        }
+    }
+}
+
+private struct UserRowView: View {
+    let user: User
+    let currentUserId: String
+    @Binding var errorMessage: String?
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.blue)
+            
+            VStack(alignment: .leading) {
+                Text(user.name)
+                    .font(.headline)
+                Text("@\(user.username)")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            AddFriendButton(
+                user: user,
+                currentUserId: currentUserId,
+                isRequestPending: user.pendingRequests.contains(currentUserId),
+                errorMessage: $errorMessage
+            )
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct AddFriendButton: View {
+    let user: User
+    let currentUserId: String
+    let isRequestPending: Bool
+    @Binding var errorMessage: String?
+    
+    var body: some View {
+        Button(action: sendFriendRequest) {
+            Text(isRequestPending ? "Pending" : "Add")
+                .foregroundColor(isRequestPending ? .gray : .blue)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(isRequestPending ? Color(.systemGray5) : Color(.systemBlue).opacity(0.1))
+                .cornerRadius(20)
+        }
+        .disabled(isRequestPending)
+    }
+    
+    private func sendFriendRequest() {
+        Task {
+            do {
+                try await NetworkManager.shared.sendFriendRequest(from: currentUserId, to: user.id)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+}
+
+//#Preview {
+//    FriendsView(currentUserId: "account")
+//}

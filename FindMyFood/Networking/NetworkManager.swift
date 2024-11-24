@@ -108,6 +108,54 @@ class NetworkManager {
         
     }
     
+    func searchUsers(query: String) async throws -> [User] {
+        guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: "\(baseURL)/user/getByUsername/\(encodedQuery)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+               if httpResponse.statusCode == 404 {
+                   return []
+               }
+               throw NetworkError.error(from: httpResponse.statusCode)
+           }
+        
+        let user = try JSONDecoder().decode(User.self, from: data)
+        return [user]
+    }
+    
+    func sendFriendRequest(from user: String, to friendId: String) async throws {
+        
+        guard friendId != user else {
+               throw NetworkError.badRequest("Cannot send a friend request to yourself")
+           }
+    
+        let endpoint = "\(baseURL)/user/\(user)/friendRequest/\(friendId)"
+           guard let url = URL(string: endpoint) else {
+               throw NetworkError.invalidURL
+           }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+    }
 }
 
 
@@ -117,15 +165,15 @@ struct User: Codable, Identifiable {
     let name: String
     let username: String
     let email: String
-    //let profilePicture: String?
     let friends: [String]
     let friendRequests: [String]
     let pendingRequests: [String]
-    let posts: [Post]
+    let posts: [String]
+    let profilePicture: String?
     let loggedIn: Bool
     
     enum CodingKeys: String, CodingKey {
-        case id = "_id"  // Map _id to id
+        case id = "_id"
         case name
         case username
         case email
@@ -133,6 +181,7 @@ struct User: Codable, Identifiable {
         case friendRequests
         case pendingRequests
         case posts
+        case profilePicture
         case loggedIn
     }
 }
