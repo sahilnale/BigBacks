@@ -23,45 +23,49 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Route to upload a post image to S3, create a new post in MongoDB, and add it to the user's posts
-router.post('/upload/:userId', upload.single('image'), async (req, res) => {
-
+router.post('/upload/:userId', async (req, res) => {
     try {
+        // Extracting the user ID from the URL parameter
+        const { userId } = req.params;
+
         // Finding the user
-        const user = await User.findById(req.params.userId);
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-        // Generate a unique filename for the image using the uuidv4
-        const imageKey = `posts/${uuidv4()}_${req.file.originalname}`;
+        // Validate required fields
+        const { imageUrl, review, location, restaurantName } = req.body;
+        if (!imageUrl || !review || !location || !restaurantName) {
+            return res.status(400).json({ message: 'Missing required fields.' });
+        }
 
-        const uploadParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: imageKey,
-            Body: req.file.buffer,
-            ContentType: req.file.mimetype,
-        };
-        
-        await s3.send(new PutObjectCommand(uploadParams));
+        // Create a new Post document
         const newPost = new Post({
-            imageUrl: `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${imageKey}`,
+            imageUrl, // Image URL is directly provided in the request body
             timestamp: Date.now(),
-            review: req.body.review,
-            location: req.body.location,
-            restaurantName: req.body.restaurantName,
-            userId: req.params.userId,
+            review,
+            location,
+            restaurantName,
+            userId,
         });
 
+        // Save the new post
         await newPost.save();
 
+        // Associate the post with the user
         user.posts.push(newPost._id);
         await user.save();
 
-        res.status(201).json({ message: 'Post created and added to user successfully', post: newPost });
+        res.status(201).json({
+            message: 'Post created and added to user successfully',
+            post: newPost,
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error uploading image and creating post' });
+        console.error('Error creating post:', error);
+        res.status(500).json({ message: 'Error creating post' });
     }
 });
-
 // Route to retrieve all posts
 router.get('/', async (req, res) => {
     try {

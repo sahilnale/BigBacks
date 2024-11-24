@@ -229,30 +229,44 @@ struct CreatePostView: View {
             return
         }
 
-        print("Uploading the image...")
-
+        // Upload the image and then create the post
         ImageUploader.uploadImage(image: image) { result in
             switch result {
-            case .success(let imageURL):
-                print("Image uploaded successfully. URL: \(imageURL)")
-                // Continue with the rest of the post creation process
-                print("Posting the review...")
-                print("Restaurant Name: \(restaurantName)")
-                print("Post Text: \(postText)")
-                print("Rating: \(rating)")
-                print("Image URL: \(imageURL)")
+            case .success(let imageUrl):
+                print("Image uploaded successfully. URL: \(imageUrl)")
 
-                // Switch to Feed tab after posting
-                DispatchQueue.main.async {
-                    dismiss()
-                    selectedTab = 1 // Switch to Feed tab
+                // Make the API call to create the post
+                Task {
+                    do {
+                        let userId = "6736fdd4196768cbba577d22" // Replace with the actual user ID
+                        let review = reviewText.isEmpty ? postText : reviewText
+                        let location = locationDisplay
+                        let restaurant = restaurantName
+                        
+                        let post = try await NetworkManager.shared.addPost(
+                            userId: userId,
+                            imageUrl: imageUrl,
+                            review: review,
+                            location: location,
+                            restaurantName: restaurant
+                        )
+                        print("Post created successfully: \(post)")
+                        
+                        // Reset the UI and navigate to the feed
+                        DispatchQueue.main.async {
+                            dismiss()
+                            selectedTab = 1 // Switch to Feed tab
+                        }
+                    } catch {
+                        print("Error creating post: \(error.localizedDescription)")
+                    }
                 }
-
             case .failure(let error):
                 print("Failed to upload image: \(error.localizedDescription)")
             }
         }
     }
+
 
 
     

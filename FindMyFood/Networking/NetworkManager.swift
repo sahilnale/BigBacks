@@ -156,6 +156,48 @@ class NetworkManager {
             throw NetworkError.error(from: httpResponse.statusCode)
         }
     }
+    func addPost(
+            userId: String,
+            imageUrl: String,
+            review: String,
+            location: String,
+            restaurantName: String
+        ) async throws -> Post {
+            let endpoint = "\(baseURL)/upload/\(userId)"
+            guard let url = URL(string: endpoint) else {
+                throw NetworkError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            // Create the body with the required fields
+            let body: [String: Any] = [
+                "imageUrl": imageUrl,
+                "review": review,
+                "location": location,
+                "restaurantName": restaurantName
+            ]
+            
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NetworkError.invalidResponse
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                if httpResponse.statusCode == 404 {
+                    throw NetworkError.badRequest("User not found")
+                }
+                throw NetworkError.error(from: httpResponse.statusCode)
+            }
+            
+            // Decode the response into a `Post` object
+            return try JSONDecoder().decode(Post.self, from: data)
+        }
 }
 
 
