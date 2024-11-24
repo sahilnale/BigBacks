@@ -7,6 +7,7 @@ import { User, Post } from '../mongodb/models/User.js';
 import bcrypt from 'bcrypt';
 dotenv.config();
 
+
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
     credentials: {
