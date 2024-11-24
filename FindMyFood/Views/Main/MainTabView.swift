@@ -24,7 +24,7 @@ struct MainTabView: View {
                         Label("Feed", systemImage: "list.bullet")
                     }.tag(1)
                 
-                FriendsView()
+                FriendsView(currentUserId: "account123")
                     .tabItem {
                         Label("Friends", systemImage: "person.2")
                     }.tag(2)
