@@ -112,7 +112,9 @@ struct AddFriendView: View {
     
     var body: some View {
         VStack {
-            SearchBarView(searchText: $searchText)
+            SearchBarView(searchText: $searchText) {
+                performSearch(searchText)
+            }
             SearchResultsListView(
                 isSearching: isSearching,
                 searchResults: searchResults,
@@ -128,7 +130,7 @@ struct AddFriendView: View {
         }
         .navigationTitle("Add Friends")
         .navigationBarItems(trailing: Button("Done") { dismiss() })
-        .onChange(of: searchText) { performSearch($0) }
+       // .onChange(of: searchText) { performSearch($0) }
     }
     
     private func performSearch(_ query: String) {
@@ -155,6 +157,7 @@ struct AddFriendView: View {
 // MARK: - Supporting Views
 private struct SearchBarView: View {
     @Binding var searchText: String
+    var onSearch: () -> Void
     
     var body: some View {
         HStack {
@@ -163,6 +166,7 @@ private struct SearchBarView: View {
             
             TextField("Search by username...", text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
+                .onSubmit(onSearch)
             
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
@@ -286,6 +290,6 @@ private struct AddFriendButton: View {
     }
 }
 
-#Preview {
-    FriendsView(currentUserId: "account123")
-}
+//#Preview {
+//    FriendsView(currentUserId: "account")
+//}

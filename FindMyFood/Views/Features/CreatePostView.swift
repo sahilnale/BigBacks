@@ -192,17 +192,36 @@ struct CreatePostView: View {
         }
     }
     
+//    private func reverseGeocode(_ location: CLLocation) {
+//        let geocoder = CLGeocoder()
+//        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+//            if let placemark = placemarks?.first {
+//                let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+//                self.locationDisplay = locationName
+//            } else {
+//                self.locationDisplay = "Location not found"
+//            }
+//        }
+//    }
+    
     private func reverseGeocode(_ location: CLLocation) {
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
             if let placemark = placemarks?.first {
-                let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
-                self.locationDisplay = locationName
+                // Try to use the `name` property for the place name
+                if let placeName = placemark.name {
+                    self.locationDisplay = placeName
+                } else if let locality = placemark.locality {
+                    self.locationDisplay = locality
+                } else {
+                    self.locationDisplay = "Location not found"
+                }
             } else {
                 self.locationDisplay = "Location not found"
             }
         }
     }
+
     
     private func postReview() {
         print("Posting the review...")
@@ -373,7 +392,7 @@ struct CreatePostView: View {
             request.naturalLanguageQuery = "Restaurants"
             request.region = MKCoordinateRegion(
                 center: userLocation,
-                span: MKCoordinateSpan(latitudeDelta: 0.007, longitudeDelta: 0.007)
+                span: MKCoordinateSpan(latitudeDelta: 0.005 , longitudeDelta: 0.01)
             )
             
             let search = MKLocalSearch(request: request)
