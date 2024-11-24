@@ -224,13 +224,36 @@ struct CreatePostView: View {
 
     
     private func postReview() {
-        print("Posting the review...")
-        print("Restaurant Name: \(restaurantName)")
-        print("Post Text: \(postText)")
-        print("Rating: \(rating)")
-        dismiss()
-        selectedTab = 1 // Switch to Feed tab
+        guard let image = selectedImage else {
+            print("No image selected.")
+            return
+        }
+
+        print("Uploading the image...")
+
+        ImageUploader.uploadImage(image: image) { result in
+            switch result {
+            case .success(let imageURL):
+                print("Image uploaded successfully. URL: \(imageURL)")
+                // Continue with the rest of the post creation process
+                print("Posting the review...")
+                print("Restaurant Name: \(restaurantName)")
+                print("Post Text: \(postText)")
+                print("Rating: \(rating)")
+                print("Image URL: \(imageURL)")
+
+                // Switch to Feed tab after posting
+                DispatchQueue.main.async {
+                    dismiss()
+                    selectedTab = 1 // Switch to Feed tab
+                }
+
+            case .failure(let error):
+                print("Failed to upload image: \(error.localizedDescription)")
+            }
+        }
     }
+
 
     
     // IMAGE PICKER

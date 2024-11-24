@@ -1,0 +1,11 @@
+${PODS_ROOT}/Target Support Files/Pods-FindMyFood/Pods-FindMyFood-frameworks.sh
+${BUILT_PRODUCTS_DIR}/AWSCognito/AWSCognito.framework
+${BUILT_PRODUCTS_DIR}/AWSCore/AWSCore.framework
+${BUILT_PRODUCTS_DIR}/AWSS3/AWSS3.framework
+${BUILT_PRODUCTS_DIR}/Bolts/Bolts.framework
+${BUILT_PRODUCTS_DIR}/GZIP/GZIP.framework
+${BUILT_PRODUCTS_DIR}/Mantle/Mantle.framework
+${BUILT_PRODUCTS_DIR}/Reachability/Reachability.framework
+${BUILT_PRODUCTS_DIR}/TMCache/TMCache.framework
+${BUILT_PRODUCTS_DIR}/UICKeyChainStore/UICKeyChainStore.framework
+${BUILT_PRODUCTS_DIR}/XMLDictionary/XMLDictionary.framework
