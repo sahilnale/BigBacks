@@ -22,7 +22,8 @@ class CustomPopupView: UIView {
     private let titleLabel = UILabel()
     private let imageView = UIImageView()
     private let reviewerNameLabel = UILabel()
-    private let ratingLabel = UILabel()
+    private let ratingLabel = UILabel()  // Optional, remove if not used
+    private let commentScrollView = UIScrollView()
     private let commentLabel = UILabel()
     
     override init(frame: CGRect) {
@@ -42,22 +43,18 @@ class CustomPopupView: UIView {
         // Title label
         titleLabel.font = UIFont.boldSystemFont(ofSize: 30)
         titleLabel.textAlignment = .center
-        
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Image view
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        
         imageView.layer.cornerRadius = 8
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
         // Reviewer name
-        reviewerNameLabel.font = UIFont.systemFont(ofSize: 25)
+        reviewerNameLabel.font = UIFont.systemFont(ofSize: 20)
         reviewerNameLabel.textColor = .orange
         reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        
         
         // Create star images (filled and empty)
         let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.yellow, renderingMode: .alwaysOriginal)
@@ -88,72 +85,66 @@ class CustomPopupView: UIView {
         // Call setRating with the desired rating, for example, 3/5
         setRating(3)
         
-        // Rating label
-//        ratingLabel.font = UIFont.systemFont(ofSize: 25)
-//        ratingLabel.textColor = .orange
-//        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+        // Comment Scroll View
+        commentScrollView.translatesAutoresizingMaskIntoConstraints = false
+        commentScrollView.showsVerticalScrollIndicator = true
         
         // Comment label
-        commentLabel.font = UIFont.systemFont(ofSize: 25)
-        commentLabel.textColor = .orange
-        commentLabel.numberOfLines = 0
+        commentLabel.font = UIFont.systemFont(ofSize: 16)
+        commentLabel.textColor = .black
+        commentLabel.numberOfLines = 0 // Unlimited lines for full text rendering
         commentLabel.translatesAutoresizingMaskIntoConstraints = false
+        commentScrollView.addSubview(commentLabel)
         
         // Add subviews
         addSubview(titleLabel)
         addSubview(imageView)
         addSubview(reviewerNameLabel)
-     
-        addSubview(commentLabel)
+        addSubview(commentScrollView)
         
+        // Setup constraints
         NSLayoutConstraint.activate([
-        
-            // Title Label at the Top
-                titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 5),
-                titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-                titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-                
-                // Image View Below the Title
-                imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 5),
-                imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-                imageView.widthAnchor.constraint(equalToConstant: 300),
-                imageView.heightAnchor.constraint(equalToConstant: 300),
-                
-                // Reviewer Name Below the Image
-                reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 20),
-                reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-                
-                // Star Rating Below the Reviewer Name
-                starImageViews[0].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-                starImageViews[0].leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-                
-                starImageViews[1].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-                starImageViews[1].leadingAnchor.constraint(equalTo: starImageViews[0].trailingAnchor, constant: 4),
-                
-                starImageViews[2].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-                starImageViews[2].leadingAnchor.constraint(equalTo: starImageViews[1].trailingAnchor, constant: 4),
-                
-                starImageViews[3].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-                starImageViews[3].leadingAnchor.constraint(equalTo: starImageViews[2].trailingAnchor, constant: 4),
-                
-                starImageViews[4].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-                starImageViews[4].leadingAnchor.constraint(equalTo: starImageViews[3].trailingAnchor, constant: 4),
-                    
-                
-                // Comment Label Below Reviewer Name and Rating
-                commentLabel.topAnchor.constraint(equalTo: starImageViews[0].bottomAnchor, constant: 20),
-                commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-                commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-                commentLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8)
-            ])
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            
+            imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
+            imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            imageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
+            imageView.heightAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
+            
+            reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
+            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            
+            starImageViews[0].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[0].leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            starImageViews[1].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[1].leadingAnchor.constraint(equalTo: starImageViews[0].trailingAnchor, constant: 4),
+            starImageViews[2].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[2].leadingAnchor.constraint(equalTo: starImageViews[1].trailingAnchor, constant: 4),
+            starImageViews[3].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[3].leadingAnchor.constraint(equalTo: starImageViews[2].trailingAnchor, constant: 4),
+            starImageViews[4].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[4].leadingAnchor.constraint(equalTo: starImageViews[3].trailingAnchor, constant: 4),
+            
+            commentScrollView.topAnchor.constraint(equalTo: starImageViews[0].bottomAnchor, constant: 8),
+            commentScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            commentScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            commentScrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            
+            commentLabel.topAnchor.constraint(equalTo: commentScrollView.topAnchor),
+            commentLabel.leadingAnchor.constraint(equalTo: commentScrollView.leadingAnchor),
+            commentLabel.trailingAnchor.constraint(equalTo: commentScrollView.trailingAnchor),
+            commentLabel.bottomAnchor.constraint(equalTo: commentScrollView.bottomAnchor),
+            commentLabel.widthAnchor.constraint(equalTo: commentScrollView.widthAnchor)
+        ])
     }
 
-    
     func setDetails(title: String, image: UIImage?, reviewerName: String, rating: String, comment: String) {
         titleLabel.text = title
         imageView.image = image
         reviewerNameLabel.text = "Reviewer: \(reviewerName)"
-        ratingLabel.text = "Rating: \(rating)"
+        ratingLabel.text = "Rating: \(rating)"  // Set this only if used
         commentLabel.text = comment
     }
 }
@@ -316,7 +307,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             image: annotation.image,
             reviewerName: "Nitin",
             rating: "annotation.rating", // Replace with a real rating if available
-            comment: "This is a placeholder comment."
+            comment: "The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  "
         )
         
         // Add the popup to the map
@@ -369,6 +360,6 @@ struct MapView: UIViewControllerRepresentable {
     }
 }
 
-//#Preview {
-//    MapViewModel()
-//}
+#Preview {
+    MapViewModel()
+}
