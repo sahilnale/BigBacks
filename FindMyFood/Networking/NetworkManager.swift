@@ -4,6 +4,19 @@ class NetworkManager {
     static let shared = NetworkManager()
     private let baseURL = "https://api.bigbacksapp.com/api/v1"
     
+    private var idNumber: String? {
+        get {
+            return AuthManager.shared.userId
+        }
+        set {
+            if let newValue = newValue {
+                AuthManager.shared.setUserId(newValue)
+            } else {
+                AuthManager.shared.clearUserId()
+            }
+        }
+    }
+    
     private init() {}
     
     func login(username: String, password: String) async throws -> User {
@@ -20,30 +33,22 @@ class NetworkManager {
             "username": username,
             "password": password
         ]
-        
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.invalidResponse
         }
         
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 401 {
-                throw NetworkError.unauthorized
-            }
-            throw NetworkError.error(from: httpResponse.statusCode)
-        }
-        
         let loginResponse = try JSONDecoder().decode([String: String].self, from: data)
-            guard let userId = loginResponse["userId"] else {
-                throw NetworkError.badRequest("User ID not found in response")
-            }
-        
-        return try await getCurrentUser(userId: userId)
+        guard let currId = loginResponse["userId"] else {
+            throw NetworkError.badRequest("User ID not found in response")
+        }
+        idNumber = currId  // This will now persist in Keychain
+        return try await getCurrentUser(userId: currId)
     }
-    
+
     func getCurrentUser(userId: String) async throws -> User {
         let endpoint = "\(baseURL)/user/\(userId)"
         guard let url = URL(string: endpoint) else {
@@ -65,6 +70,12 @@ class NetworkManager {
         
         return try JSONDecoder().decode(User.self, from: data)
     }
+    
+    func logout() {
+        idNumber = nil
+    }
+    
+    
     // MARK: - Authentication
     func signUp(name: String, username: String, email: String, password: String) async throws -> User {
         let endpoint = "\(baseURL)/user/"
@@ -86,7 +97,7 @@ class NetworkManager {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         let (data, response) = try await URLSession.shared.data(for: request)
-                
+        
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
@@ -99,12 +110,12 @@ class NetworkManager {
         }
         
         do {
-                let decoder = JSONDecoder()
-                return try decoder.decode(User.self, from: data)
-            } catch {
-                print("Decoding error: \(error)")
-                throw NetworkError.decodingError
-            }
+            let decoder = JSONDecoder()
+            return try decoder.decode(User.self, from: data)
+        } catch {
+            print("Decoding error: \(error)")
+            throw NetworkError.decodingError
+        }
         
     }
     
@@ -167,33 +178,37 @@ class NetworkManager {
         }
     }
     
-    func sendFriendRequest(from user: String, to friendId: String) async throws {
-        
-        guard friendId != user else {
+    func sendFriendRequest(from currentUserId: String, to friendId: String) async throws {
+           guard idNumber != friendId else {
                throw NetworkError.badRequest("Cannot send a friend request to yourself")
            }
-    
-        let endpoint = "\(baseURL)/user/\(user)/friendRequest/\(friendId)"
+           guard let currentId = idNumber else {
+               throw NetworkError.badRequest("Not logged in")
+           }
+        
+           let endpoint = "\(baseURL)/user/\(friendId)/friendRequest/\(currentId)"
            guard let url = URL(string: endpoint) else {
                throw NetworkError.invalidURL
            }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let (_, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
-        }
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.error(from: httpResponse.statusCode)
-        }
-    }
-}
+           var request = URLRequest(url: url)
+           request.httpMethod = "POST"
+           request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+           do {
+               let (data, response) = try await URLSession.shared.data(for: request)
+               if let httpResponse = response as? HTTPURLResponse {
+                   print("HTTP Status: \(httpResponse.statusCode)")
+                   print("Response Body: \(String(data: data, encoding: .utf8) ?? "No body")")
+                   if !(200...299).contains(httpResponse.statusCode) {
+                       throw NetworkError.serverError("\(httpResponse.statusCode): \(String(data: data, encoding: .utf8) ?? "No response body")")
+                   }
+               }
+           } catch {
+               print("Error during send FriendRequest: \(error.localizedDescription)")
+               throw error
+           }
+       }
+   }
 
 // MARK: - Models
 struct User: Codable, Identifiable {
@@ -221,7 +236,6 @@ struct User: Codable, Identifiable {
         case loggedIn
     }
 }
-
 
 struct Post: Codable, Identifiable {
     let id: String

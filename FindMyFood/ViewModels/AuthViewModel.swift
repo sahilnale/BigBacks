@@ -9,9 +9,12 @@ class AuthViewModel: ObservableObject {
                 if let encodedUser = try? JSONEncoder().encode(user) {
                     UserDefaults.standard.set(encodedUser, forKey: "currentUser")
                 }
+                // Save ID to Keychain
+                AuthManager.shared.setUserId(user.id)
             } else {
-                // Clear UserDefaults if user logs out
+                // Clear both UserDefaults and Keychain if user logs out
                 UserDefaults.standard.removeObject(forKey: "currentUser")
+                AuthManager.shared.clearUserId()
             }
         }
     }
@@ -21,14 +24,34 @@ class AuthViewModel: ObservableObject {
     @Published var showError = false
     
     var isLoggedIn: Bool {
-        currentUser != nil
+        currentUser != nil && AuthManager.shared.isLoggedIn
     }
     
     init() {
-        // Restore currentUser from UserDefaults on initialization
-        if let savedUserData = UserDefaults.standard.data(forKey: "currentUser"),
-           let decodedUser = try? JSONDecoder().decode(User.self, from: savedUserData) {
-            self.currentUser = decodedUser
+        if AuthManager.shared.isLoggedIn {
+            if let savedUserData = UserDefaults.standard.data(forKey: "currentUser"),
+               let decodedUser = try? JSONDecoder().decode(User.self, from: savedUserData) {
+                self.currentUser = decodedUser
+            } else {
+                Task {
+                    await refreshCurrentUser()
+                }
+            }
+        }
+    }
+    
+    func refreshCurrentUser() async {
+        guard let userId = AuthManager.shared.userId else { return }
+        
+        do {
+            let user = try await NetworkManager.shared.getCurrentUser(userId: userId)
+            await MainActor.run {
+                self.currentUser = user
+            }
+        } catch {
+            await MainActor.run {
+                self.logout()
+            }
         }
     }
     
@@ -40,6 +63,7 @@ class AuthViewModel: ObservableObject {
                 let user = try await NetworkManager.shared.login(username: username, password: password)
                 self.currentUser = user
                 self.isLoading = false
+                print("LOGGED IN: ", user)
                 completion(true)
             } catch let error as NetworkError {
                 self.error = error
@@ -91,26 +115,20 @@ class AuthViewModel: ObservableObject {
     }
     
     func logout() {
-        currentUser = nil // This triggers the `didSet` and clears UserDefaults
+        currentUser = nil
     }
     
-    // Helper method to validate email format
     func isValidEmail(_ email: String) -> Bool {
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
         return emailPredicate.evaluate(with: email)
     }
     
-    // Helper method to validate password strength
     func isValidPassword(_ password: String) -> Bool {
-        // At least 8 characters long
         guard password.count >= 8 else { return false }
         
-        // Contains at least one uppercase letter
         let uppercaseRegex = ".*[A-Z]+.*"
-        // Contains at least one lowercase letter
         let lowercaseRegex = ".*[a-z]+.*"
-        // Contains at least one number
         let numberRegex = ".*[0-9]+.*"
         
         let uppercasePredicate = NSPredicate(format: "SELF MATCHES %@", uppercaseRegex)
@@ -120,5 +138,89 @@ class AuthViewModel: ObservableObject {
         return uppercasePredicate.evaluate(with: password) &&
                lowercasePredicate.evaluate(with: password) &&
                numberPredicate.evaluate(with: password)
+    }
+}
+
+import Foundation
+import Security
+
+class AuthManager {
+    static let shared = AuthManager()
+    
+    private let userIdKey = "com.bigbacksapp.userId"
+    private init() {}
+    
+    var userId: String? {
+        get {
+            return KeychainHelper.load(key: userIdKey)
+        }
+        set {
+            if let newValue = newValue {
+                KeychainHelper.save(newValue, key: userIdKey)
+            } else {
+                KeychainHelper.delete(key: userIdKey)
+            }
+        }
+    }
+    
+    func setUserId(_ id: String) {
+        userId = id
+    }
+    
+    func clearUserId() {
+        userId = nil
+    }
+    
+    var isLoggedIn: Bool {
+        return userId != nil
+    }
+}
+
+// Helper class for Keychain operations
+private class KeychainHelper {
+    static func save(_ value: String, key: String) {
+        let data = value.data(using: .utf8)!
+        
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data
+        ]
+        
+        SecItemDelete(query as CFDictionary)
+        
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            print("Error saving to Keychain: \(status)")
+            return
+        }
+    }
+    
+    static func load(key: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: kCFBooleanTrue!,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        
+        var dataTypeRef: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+        
+        if status == errSecSuccess,
+           let data = dataTypeRef as? Data,
+           let value = String(data: data, encoding: .utf8) {
+            return value
+        }
+        return nil
+    }
+    
+    static func delete(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key
+        ]
+        
+        SecItemDelete(query as CFDictionary)
     }
 }

@@ -249,7 +249,7 @@ private struct UserRowView: View {
             }
             
             Spacer()
-            
+        
             AddFriendButton(
                 user: user,
                 currentUserId: currentUserId,
@@ -260,12 +260,18 @@ private struct UserRowView: View {
         .padding(.vertical, 4)
     }
 }
-
 private struct AddFriendButton: View {
     let user: User
     let currentUserId: String
-    let isRequestPending: Bool
+    @State private var isRequestPending: Bool
     @Binding var errorMessage: String?
+    
+    init(user: User, currentUserId: String, isRequestPending: Bool, errorMessage: Binding<String?>) {
+        self.user = user
+        self.currentUserId = currentUserId
+        self._isRequestPending = State(initialValue: isRequestPending)
+        self._errorMessage = errorMessage
+    }
     
     var body: some View {
         Button(action: sendFriendRequest) {
@@ -280,9 +286,12 @@ private struct AddFriendButton: View {
     }
     
     private func sendFriendRequest() {
+        guard !isRequestPending else { return }
+        
         Task {
             do {
                 try await NetworkManager.shared.sendFriendRequest(from: currentUserId, to: user.id)
+                isRequestPending = true // Update state to show "Pending"
             } catch {
                 errorMessage = error.localizedDescription
             }
