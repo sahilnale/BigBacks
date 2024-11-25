@@ -6,6 +6,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var canNavigate = false
     
+    
     var body: some View {
         VStack(spacing: 20) {
             Text("Login")
