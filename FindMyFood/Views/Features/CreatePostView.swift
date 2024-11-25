@@ -238,13 +238,14 @@ struct CreatePostView: View {
                 // Make the API call to create the post
                 Task {
                     do {
-                        let userId = "67370256196768cbba577d2a" // Replace with the actual user ID
+                        let userId = AuthManager.shared.userId
+                        print(userId ?? "fail")// Replace with the actual user ID
                         let review = reviewText.isEmpty ? postText : reviewText
                         let location = locationDisplay
                         let restaurant = restaurantName
                         
                         let post = try await NetworkManager.shared.addPost(
-                            userId: userId,
+                            userId: userId ?? "",
                             imageUrl: imageUrl,
                             review: review,
                             location: location,
