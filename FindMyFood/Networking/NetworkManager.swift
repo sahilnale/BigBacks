@@ -181,13 +181,13 @@ class NetworkManager {
                 "restaurantName": restaurantName
             ]
             
-            print(body)
+            
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
             
-            print("isit hrtrr")
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
+                        
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.invalidResponse
             }
@@ -200,6 +200,8 @@ class NetworkManager {
                 }
                 throw NetworkError.error(from: httpResponse.statusCode)
             }
+            
+            
             
             // Decode the response into a `Post` object
             return try JSONDecoder().decode(Post.self, from: data)
