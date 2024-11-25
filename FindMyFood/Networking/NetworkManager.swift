@@ -121,14 +121,50 @@ class NetworkManager {
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-               if httpResponse.statusCode == 404 {
-                   return []
-               }
-               throw NetworkError.error(from: httpResponse.statusCode)
-           }
+            if httpResponse.statusCode == 404 {
+                return [] // Return an empty array if no users found
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
         
-        let user = try JSONDecoder().decode(User.self, from: data)
-        return [user]
+        // Manually parse the JSON data
+        do {
+            if let jsonArray = try JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
+                // Map the JSON objects into User objects
+                let users = jsonArray.compactMap { json -> User? in
+                    guard let id = json["_id"] as? String,
+                          let name = json["name"] as? String,
+                          let username = json["username"] as? String else {
+                        return nil
+                    }
+                    let friends = json["friends"] as? [String] ?? []
+                    let friendRequests = json["friendRequests"] as? [String] ?? []
+                    let pendingRequests = json["pendingRequests"] as? [String] ?? []
+                    let posts = json["posts"] as? [String] ?? []
+                    let profilePicture = json["profilePicture"] as? String
+                    let loggedIn = json["loggedIn"] as? Bool ?? false
+                    
+                    return User(
+                        id: id,
+                        name: name,
+                        username: username,
+                        email: json["email"] as? String ?? "",
+                        friends: friends,
+                        friendRequests: friendRequests,
+                        pendingRequests: pendingRequests,
+                        posts: posts,
+                        profilePicture: profilePicture,
+                        loggedIn: loggedIn
+                    )
+                }
+                return users
+            } else {
+                throw NetworkError.decodingError
+            }
+        } catch {
+            print("Manual JSON parsing error: \(error)")
+            throw NetworkError.decodingError
+        }
     }
     
     func sendFriendRequest(from user: String, to friendId: String) async throws {
