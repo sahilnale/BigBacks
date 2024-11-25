@@ -64,6 +64,7 @@ router.post('/upload/:userId', async (req, res) => {
         });
 
     } catch (error) {
+        console.log("what is happening")
         res.status(500).json({ message: 'Error creating post' });
     }
 });
