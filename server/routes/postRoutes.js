@@ -52,6 +52,7 @@ router.post('/upload/:userId', async (req, res) => {
 
         // Save the new post
         await newPost.save();
+        
 
         // Associate the post with the user
         user.posts.push(newPost._id);
@@ -61,8 +62,8 @@ router.post('/upload/:userId', async (req, res) => {
             message: 'Post created and added to user successfully',
             post: newPost,
         });
+
     } catch (error) {
-        console.error('Error creating post:', error);
         res.status(500).json({ message: 'Error creating post' });
     }
 });

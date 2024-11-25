@@ -177,9 +177,11 @@ class NetworkManager {
             let body: [String: Any] = [
                 "imageUrl": imageUrl,
                 "review": review,
+                "location": location,
                 "restaurantName": restaurantName
             ]
             
+            print(body)
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
             
             print("isit hrtrr")
