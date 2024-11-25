@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel // Inject the AuthViewModel instance
+    @StateObject private var viewModel = ProfileViewModel()
     
     private let columns = [
         GridItem(.flexible()),
@@ -15,10 +16,20 @@ struct ProfileView: View {
                 VStack {
                     Image(systemName: "person.circle.fill")
                         .font(.system(size: 100))
-                    Text("Name")
+//                    Text("Name")
+//                        .font(.headline)
+//                    Text("@username")
+//                        .font(.subheadline)
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
+                    } else {
+                        Text(viewModel.name)
                         .font(.headline)
-                    Text("@username")
+                        Text("@\(viewModel.username)")
                         .font(.subheadline)
+                    }
                     
                     // Light grey rounded box containing the 4x3 grid
                     RoundedRectangle(cornerRadius: 15)
@@ -59,11 +70,11 @@ struct ProfileView: View {
                         .font(.system(size: 20)) // Customize size of the pencil icon
                 })
             }
-        }
-    }
-}
-
-#Preview {
-    ProfileView()
-        .environmentObject(AuthViewModel()) // Ensure the AuthViewModel is passed to the view
-}
+            .onAppear {
+                            Task {
+                                await viewModel.loadProfile() // Fetch user details when the view appears
+                            }
+                        }
+                    }
+                }
+            }
