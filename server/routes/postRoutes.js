@@ -52,7 +52,8 @@ router.post('/upload/:userId', async (req, res) => {
 
         // Save the new post
         await newPost.save();
-        
+
+        console.log("what is happening1")
 
         // Associate the post with the user
         user.posts.push(newPost._id);
