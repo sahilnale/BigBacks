@@ -163,10 +163,11 @@ class NetworkManager {
             location: String,
             restaurantName: String
         ) async throws -> Post {
-            let endpoint = "\(baseURL)/upload/\(userId)"
+            let endpoint = "\(baseURL)/post/upload/\(userId)"
             guard let url = URL(string: endpoint) else {
                 throw NetworkError.invalidURL
             }
+            
             
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
@@ -176,17 +177,20 @@ class NetworkManager {
             let body: [String: Any] = [
                 "imageUrl": imageUrl,
                 "review": review,
-                "location": location,
                 "restaurantName": restaurantName
             ]
             
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            
+            print("isit hrtrr")
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.invalidResponse
             }
+            
+            print(httpResponse.statusCode)
             
             guard (200...299).contains(httpResponse.statusCode) else {
                 if httpResponse.statusCode == 404 {

@@ -26,7 +26,7 @@ const upload = multer({ storage: storage });
 router.post('/upload/:userId', async (req, res) => {
     try {
         // Extracting the user ID from the URL parameter
-        const { userId } = req.params;
+        const userId = req.params.userId.trim();
 
         // Finding the user
         const user = await User.findById(userId);

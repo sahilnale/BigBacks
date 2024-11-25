@@ -238,7 +238,7 @@ struct CreatePostView: View {
                 // Make the API call to create the post
                 Task {
                     do {
-                        let userId = "6736fdd4196768cbba577d22" // Replace with the actual user ID
+                        let userId = "67370256196768cbba577d2a" // Replace with the actual user ID
                         let review = reviewText.isEmpty ? postText : reviewText
                         let location = locationDisplay
                         let restaurant = restaurantName
