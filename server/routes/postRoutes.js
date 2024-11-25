@@ -55,7 +55,7 @@ router.post('/upload/:userId', async (req, res) => {
         
 
         // Associate the post with the user
-        user.posts.push(newPost._id);
+        user.posts.push(newPost._id.toString());
         await user.save();
 
         res.status(201).json({

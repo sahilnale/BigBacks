@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1B4CECAD2CF4365C00BAA913 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B4CECAC2CF4365C00BAA913 /* FirebaseFirestore */; };
+		1B4CECAF2CF4365C00BAA913 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 1B4CECAE2CF4365C00BAA913 /* FirebaseFirestoreCombine-Community */; };
+		1B4CECB12CF4365C00BAA913 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 1B4CECB02CF4365C00BAA913 /* FirebaseStorage */; };
+		1B4CECB32CF4365C00BAA913 /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 1B4CECB22CF4365C00BAA913 /* FirebaseStorageCombine-Community */; };
 		FC3F5D1F2CF3D856003BA940 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FC3F5D1E2CF3D856003BA940 /* FirebaseFirestore */; };
 		FC3F5D212CF3D856003BA940 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = FC3F5D202CF3D856003BA940 /* FirebaseFirestoreCombine-Community */; };
 		FC3F5D232CF3D856003BA940 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = FC3F5D222CF3D856003BA940 /* FirebaseStorage */; };
@@ -85,6 +89,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1B4CECAD2CF4365C00BAA913 /* FirebaseFirestore in Frameworks */,
+				1B4CECAF2CF4365C00BAA913 /* FirebaseFirestoreCombine-Community in Frameworks */,
+				1B4CECB32CF4365C00BAA913 /* FirebaseStorageCombine-Community in Frameworks */,
+				1B4CECB12CF4365C00BAA913 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -166,6 +174,10 @@
 			);
 			name = FindMyFoodTests;
 			packageProductDependencies = (
+				1B4CECAC2CF4365C00BAA913 /* FirebaseFirestore */,
+				1B4CECAE2CF4365C00BAA913 /* FirebaseFirestoreCombine-Community */,
+				1B4CECB02CF4365C00BAA913 /* FirebaseStorage */,
+				1B4CECB22CF4365C00BAA913 /* FirebaseStorageCombine-Community */,
 			);
 			productName = FindMyFoodTests;
 			productReference = BAC9742A2CD9AC6600DD929B /* FindMyFoodTests.xctest */;
@@ -432,7 +444,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FindMyFood/Preview Content\"";
-				DEVELOPMENT_TEAM = PL5HHAAZKB;
+				DEVELOPMENT_TEAM = 6MDSVB396P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FindMyFood/Info.plist;
@@ -451,7 +463,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = jvyxgxhgcjk;
+				PRODUCT_BUNDLE_IDENTIFIER = asdjhahkjdhaks;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -469,7 +481,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"FindMyFood/Preview Content\"";
-				DEVELOPMENT_TEAM = PL5HHAAZKB;
+				DEVELOPMENT_TEAM = 6MDSVB396P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FindMyFood/Info.plist;
@@ -488,7 +500,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = jvyxgxhgcjk;
+				PRODUCT_BUNDLE_IDENTIFIER = asdjhahkjdhaks;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -618,6 +630,22 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		1B4CECAC2CF4365C00BAA913 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FirebaseFirestore;
+		};
+		1B4CECAE2CF4365C00BAA913 /* FirebaseFirestoreCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = "FirebaseFirestoreCombine-Community";
+		};
+		1B4CECB02CF4365C00BAA913 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FirebaseStorage;
+		};
+		1B4CECB22CF4365C00BAA913 /* FirebaseStorageCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = "FirebaseStorageCombine-Community";
+		};
 		FC3F5D1E2CF3D856003BA940 /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
