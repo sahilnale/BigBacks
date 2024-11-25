@@ -157,55 +157,81 @@ class NetworkManager {
         }
     }
     func addPost(
-            userId: String,
-            imageUrl: String,
-            review: String,
-            location: String,
-            restaurantName: String
-        ) async throws -> Post {
-            let endpoint = "\(baseURL)/post/upload/\(userId)"
-            guard let url = URL(string: endpoint) else {
-                throw NetworkError.invalidURL
-            }
-            
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            
-            // Create the body with the required fields
-            let body: [String: Any] = [
-                "imageUrl": imageUrl,
-                "review": review,
-                "location": location,
-                "restaurantName": restaurantName
-            ]
-            
-            
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-            
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-                        
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw NetworkError.invalidResponse
-            }
-            
-            print(httpResponse.statusCode)
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                if httpResponse.statusCode == 404 {
-                    throw NetworkError.badRequest("User not found")
-                }
-                throw NetworkError.error(from: httpResponse.statusCode)
-            }
-            
-            
-            
-            // Decode the response into a `Post` object
-            return try JSONDecoder().decode(Post.self, from: data)
+        userId: String,
+        imageUrl: String,
+        review: String,
+        location: String,
+        restaurantName: String
+    ) async throws -> Post {
+        let endpoint = "\(baseURL)/post/upload/\(userId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
         }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Create the body with the required fields
+        let body: [String: Any] = [
+            "imageUrl": imageUrl,
+            "review": review,
+            "location": location,
+            "restaurantName": restaurantName
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        print("HTTP Status Code: \(httpResponse.statusCode)")
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 404 {
+                throw NetworkError.badRequest("User not found")
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+        
+        if let dataString = String(data: data, encoding: .utf8) {
+            print("Raw Response JSON: \(dataString)")
+        }
+        
+        // Manually parse the JSON response
+        do {
+            if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let postDict = jsonObject["post"] as? [String: Any] {
+                
+                let post = Post(
+                    userId: postDict["userId"] as? String ?? "",
+                    imageUrl: postDict["_id"] as? String ?? "",
+                    timestamp: postDict["timestamp"] as? String ?? "",
+                    review: postDict["review"] as? String ?? "",
+                    location: postDict["location"] as? String ?? "",
+                    restaurantName: postDict["restaurantName"] as? String ?? "",
+                    likes: postDict["likes"] as? Int ?? 0,
+                    likedBy: postDict["likedBy"] as? [String] ?? [],
+                    starRating: postDict["starRating"] as? Int ?? 0,
+                    id: postDict["String"] as? String ?? "",
+                    comments: postDict["comments"] as? [String] ?? []
+                )
+                
+                print("Manually Parsed Post: \(post)")
+                return post
+            } else {
+                throw NetworkError.decodingError
+            }
+        } catch {
+            print("JSON parsing error: \(error.localizedDescription)")
+            throw NetworkError.decodingError
+        }
+    }
+
+
 }
 
 
@@ -237,11 +263,30 @@ struct User: Codable, Identifiable {
 }
 
 
-struct Post: Codable, Identifiable {
-    let id: String
-    let imageUrl: String
-    let timestamp: Date
-    let review: String
-    let location: String
-    let restaurantName: String
+struct Post: Codable {
+    let userId: String?
+    let imageUrl: String?
+    let timestamp: String?
+    let review: String?
+    let location: String?
+    let restaurantName: String?
+    let likes: Int?
+    let likedBy: [String]?
+    let starRating: Int?
+    let id: String?
+    let comments: [String]?
+    
+    enum CodingKeys: String, CodingKey {
+        case userId
+        case imageUrl
+        case timestamp
+        case review
+        case location
+        case restaurantName
+        case likes
+        case likedBy
+        case starRating
+        case id = "_id"
+        case comments
+    }
 }
