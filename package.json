@@ -1,0 +1,12 @@
+{
+  "name": "bigbacks",
+  "version": "1.0.0",
+  "description": "[![Swift](https://img.shields.io/badge/Swift-UI-orange)](https://developer.apple.com/xcode/swiftui/) [![Node.js](https://img.shields.io/badge/Node.js-Express-green)](https://nodejs.org/) [![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)](https://www.mongodb.com/)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
