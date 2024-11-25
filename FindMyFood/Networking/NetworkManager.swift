@@ -151,7 +151,7 @@ class NetworkManager {
                     let friends = json["friends"] as? [String] ?? []
                     let friendRequests = json["friendRequests"] as? [String] ?? []
                     let pendingRequests = json["pendingRequests"] as? [String] ?? []
-                    let posts = json["posts"] as? [String] ?? []
+                    let posts = json["posts"] as? [Post] ?? []
                     let profilePicture = json["profilePicture"] as? String
                     let loggedIn = json["loggedIn"] as? Bool ?? false
                     
@@ -295,7 +295,7 @@ struct User: Codable, Identifiable {
     let friends: [String]
     let friendRequests: [String]
     let pendingRequests: [String]
-    let posts: [String]
+    let posts: [Post]
     let profilePicture: String?
     let loggedIn: Bool
     

@@ -254,10 +254,11 @@ struct CreatePostView: View {
                         print("Post created successfully: \(post)")
                         
                         // Reset the UI and navigate to the feed
-                        DispatchQueue.main.async {
-                            dismiss()
-                            selectedTab = 1 // Switch to Feed tab
-                        }
+                        dismiss()
+                        selectedTab = 1 // Switch to Feed tab
+                        
+                        
+                        print(userId ?? "fail")
                     } catch {
                         print("Error creating post: \(error.localizedDescription)")
                     }
