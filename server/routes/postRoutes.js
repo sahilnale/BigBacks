@@ -47,7 +47,7 @@ router.post('/upload/:userId', async (req, res) => {
             review,
             location,
             restaurantName,
-            userId,
+            userId
         });
 
         // Save the new post
@@ -60,13 +60,15 @@ router.post('/upload/:userId', async (req, res) => {
 
         res.status(201).json({
             message: 'Post created and added to user successfully',
-            post: newPost,
+            post: newPost
         });
 
     } catch (error) {
         res.status(500).json({ message: 'Error creating post' });
     }
 });
+
+
 // Route to retrieve all posts
 router.get('/', async (req, res) => {
     try {
