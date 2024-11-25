@@ -62,10 +62,8 @@ router.post('/upload/:userId', async (req, res) => {
             message: 'Post created and added to user successfully',
             post: newPost,
         });
-        
-        res.json("works");
+
     } catch (error) {
-        console.log("error")
         res.status(500).json({ message: 'Error creating post' });
     }
 });
