@@ -31,24 +31,22 @@ struct ProfileView: View {
                         .font(.subheadline)
                     }
                     
-                    // Light grey rounded box containing the 4x3 grid
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color(.systemGray5))
-                        .frame(height: 400) // Adjust height to fit 4 rows comfortably
-                        .overlay(
-                            LazyVGrid(columns: columns, spacing: 15) {
-                                ForEach(0..<12) { _ in
-                                    Image(systemName: "person.circle.fill") // Replace with user's image array
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 80, height: 80)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                }
-                            }
-                                .padding()
-                        )
-                        .padding()
-                    
+                    // Light grey rounded box containing the 4x3 grid of posts
+                    // Removed the RoundedRectangle container to avoid the big grey box
+                    LazyVGrid(columns: columns, spacing: 15) {
+                        ForEach(0..<12) { index in
+                            NavigationLink(destination: PostDetailView(postId: index)) {
+                                Rectangle() // Rectangle as placeholder for posts
+                                    .fill(Color.gray.opacity(0.4)) // Background color for the rectangle
+                                    .frame(height: 81) // Height of the rectangle
+                                    .cornerRadius(10) // Rounded corners for the rectangle
+                                                }
+                                    .buttonStyle(PlainButtonStyle()) // Remove the default button style of NavigationLink
+                        }
+                    }
+                    .padding()
+                                
+                    .padding()
                     Spacer()
                     
                     // Logout Button
@@ -71,10 +69,29 @@ struct ProfileView: View {
                 })
             }
             .onAppear {
-                            Task {
-                                await viewModel.loadProfile() // Fetch user details when the view appears
-                            }
-                        }
-                    }
+                Task {
+                    await viewModel.loadProfile() // Fetch user details when the view appears
                 }
             }
+        }
+    }
+}
+
+struct PostDetailView: View {
+    var postId: Int // Use the post ID or any unique identifier for the post
+    
+    var body: some View {
+        VStack {
+            Text("Post \(postId)") // Placeholder for the actual post content
+                .font(.largeTitle)
+            // Display more post details here as needed
+        }
+        .navigationTitle("Post Detail")
+    }
+}
+
+#Preview {
+    ProfileView()
+        .environmentObject(AuthViewModel()) // Ensure the AuthViewModel is passed to the view
+}
+
