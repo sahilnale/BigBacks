@@ -151,7 +151,7 @@ class NetworkManager {
                     let friends = json["friends"] as? [String] ?? []
                     let friendRequests = json["friendRequests"] as? [String] ?? []
                     let pendingRequests = json["pendingRequests"] as? [String] ?? []
-                    let posts = json["posts"] as? [String] ?? []
+                    let posts = json["posts"] as? [Post] ?? []
                     let profilePicture = json["profilePicture"] as? String
                     let loggedIn = json["loggedIn"] as? Bool ?? false
                     
@@ -208,6 +208,82 @@ class NetworkManager {
                throw error
            }
        }
+    func addPost(
+        userId: String,
+        imageUrl: String,
+        review: String,
+        location: String,
+        restaurantName: String
+    ) async throws -> Post {
+        let endpoint = "\(baseURL)/post/upload/\(userId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Create the body with the required fields
+        let body: [String: Any] = [
+            "imageUrl": imageUrl,
+            "review": review,
+            "location": location,
+            "restaurantName": restaurantName
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        print("HTTP Status Code: \(httpResponse.statusCode)")
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 404 {
+                throw NetworkError.badRequest("User not found")
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+        
+        if let dataString = String(data: data, encoding: .utf8) {
+            print("Raw Response JSON: \(dataString)")
+        }
+        
+        // Manually parse the JSON response
+        do {
+            if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let postDict = jsonObject["post"] as? [String: Any] {
+                
+                let post = Post(
+                    _id: postDict["_id"] as? String ?? "",
+                    imageUrl: postDict["imageUrl"] as? String ?? "",
+                    timestamp: postDict["timestamp"] as? String ?? "",
+                    review: postDict["review"] as? String ?? "",
+                    location: postDict["location"] as? String ?? "",
+                    restaurantName: postDict["restaurantName"] as? String ?? "",
+                    likes: postDict["likes"] as? Int ?? 0,
+                    likedBy: postDict["likedBy"] as? [String] ?? [],
+                    starRating: postDict["starRating"] as? Int ?? 0,
+                    comments: postDict["comments"] as? [String] ?? []
+                )
+                
+                print("Manually Parsed Post: \(post)")
+                return post
+            } else {
+                throw NetworkError.decodingError
+            }
+        } catch {
+            print("JSON parsing error: \(error.localizedDescription)")
+            throw NetworkError.decodingError
+        }
+    }
+
+    
+    
    }
 
 // MARK: - Models
@@ -219,7 +295,7 @@ struct User: Codable, Identifiable {
     let friends: [String]
     let friendRequests: [String]
     let pendingRequests: [String]
-    let posts: [String]
+    let posts: [Post]
     let profilePicture: String?
     let loggedIn: Bool
     
@@ -237,11 +313,16 @@ struct User: Codable, Identifiable {
     }
 }
 
-struct Post: Codable, Identifiable {
-    let id: String
+struct Post: Codable {
+    let _id: String
     let imageUrl: String
-    let timestamp: Date
+    let timestamp: String
     let review: String
     let location: String
     let restaurantName: String
+    let likes: Int
+    let likedBy: [String]
+    let starRating: Int
+    let comments: [String]
+    
 }

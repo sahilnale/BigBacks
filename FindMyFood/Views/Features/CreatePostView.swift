@@ -216,23 +216,40 @@ struct CreatePostView: View {
             return
         }
 
-        print("Uploading the image...")
-
+        // Upload the image and then create the post
         ImageUploader.uploadImage(image: image) { result in
             switch result {
-            case .success(let imageURL):
-                print("Image uploaded successfully. URL: \(imageURL)")
-                print("Posting the review...")
-                print("Restaurant Name: \(restaurantName)")
-                print("Post Text: \(postText)")
-                print("Rating: \(rating)")
-                print("Image URL: \(imageURL)")
+            case .success(let imageUrl):
+                print("Image uploaded successfully. URL: \(imageUrl)")
 
-                DispatchQueue.main.async {
-                    dismiss()
-                    selectedTab = 1 // Switch to Feed tab
+                // Make the API call to create the post
+                Task {
+                    do {
+                        let userId = AuthManager.shared.userId
+                        print(userId ?? "fail")// Replace with the actual user ID
+                        let review = reviewText.isEmpty ? postText : reviewText
+                        let location = locationDisplay
+                        let restaurant = restaurantName
+                        
+                        let post = try await NetworkManager.shared.addPost(
+                            userId: userId ?? "",
+                            imageUrl: imageUrl,
+                            review: review,
+                            location: location,
+                            restaurantName: restaurant
+                        )
+                        print("Post created successfully: \(post)")
+                        
+                        // Reset the UI and navigate to the feed
+                        dismiss()
+                        selectedTab = 1 // Switch to Feed tab
+                        
+                        
+                        print(userId ?? "fail")
+                    } catch {
+                        print("Error creating post: \(error.localizedDescription)")
+                    }
                 }
-
             case .failure(let error):
                 print("Failed to upload image: \(error.localizedDescription)")
             }
