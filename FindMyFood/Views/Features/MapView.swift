@@ -22,9 +22,17 @@ class CustomPopupView: UIView {
     private let titleLabel = UILabel()
     private let imageView = UIImageView()
     private let reviewerNameLabel = UILabel()
-    private let ratingLabel = UILabel()  // Optional, remove if not used
     private let commentScrollView = UIScrollView()
     private let commentLabel = UILabel()
+    private let nameAndStarsStackView = UIStackView()
+    private let profileImageView = UIImageView()
+    private let spacerView = UIView()
+    
+    // Heart icon and count label
+    private let heartImageView = UIImageView()
+    private let heartCountLabel = UILabel()
+    
+ 
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -40,9 +48,18 @@ class CustomPopupView: UIView {
         layer.borderWidth = 1
         layer.borderColor = UIColor.lightGray.cgColor
         
+        // Create star images (filled and empty)
+        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.orange, renderingMode: .alwaysOriginal)
+        let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
+        
+        // Array to hold star image views
+        var starImageViews: [UIImageView] = []
+        
         // Title label
-        titleLabel.font = UIFont.boldSystemFont(ofSize: 30)
+        titleLabel.font = UIFont(name: "Helvetica-Bold", size: 30)
         titleLabel.textAlignment = .center
+        titleLabel.adjustsFontSizeToFitWidth = true
+        titleLabel.textColor = .orange
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Image view
@@ -51,25 +68,53 @@ class CustomPopupView: UIView {
         imageView.layer.cornerRadius = 8
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
+    
+        
+        // Reviewer name and stars stack view
+        nameAndStarsStackView.axis = .horizontal
+        nameAndStarsStackView.alignment = .center
+        nameAndStarsStackView.spacing = 4
+        nameAndStarsStackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Profile picture view
+        
+        profileImageView.image = UIImage(systemName: "person.crop.circle")?.withTintColor(.gray, renderingMode: .alwaysOriginal) // Replace with actual profile picture
+        profileImageView.contentMode = .scaleAspectFill
+        profileImageView.layer.cornerRadius = 20 // Make it round
+        profileImageView.clipsToBounds = true
+        profileImageView.translatesAutoresizingMaskIntoConstraints = false
+        profileImageView.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        profileImageView.widthAnchor.constraint(equalToConstant: 40).isActive = true
+        nameAndStarsStackView.addArrangedSubview(profileImageView) // Add profile image to stack view
+        
+        
         // Reviewer name
-        reviewerNameLabel.font = UIFont.systemFont(ofSize: 20)
+        reviewerNameLabel.font = UIFont(name: "Helvetica-Regular", size: 25)
         reviewerNameLabel.textColor = .orange
         reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Create star images (filled and empty)
-        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.yellow, renderingMode: .alwaysOriginal)
-        let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
-
-        // Array to hold star image views
-        var starImageViews: [UIImageView] = []
-
+        nameAndStarsStackView.addArrangedSubview(reviewerNameLabel)
+  
         // Create 5 star image views
         for _ in 0..<5 {
+
             let starImageView = UIImageView()
-            starImageView.translatesAutoresizingMaskIntoConstraints = false
-            starImageViews.append(starImageView)
-            addSubview(starImageView)
+                starImageView.contentMode = .scaleAspectFit
+                starImageView.image = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
+                starImageView.translatesAutoresizingMaskIntoConstraints = false
+                starImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+                starImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+                
+                starImageViews.append(starImageView) // Add to the array
+                nameAndStarsStackView.addArrangedSubview(starImageView)
         }
+        
+        // Add a spacer view after the last star
+        
+        spacerView.translatesAutoresizingMaskIntoConstraints = false
+        nameAndStarsStackView.addArrangedSubview(spacerView)
+        spacerView.widthAnchor.constraint(equalToConstant: 50).isActive = true  // Adjust the width for desired spacing
+        
+        
 
         // Function to set the rating (e.g., 3/5 stars)
         func setRating(_ rating: Int) {
@@ -85,12 +130,27 @@ class CustomPopupView: UIView {
         // Call setRating with the desired rating, for example, 3/5
         setRating(3)
         
+        // Heart image view and count label
+       heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.red, renderingMode: .alwaysOriginal)
+       heartImageView.contentMode = .scaleAspectFit
+       heartImageView.translatesAutoresizingMaskIntoConstraints = false
+       heartImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+       heartImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+       
+       heartCountLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
+       heartCountLabel.textColor = .black
+       heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
+       
+       // Add heart image and count label to nameAndStarsStackView
+       nameAndStarsStackView.addArrangedSubview(heartImageView)
+       nameAndStarsStackView.addArrangedSubview(heartCountLabel)
+        
         // Comment Scroll View
         commentScrollView.translatesAutoresizingMaskIntoConstraints = false
         commentScrollView.showsVerticalScrollIndicator = true
         
         // Comment label
-        commentLabel.font = UIFont.systemFont(ofSize: 16)
+        commentLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
         commentLabel.textColor = .black
         commentLabel.numberOfLines = 0 // Unlimited lines for full text rendering
         commentLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -99,7 +159,7 @@ class CustomPopupView: UIView {
         // Add subviews
         addSubview(titleLabel)
         addSubview(imageView)
-        addSubview(reviewerNameLabel)
+        addSubview(nameAndStarsStackView)
         addSubview(commentScrollView)
         
         // Setup constraints
@@ -110,29 +170,23 @@ class CustomPopupView: UIView {
             
             imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            imageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
-            imageView.heightAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
+            imageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.8),
+            imageView.heightAnchor.constraint(equalTo: widthAnchor, multiplier: 0.8),
             
-            reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
-            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             
-            starImageViews[0].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[0].leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            starImageViews[1].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[1].leadingAnchor.constraint(equalTo: starImageViews[0].trailingAnchor, constant: 4),
-            starImageViews[2].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[2].leadingAnchor.constraint(equalTo: starImageViews[1].trailingAnchor, constant: 4),
-            starImageViews[3].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[3].leadingAnchor.constraint(equalTo: starImageViews[2].trailingAnchor, constant: 4),
-            starImageViews[4].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[4].leadingAnchor.constraint(equalTo: starImageViews[3].trailingAnchor, constant: 4),
+            nameAndStarsStackView.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 19),
+            nameAndStarsStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             
-            commentScrollView.topAnchor.constraint(equalTo: starImageViews[0].bottomAnchor, constant: 8),
+          
+                        
+        
+            
+            commentScrollView.topAnchor.constraint(equalTo: nameAndStarsStackView.bottomAnchor, constant: 8),
             commentScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             commentScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             commentScrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
             
-            commentLabel.topAnchor.constraint(equalTo: commentScrollView.topAnchor),
+            commentLabel.topAnchor.constraint(equalTo: commentScrollView.topAnchor, constant: 10),
             commentLabel.leadingAnchor.constraint(equalTo: commentScrollView.leadingAnchor),
             commentLabel.trailingAnchor.constraint(equalTo: commentScrollView.trailingAnchor),
             commentLabel.bottomAnchor.constraint(equalTo: commentScrollView.bottomAnchor),
@@ -143,9 +197,9 @@ class CustomPopupView: UIView {
     func setDetails(title: String, image: UIImage?, reviewerName: String, rating: String, comment: String) {
         titleLabel.text = title
         imageView.image = image
-        reviewerNameLabel.text = "Reviewer: \(reviewerName)"
-        ratingLabel.text = "Rating: \(rating)"  // Set this only if used
+        reviewerNameLabel.text = reviewerName
         commentLabel.text = comment
+        heartCountLabel.text = "4.5"
     }
 }
 
@@ -307,7 +361,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             image: annotation.image,
             reviewerName: "Nitin",
             rating: "annotation.rating", // Replace with a real rating if available
-            comment: "The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  "
+            comment: "The food very much sucks ass"
         )
         
         // Add the popup to the map
