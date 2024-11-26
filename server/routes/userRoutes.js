@@ -391,7 +391,7 @@ router.get('/getFeed/:id', async(req, res) => {
                 feed = feed.concat(friend.posts);
             }
         }
-        feed.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         res.json(feed);
     }
     catch(error){

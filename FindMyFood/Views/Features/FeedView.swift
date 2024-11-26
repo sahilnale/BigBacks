@@ -32,7 +32,7 @@ struct FeedView: View {
                 let userId = AuthManager.shared.userId ?? "" // Replace with actual user ID
                 let fetchedPosts = try await NetworkManager.shared.userFeed(userId: userId)
                 DispatchQueue.main.async {
-                    self.posts = fetchedPosts.sorted { $0.date ?? Date() > $1.date ?? Date() }
+                    self.posts = fetchedPosts
                     self.isLoading = false
                 }
             } catch {
