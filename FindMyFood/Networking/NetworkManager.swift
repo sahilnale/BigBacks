@@ -260,6 +260,7 @@ class NetworkManager {
                 
                 let post = Post(
                     _id: postDict["_id"] as? String ?? "",
+                    userId: postDict["userId"] as? String ?? "",
                     imageUrl: postDict["imageUrl"] as? String ?? "",
                     timestamp: postDict["timestamp"] as? String ?? "",
                     review: postDict["review"] as? String ?? "",
@@ -281,7 +282,88 @@ class NetworkManager {
             throw NetworkError.decodingError
         }
     }
+    func userFeed(userId: String) async throws -> [Post] {
+        let endpoint = "\(baseURL)/user/getFeed/\(userId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
 
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+
+        // Print the raw JSON response for debugging
+        if let rawJSON = String(data: data, encoding: .utf8) {
+            print("Raw JSON Response from /getFeed: \(rawJSON)")
+        }
+
+        // Decode the array of post IDs
+        do {
+            let postIds = try JSONDecoder().decode([String].self, from: data)
+            print("Decoded Post IDs: \(postIds)")
+            
+            // Fetch details for each post ID
+            let posts = try await withThrowingTaskGroup(of: Post?.self) { group in
+                for postId in postIds {
+                    group.addTask {
+                        return try? await self.fetchPostDetails(postId: postId)
+                    }
+                }
+
+                var results: [Post] = []
+                for try await result in group {
+                    if let post = result {
+                        results.append(post)
+                    }
+                }
+                return results
+            }
+            return posts
+        } catch {
+            print("Error decoding post IDs: \(error)")
+            throw NetworkError.decodingError
+        }
+    }
+
+
+    // Helper function to fetch a single post by ID
+    func fetchPostDetails(postId: String) async throws -> Post {
+        let endpoint = "\(baseURL)/post/\(postId)"
+        guard let url = URL(string: endpoint) else {
+            print("Invalid URL for post ID: \(postId)")
+            throw NetworkError.invalidURL
+        }
+
+        print("Fetching details for post ID: \(postId)") // Log start of fetch
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("No HTTP response for post ID: \(postId)")
+            throw NetworkError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            print("Failed to fetch details for post ID: \(postId). HTTP Status: \(httpResponse.statusCode)")
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+
+        do {
+            let post = try JSONDecoder().decode(Post.self, from: data)
+            print("Successfully fetched details for post ID: \(postId) -> \(post)")
+            return post
+        } catch {
+            print("Decoding error for post ID \(postId): \(error.localizedDescription)")
+            throw NetworkError.decodingError
+        }
+    }
+      
     func getPostById(postId: String) async throws -> Post {
         let endpoint = "\(baseURL)/posts/\(postId)"
         guard let url = URL(string: endpoint) else {
@@ -330,8 +412,7 @@ class NetworkManager {
 
 
     
-    
-   }
+}
 
 // MARK: - Models
 struct User: Codable, Identifiable {
@@ -360,10 +441,12 @@ struct User: Codable, Identifiable {
     }
 }
 
-struct Post: Codable {
+struct Post: Codable, Identifiable {
     let _id: String
+    var id: String { _id }
+    let userId: String
     let imageUrl: String
-    let timestamp: String
+    let timestamp: String // ISO 8601 string
     let review: String
     let location: String
     let restaurantName: String
@@ -371,5 +454,8 @@ struct Post: Codable {
     let likedBy: [String]
     let starRating: Int
     let comments: [String]
-    
+    var date: Date? {
+        let formatter = ISO8601DateFormatter()
+        return formatter.date(from: timestamp)
+    }
 }

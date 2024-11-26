@@ -19,10 +19,18 @@ struct MainTabView: View {
                     Label("Explore", systemImage: "map")
                 }.tag(0)
                 
-                FeedView()
-                    .tabItem {
-                        Label("Feed", systemImage: "list.bullet")
-                    }.tag(1)
+                if let userId = AuthManager.shared.userId {
+                    FeedView()
+                        .tabItem {
+                            Label("Feed", systemImage: "list.bullet")
+                        }.tag(1)
+                } else {
+                    Text("Please log in to view your feed.")
+                        .tabItem {
+                            Label("Feed", systemImage: "list.bullet")
+                        }.tag(1)
+                }
+
                 
                 FriendsView(currentUserId: "account123")
                     .tabItem {
