@@ -498,7 +498,7 @@ struct CreatePostView: View {
         private func fetchNearbyRestaurants() {
             isLoading = true
             let request = MKLocalSearch.Request()
-            request.naturalLanguageQuery = "Restaurants"
+            request.naturalLanguageQuery = "food"
             request.region = MKCoordinateRegion(
                 center: userLocation,
                 span: MKCoordinateSpan(latitudeDelta: 0.005 , longitudeDelta: 0.01)
