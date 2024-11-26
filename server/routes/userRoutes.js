@@ -386,12 +386,12 @@ router.get('/getFeed/:id', async(req, res) => {
         const friendsList = user.friends;
         let feed = [];
         for (let index = 0; index < friendsList.length; index++) {
-            const friend = await User.findById(friendsList[index]);
+            const friend = await User.findById(friendsList[index]).populate('posts');
             if(friend && friend.posts){
                 feed = feed.concat(friend.posts);
             }
         }
-        feed.sort((a, b)=> b.timestamp - a.timestamp);
+        feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         res.json(feed);
     }
     catch(error){
