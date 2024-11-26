@@ -1,123 +1,3 @@
-//import SwiftUI
-//
-//struct ProfileView: View {
-//    @EnvironmentObject var authViewModel: AuthViewModel // Inject the AuthViewModel instance
-//    @StateObject private var viewModel = ProfileViewModel()
-//    
-//    private let columns = [
-//        GridItem(.flexible()),
-//        GridItem(.flexible()),
-//        GridItem(.flexible())
-//    ]
-//    
-//    var body: some View {
-//        NavigationView {
-//            ScrollView{
-//                VStack {
-//                    Image(systemName: "person.circle.fill")
-//                        .font(.system(size: 100))
-////                    Text("Name")
-////                        .font(.headline)
-////                    Text("@username")
-////                        .font(.subheadline)
-//                    if let errorMessage = viewModel.errorMessage {
-//                        Text(errorMessage)
-//                        .foregroundColor(.red)
-//                        .padding()
-//                    } else {
-//                        Text(viewModel.name)
-//                        .font(.headline)
-//                        Text("@\(viewModel.username)")
-//                        .font(.subheadline)
-//                    }
-//                    
-//                    // Light grey rounded box containing the 4x3 grid of posts
-//                    // Removed the RoundedRectangle container to avoid the big grey box
-//                    // Posts Grid
-//                                    if viewModel.isLoading {
-//                                        ProgressView("Loading posts...")
-//                                            .padding()
-//                                    } else if viewModel.posts.isEmpty {
-//                                        Text("No posts yet.")
-//                                            .foregroundColor(.gray)
-//                                            .padding()
-//                                    } else {
-//                                        ScrollView {
-//                                            LazyVGrid(columns: columns, spacing: 8) {
-//                                                ForEach(viewModel.posts, id: \._id) { post in
-//                                                    // Create a small box for each post
-//                                                    NavigationLink(destination: PostDetailView(post: post)) {
-//                                                        AsyncImage(url: URL(string: post.imageUrl)) { image in
-//                                                            image
-//                                                                .resizable()
-//                                                                .scaledToFill()
-//                                                        } placeholder: {
-//                                                            Color.gray.opacity(0.3)
-//                                                                .overlay(
-//                                                                    ProgressView()
-//                                                                )
-//                                                        }
-//                                                        .frame(width: 100, height: 100)
-//                                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-//                                                    }
-//                                                }
-//                                            }
-//                                            .padding(.horizontal)
-//                                        }
-//                                    }
-//
-//                    .padding()
-//                                
-//                    .padding()
-//                    Spacer()
-//                    
-//                    // Logout Button
-//                    Button(action: {
-//                        authViewModel.logout()
-//                    }) {
-//                        Text("Logout")
-//                            .font(.headline)
-//                            .foregroundColor(.white)
-//                            .frame(minWidth: 40, maxWidth: .infinity, minHeight: 40, maxHeight: .infinity)
-//                            .background(Color.accentColor)
-//                            .cornerRadius(10)
-//                            .padding()
-//                    }
-//                }
-//                .navigationTitle("Profile")
-//                .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
-//                    Image(systemName: "pencil")
-//                        .font(.system(size: 20)) // Customize size of the pencil icon
-//                })
-//            }
-//            .onAppear {
-//                Task {
-//                    await viewModel.loadProfile() // Fetch user details when the view appears
-//                }
-//            }
-//        }
-//    }
-//}
-//
-//struct PostDetailView: View {
-//    var postId: Int // Use the post ID or any unique identifier for the post
-//    
-//    var body: some View {
-//        VStack {
-//            Text("Post \(postId)") // Placeholder for the actual post content
-//                .font(.largeTitle)
-//            // Display more post details here as needed
-//        }
-//        .navigationTitle("Post Detail")
-//    }
-//}
-//
-//#Preview {
-//    ProfileView()
-//        .environmentObject(AuthViewModel()) // Ensure the AuthViewModel is passed to the view
-//}
-//
-
 
 import SwiftUI
 
@@ -209,16 +89,35 @@ struct PostGridView: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(posts, id: \._id) { post in
-                NavigationLink(destination: PostDetailView(postId: post._id)) {
-                    // Placeholder grey box
-                    Color.gray
-                        .frame(width: 100, height: 100)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                NavigationLink(destination: PostDetailView(post: post)) {
+                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView() // Show a loading indicator while the image loads
+                                .frame(width: 100, height: 100)
+                                .background(Color.gray.opacity(0.3))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 100, height: 100)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipped()
+                        case .failure:
+                            Color.red // Display a red box if the image fails to load
+                                .frame(width: 100, height: 100)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
                 }
             }
         }
     }
 }
+
 
 
 // MARK: - Logout Button
@@ -240,16 +139,92 @@ struct LogoutButton: View {
 
 // MARK: - Post Detail View
 struct PostDetailView: View {
-    var postId: String // Updated to use String for MongoDB ObjectId compatibility
+    var post: Post // Pass the entire `Post` object
     
     var body: some View {
-        VStack {
-            Text("Post ID: \(postId)") // Placeholder for actual post details
-                .font(.largeTitle)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Post Image
+                AsyncImage(url: URL(string: post.imageUrl)) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView() // Show loading spinner
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                            .background(Color.gray.opacity(0.3))
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                            .clipped()
+                    case .failure:
+                        Text("Failed to load image")
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                            .background(Color.red.opacity(0.3))
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+
+                // Restaurant Name
+                Text(post.restaurantName)
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                // Location
+                HStack {
+                    Image(systemName: "mappin.and.ellipse")
+                    Text(post.location)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+                
+                // Star Rating
+                HStack {
+                    ForEach(0..<5) { star in
+                        Image(systemName: star < post.starRating ? "star.fill" : "star")
+                            .foregroundColor(star < post.starRating ? .yellow : .gray)
+                    }
+                }
+                
+                // Review
+                Text("Review")
+                    .font(.headline)
+                Text(post.review)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+
+                // Likes
+                HStack {
+                    Image(systemName: "heart.fill")
+                        .foregroundColor(.red)
+                    Text("\(post.likes) likes")
+                        .font(.subheadline)
+                }
+                
+                // Comments
+                if !post.comments.isEmpty {
+                    Text("Comments")
+                        .font(.headline)
+                    
+                    ForEach(post.comments, id: \.self) { comment in
+                        Text("• \(comment)")
+                            .font(.body)
+                            .padding(.vertical, 2)
+                    }
+                } else {
+                    Text("No comments yet.")
+                        .font(.body)
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding()
         }
-        .navigationTitle("Post Detail")
+        .navigationTitle("Post Details")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
+
 
 // MARK: - Preview
 #Preview {
