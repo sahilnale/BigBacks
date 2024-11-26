@@ -282,6 +282,48 @@ class NetworkManager {
         }
     }
 
+    func getPostById(postId: String) async throws -> Post {
+        let endpoint = "\(baseURL)/posts/\(postId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 404 {
+                throw NetworkError.badRequest("Post not found")
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+        
+        return try JSONDecoder().decode(Post.self, from: data)
+    }
+    
+    func getAllPostsByUser(userId: String) async throws -> [Post] {
+        let endpoint = "\(baseURL)/users/\(userId)/posts" 
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+        
+        return try JSONDecoder().decode([Post].self, from: data) // Decodes an array of posts
+    }
+
+
     
     
    }
