@@ -315,24 +315,21 @@ class NetworkManager {
         let (data, response) = try await URLSession.shared.data(from: url)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
+            throw NetworkError.invalidResponse // Provide a custom error for invalid responses
         }
-
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.error(from: httpResponse.statusCode)
         }
 
-        // Print the raw JSON response for debugging
         if let rawJSON = String(data: data, encoding: .utf8) {
             print("Raw JSON Response from /getFeed: \(rawJSON)")
         }
 
-        // Decode the array of post IDs
         do {
-            let postIds = try JSONDecoder().decode([String].self, from: data)
+            var postIds = try JSONDecoder().decode([String].self, from: data)
             print("Decoded Post IDs: \(postIds)")
+            postIds = Array(postIds.reversed())
             
-            // Fetch details for each post ID
             let posts = try await withThrowingTaskGroup(of: Post?.self) { group in
                 for postId in postIds {
                     group.addTask {
@@ -348,12 +345,20 @@ class NetworkManager {
                 }
                 return results
             }
-            return posts
+
+            // Ensure posts are ordered by postIds
+            let orderedPosts = postIds.compactMap { postId in
+                posts.first { $0._id == postId }
+            }
+
+            print("Ordered Posts: \(orderedPosts.map { $0.timestamp })")
+            return orderedPosts
         } catch {
-            print("Error decoding post IDs: \(error)")
+            print("Error decoding post IDs or fetching details: \(error)")
             throw NetworkError.decodingError
         }
     }
+
 
 
     // Helper function to fetch a single post by ID
@@ -368,11 +373,13 @@ class NetworkManager {
 
         let (data, response) = try await URLSession.shared.data(from: url)
 
+        // Properly extract the HTTP response
         guard let httpResponse = response as? HTTPURLResponse else {
             print("No HTTP response for post ID: \(postId)")
             throw NetworkError.invalidResponse
         }
 
+        // Validate the HTTP response status
         guard (200...299).contains(httpResponse.statusCode) else {
             print("Failed to fetch details for post ID: \(postId). HTTP Status: \(httpResponse.statusCode)")
             throw NetworkError.error(from: httpResponse.statusCode)
@@ -387,6 +394,7 @@ class NetworkManager {
             throw NetworkError.decodingError
         }
     }
+
       
     func getPostById(postId: String) async throws -> Post {
         let endpoint = "\(baseURL)/posts/\(postId)"

@@ -43,7 +43,7 @@ router.post('/upload/:userId', upload.single('image'), async (req, res) => {
         await s3.send(new PutObjectCommand(uploadParams));
         const newPost = new Post({
             imageUrl: `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${imageKey}`,
-            timestamp: Date.now(),
+            timestamp: new Date(),
             review: req.body.review,
             location: req.body.location,
             restaurantName: req.body.restaurantName,
