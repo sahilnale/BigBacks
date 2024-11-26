@@ -322,6 +322,11 @@ class NetworkManager {
         
         return try JSONDecoder().decode([Post].self, from: data) // Decodes an array of posts
     }
+    
+    
+    
+    
+    
 
 
     

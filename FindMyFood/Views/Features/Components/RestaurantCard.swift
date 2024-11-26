@@ -106,4 +106,8 @@ struct RestaurantCard: View {
     }
 }
 
+#Preview {
+    RestaurantCard()
+}
+
 

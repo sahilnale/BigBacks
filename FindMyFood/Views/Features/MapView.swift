@@ -22,11 +22,17 @@ class CustomPopupView: UIView {
     private let titleLabel = UILabel()
     private let imageView = UIImageView()
     private let reviewerNameLabel = UILabel()
-    private let ratingLabel = UILabel()  // Optional, remove if not used
     private let commentScrollView = UIScrollView()
     private let commentLabel = UILabel()
     private let nameAndStarsStackView = UIStackView()
     private let profileImageView = UIImageView()
+    private let spacerView = UIView()
+    
+    // Heart icon and count label
+    private let heartImageView = UIImageView()
+    private let heartCountLabel = UILabel()
+    
+ 
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -82,19 +88,12 @@ class CustomPopupView: UIView {
         nameAndStarsStackView.addArrangedSubview(profileImageView) // Add profile image to stack view
         
         
-        
         // Reviewer name
         reviewerNameLabel.font = UIFont(name: "Helvetica-Regular", size: 25)
         reviewerNameLabel.textColor = .orange
         reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameAndStarsStackView.addArrangedSubview(reviewerNameLabel)
-        
-        
-        
-        
-
-        
-
+  
         // Create 5 star image views
         for _ in 0..<5 {
 
@@ -108,6 +107,14 @@ class CustomPopupView: UIView {
                 starImageViews.append(starImageView) // Add to the array
                 nameAndStarsStackView.addArrangedSubview(starImageView)
         }
+        
+        // Add a spacer view after the last star
+        
+        spacerView.translatesAutoresizingMaskIntoConstraints = false
+        nameAndStarsStackView.addArrangedSubview(spacerView)
+        spacerView.widthAnchor.constraint(equalToConstant: 50).isActive = true  // Adjust the width for desired spacing
+        
+        
 
         // Function to set the rating (e.g., 3/5 stars)
         func setRating(_ rating: Int) {
@@ -122,6 +129,21 @@ class CustomPopupView: UIView {
 
         // Call setRating with the desired rating, for example, 3/5
         setRating(3)
+        
+        // Heart image view and count label
+       heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.red, renderingMode: .alwaysOriginal)
+       heartImageView.contentMode = .scaleAspectFit
+       heartImageView.translatesAutoresizingMaskIntoConstraints = false
+       heartImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+       heartImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+       
+       heartCountLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
+       heartCountLabel.textColor = .black
+       heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
+       
+       // Add heart image and count label to nameAndStarsStackView
+       nameAndStarsStackView.addArrangedSubview(heartImageView)
+       nameAndStarsStackView.addArrangedSubview(heartCountLabel)
         
         // Comment Scroll View
         commentScrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -154,6 +176,9 @@ class CustomPopupView: UIView {
             
             nameAndStarsStackView.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 19),
             nameAndStarsStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            
+          
+                        
         
             
             commentScrollView.topAnchor.constraint(equalTo: nameAndStarsStackView.bottomAnchor, constant: 8),
@@ -173,8 +198,8 @@ class CustomPopupView: UIView {
         titleLabel.text = title
         imageView.image = image
         reviewerNameLabel.text = reviewerName
-        ratingLabel.text = "Rating: \(rating)"  // Set this only if used
         commentLabel.text = comment
+        heartCountLabel.text = "4.5"
     }
 }
 
