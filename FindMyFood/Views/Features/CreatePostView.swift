@@ -192,23 +192,10 @@ struct CreatePostView: View {
         }
     }
     
-//    private func reverseGeocode(_ location: CLLocation) {
-//        let geocoder = CLGeocoder()
-//        geocoder.reverseGeocodeLocation(location) { placemarks, error in
-//            if let placemark = placemarks?.first {
-//                let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
-//                self.locationDisplay = locationName
-//            } else {
-//                self.locationDisplay = "Location not found"
-//            }
-//        }
-//    }
-    
     private func reverseGeocode(_ location: CLLocation) {
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
             if let placemark = placemarks?.first {
-                // Try to use the `name` property for the place name
                 if let placeName = placemark.name {
                     self.locationDisplay = placeName
                 } else if let locality = placemark.locality {
@@ -298,26 +285,65 @@ struct CreatePostView: View {
             init(_ parent: ImagePicker) {
                 self.parent = parent
             }
-            
+                        
             func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
                 if let image = info[.originalImage] as? UIImage {
                     parent.selectedImage = image
                     
-                    if parent.sourceType == .camera {
-                        // Save the image to the photo library
-                        UIImageWriteToSavedPhotosAlbum(image, self, #selector(saveImageCompletion(_:didFinishSavingWithError:contextInfo:)), nil)
-                    } else if let asset = info[.phAsset] as? PHAsset, let location = asset.location {
-                        print("Location from PHAsset: \(location)")
-                        parent.imageLocation = location
-                        reverseGeocode(location)
+                    // Attempt to retrieve PHAsset directly
+                    if let asset = info[.phAsset] as? PHAsset {
+                        processAsset(asset)
+                    } else if let fileURL = info[.imageURL] as? URL {
+                        // Fallback: Fetch PHAsset from file URL
+                        fetchAssetFromFileURL(fileURL)
                     } else {
-                        print("No location data available.")
+                        print("No PHAsset or file URL found for selected image.")
                         parent.locationDisplay = "Location not found"
                     }
                 }
                 parent.dismiss()
             }
-            
+
+            private func processAsset(_ asset: PHAsset) {
+                if let location = asset.location {
+                    print("Location metadata found: \(location)")
+                    parent.imageLocation = location
+                    reverseGeocode(location)
+                } else {
+                    print("No location metadata in PHAsset.")
+                    parent.locationDisplay = "Location not found"
+                }
+            }
+
+            private func fetchAssetFromFileURL(_ fileURL: URL) {
+                let result = PHAsset.fetchAssets(withALAssetURLs: [fileURL], options: nil)
+                if let asset = result.firstObject {
+                    processAsset(asset)
+                } else {
+                    print("Failed to fetch PHAsset manually.")
+                    parent.locationDisplay = "Location not found"
+                }
+            }
+
+//            @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+//                if let error = error {
+//                    print("Error saving image: \(error)")
+//                    parent.locationDisplay = "Unable to save image."
+//                } else {
+//                    print("Image saved successfully.")
+//                    
+//                    // Fetch the most recently added photo for its PHAsset
+//                    PHPhotoLibrary.shared().performChanges({
+//                        PHAssetChangeRequest.creationRequestForAsset(from: image)
+//                    }) { success, error in
+//                        if success {
+//                            self.fetchLastSavedPhoto()
+//                        } else if let error = error {
+//                            print("Error fetching saved photo: \(error)")
+//                        }
+//                    }
+//                }
+//            }
             @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
                 if let error = error {
                     print("Error saving image: \(error)")
@@ -330,6 +356,7 @@ struct CreatePostView: View {
                         PHAssetChangeRequest.creationRequestForAsset(from: image)
                     }) { success, error in
                         if success {
+                            print("Image saved. Attempting to fetch the last saved photo.")
                             self.fetchLastSavedPhoto()
                         } else if let error = error {
                             print("Error fetching saved photo: \(error)")
@@ -337,22 +364,65 @@ struct CreatePostView: View {
                     }
                 }
             }
+
             
+//            private func fetchLastSavedPhoto() {
+//                let fetchOptions = PHFetchOptions()
+//                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+//                fetchOptions.fetchLimit = 1
+//                
+//                let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+//                if let lastAsset = assets.firstObject, let location = lastAsset.location {
+//                    print("Location from saved photo: \(location)")
+//                    parent.imageLocation = location
+//                    reverseGeocode(location)
+//                } else {
+//                    print("No location metadata found in saved photo.")
+//                    parent.locationDisplay = "Location not found"
+//                }
+//            }
             private func fetchLastSavedPhoto() {
                 let fetchOptions = PHFetchOptions()
                 fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
                 fetchOptions.fetchLimit = 1
                 
                 let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-                if let lastAsset = assets.firstObject, let location = lastAsset.location {
-                    print("Location from saved photo: \(location)")
-                    parent.imageLocation = location
-                    reverseGeocode(location)
+                if let lastAsset = assets.firstObject {
+                    print("Fetched last saved photo: \(lastAsset)")
+                    if let creationDate = lastAsset.creationDate {
+                        print("Last photo creation date: \(creationDate)")
+                    }
+                    if let location = lastAsset.location {
+                        print("Location from saved photo: \(location)")
+                        parent.imageLocation = location
+                        reverseGeocode(location)
+                    } else {
+                        print("No location metadata found in the last saved photo.")
+                        parent.locationDisplay = "Location not found"
+                    }
                 } else {
-                    print("No location metadata found in saved photo.")
-                    parent.locationDisplay = "Location not found"
+                    print("No photo assets found.")
                 }
             }
+
+            
+//            private func reverseGeocode(_ location: CLLocation) {
+//                let geocoder = CLGeocoder()
+//                geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
+//                    guard let self = self else { return }
+//                    if let placemark = placemarks?.first {
+//                        let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+//                        print("Geocoded Location: \(locationName)")
+//                        DispatchQueue.main.async {
+//                            self.parent.locationDisplay = locationName
+//                        }
+//                    } else {
+//                        DispatchQueue.main.async {
+//                            self.parent.locationDisplay = "Location not found"
+//                        }
+//                    }
+//                }
+//            }
             
             private func reverseGeocode(_ location: CLLocation) {
                 let geocoder = CLGeocoder()
@@ -365,13 +435,14 @@ struct CreatePostView: View {
                             self.parent.locationDisplay = locationName
                         }
                     } else {
+                        print("Failed to reverse geocode location: \(location)")
                         DispatchQueue.main.async {
                             self.parent.locationDisplay = "Location not found"
                         }
                     }
                 }
             }
-            
+
             func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
                 parent.dismiss()
             }
