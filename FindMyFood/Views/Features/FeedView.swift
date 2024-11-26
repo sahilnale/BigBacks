@@ -1,35 +1,48 @@
 import SwiftUI
 
+import SwiftUI
+
 struct FeedView: View {
-    @State private var navigateToMain = false
+    @State private var posts: [Post] = [] // The array to hold the fetched posts
+    @State private var isLoading: Bool = true // To track loading state
+    @State private var errorMessage: String? = nil // To track any error
+
     var body: some View {
         NavigationView {
-            List {
-                ForEach(0..<10) { _ in
-                    RestaurantCard()
+            if isLoading {
+                ProgressView("Loading Feed...")
+            } else if let errorMessage = errorMessage {
+                Text("Error: \(errorMessage)")
+                    .foregroundColor(.red)
+            } else {
+                List(posts) { post in
+                    RestaurantCard(post: post) // Use a properly designed `RestaurantCard`
+                }
+                .navigationTitle("Feed")
+            }
+        }
+        .onAppear {
+            loadFeed()
+        }
+    }
+
+    private func loadFeed() {
+        Task {
+            do {
+                let userId = AuthManager.shared.userId ?? "" // Replace with actual user ID
+                let fetchedPosts = try await NetworkManager.shared.userFeed(userId: userId)
+                DispatchQueue.main.async {
+                    self.posts = fetchedPosts.sorted { $0.date ?? Date() > $1.date ?? Date() }
+                    self.isLoading = false
+                }
+            } catch {
+                print("Error fetching feed: \(error)")
+                DispatchQueue.main.async {
+                    self.errorMessage = error.localizedDescription
+                    self.isLoading = false
                 }
             }
-            .navigationTitle("Feed")
-            
         }
-        .navigationBarBackButtonHidden(true)
-//        .toolbar {
-//            ToolbarItem(placement: .navigationBarLeading) {
-//                Button(action: {
-//                    // Action for the back button
-//                    navigateToMain = true
-//                }) {
-//                    HStack {
-//                        Image(systemName: "chevron.backward")
-//                        Text("Back")
-//                    }
-//                    .foregroundColor(.accentColor)
-//                }
-//            }
-//        }
     }
 }
 
-//#Preview {
-//    FeedView()
-//}

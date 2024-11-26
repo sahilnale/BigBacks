@@ -38,29 +38,35 @@
 import SwiftUI
 
 struct RestaurantCard: View {
+    let post: Post
     @State private var isLiked: Bool = false
     @State private var likeCount: Int = 0
     @State private var isExpanded: Bool = false // Tracks if the description is expanded
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image("placeholder")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 300, height: 200)
-                .clipped()
+            // Dynamic image from post.imageUrl
+            AsyncImage(url: URL(string: post.imageUrl)) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 300, height: 200)
+                    .clipped()
+            } placeholder: {
+                Color.gray.frame(width: 300, height: 200)
+            }
             
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Image(systemName: "mappin.and.ellipse")
                             .foregroundColor(.accentColor)
-                        Text("Restaurant Name")
+                        Text(post.restaurantName) // Dynamic restaurant name
                             .font(.headline)
                             .foregroundColor(Color.primary)
                     }
                     
-                    Text("Description of the restaurant or recent review... This text is longer than 2 lines to show that I can expand the box to make it display more text. and the entire review")
+                    Text(post.review) // Dynamic review text
                         .font(.subheadline)
                         .foregroundColor(Color.secondary)
                         .lineLimit(isExpanded ? nil : 2)
@@ -76,7 +82,7 @@ struct RestaurantCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")
                             .foregroundColor(.yellow)
-                        Text("4.5")
+                        Text("\(post.starRating)") // Dynamic star rating
                             .font(.subheadline)
                             .foregroundColor(Color.primary)
                     }
@@ -88,7 +94,7 @@ struct RestaurantCard: View {
                         HStack(spacing: 4) {
                             Image(systemName: isLiked ? "heart.fill" : "heart")
                                 .foregroundColor(isLiked ? .accentColor : .gray)
-                            Text("\(likeCount)")
+                            Text("\(likeCount)") // Dynamic like count
                                 .foregroundColor(Color.primary)
                                 .font(.subheadline)
                         }
@@ -103,7 +109,16 @@ struct RestaurantCard: View {
         .cornerRadius(10)
         .shadow(color: Color.primary.opacity(0.1), radius: 5)
         .padding(.horizontal)
+        .onAppear {
+            // Initialize the like count and status from the post
+            likeCount = post.likes
+            isLiked = post.likedBy.contains(AuthManager.shared.userId ?? "")
+        }
     }
 }
+
+
+
+
 
 
