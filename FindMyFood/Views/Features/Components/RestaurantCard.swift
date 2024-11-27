@@ -37,11 +37,23 @@
 
 import SwiftUI
 
+
+struct Comment: Encodable, Decodable, Identifiable, Hashable {
+    let id: String
+    let commentId: String
+    let userId: String
+    let profilePhotoUrl: String
+    let text: String
+    let timestamp: Date
+}
+
 struct RestaurantCard: View {
-    let post: Post
+    @State var post: Post
     @State private var isLiked: Bool = false
     @State private var likeCount: Int = 0
     @State private var isExpanded: Bool = false // Tracks if the description is expanded
+    @State private var newCommentText: String = ""
+    @State private var showComments: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -61,12 +73,12 @@ struct RestaurantCard: View {
                     HStack {
                         Image(systemName: "mappin.and.ellipse")
                             .foregroundColor(.accentColor)
-                        Text(post.restaurantName) // Dynamic restaurant name
+                        Text(post.restaurantName)
                             .font(.headline)
                             .foregroundColor(Color.primary)
                     }
                     
-                    Text(post.review) // Dynamic review text
+                    Text(post.review)
                         .font(.subheadline)
                         .foregroundColor(Color.secondary)
                         .lineLimit(isExpanded ? nil : 2)
@@ -82,7 +94,7 @@ struct RestaurantCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")
                             .foregroundColor(.yellow)
-                        Text("\(post.starRating)") // Dynamic star rating
+                        Text("\(post.starRating)")
                             .font(.subheadline)
                             .foregroundColor(Color.primary)
                     }
@@ -94,7 +106,7 @@ struct RestaurantCard: View {
                         HStack(spacing: 4) {
                             Image(systemName: isLiked ? "heart.fill" : "heart")
                                 .foregroundColor(isLiked ? .accentColor : .gray)
-                            Text("\(likeCount)") // Dynamic like count
+                            Text("\(likeCount)")
                                 .foregroundColor(Color.primary)
                                 .font(.subheadline)
                         }
@@ -104,6 +116,84 @@ struct RestaurantCard: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
+            
+            Button(action: {
+                            withAnimation {
+                                showComments.toggle()
+                            }
+                        }) {
+                            HStack {
+                                Text("Comments (\(post.comments.count))")
+                                    .font(.subheadline)
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .padding(.leading)
+                        .padding(.bottom)
+                        
+            if showComments {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(post.comments) { comment in
+                        HStack(alignment: .top) {
+                            AsyncImage(url: URL(string: comment.profilePhotoUrl)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 25, height: 25)
+                                    .clipShape(Circle())
+                                    .padding(.leading)
+                            } placeholder: {
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(width: 25, height: 25) //Placeholder for missing profile photo
+                                    .padding(.leading)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(comment.text)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .padding(.vertical, 4)
+                                    .padding(.horizontal)
+                                    .background(Color(UIColor.systemGray6))
+                                    .cornerRadius(8)
+                                
+                                Text("\(timeAgo(from: comment.timestamp))")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    
+                    HStack {
+                        TextField("Add a comment...", text: $newCommentText)
+                            .textFieldStyle(DefaultTextFieldStyle())
+                        
+                        Button(action: {
+                            guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                            //PLACEHOLDER INFORMATION UNTIL INTEGRATION IS DONE
+                            let newComment = Comment(
+                                id: UUID().uuidString,
+                                commentId: UUID().uuidString,
+                                userId: "user123",
+                                profilePhotoUrl: "placeholder",
+                                text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
+                                timestamp: Date()
+                            )
+                            
+                            post.comments.append(newComment)
+                            newCommentText = ""
+                        }) {
+                            Text("Post")
+                                .font(.subheadline)
+                                .foregroundColor(.accentColor)
+                                .padding(.horizontal)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.bottom)
+            }
         }
         .background(Color(UIColor.systemBackground))
         .cornerRadius(10)
@@ -117,8 +207,20 @@ struct RestaurantCard: View {
     }
 }
 
-
-
+func timeAgo(from date: Date) -> String {
+    let calendar = Calendar.current
+    let now = Date()
+    
+    if let daysAgo = calendar.dateComponents([.day], from: date, to: now).day {
+        if daysAgo < 7 {
+            return daysAgo == 1 ? "1 day ago" : "\(daysAgo) days ago"
+        }
+        let weeksAgo = daysAgo / 7
+        return weeksAgo == 1 ? "1 week ago" : "\(weeksAgo) weeks ago"
+    }
+    
+    return "Just now"
+}
 
 
 

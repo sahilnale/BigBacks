@@ -293,7 +293,7 @@ class NetworkManager {
                     likes: postDict["likes"] as? Int ?? 0,
                     likedBy: postDict["likedBy"] as? [String] ?? [],
                     starRating: postDict["starRating"] as? Int ?? 0,
-                    comments: postDict["comments"] as? [String] ?? []
+                    comments: postDict["comments"] as? [Comment] ?? []
                 )
                 
                 print("Manually Parsed Post: \(post)")
@@ -479,10 +479,10 @@ struct Post: Codable, Identifiable {
     let review: String
     let location: String
     let restaurantName: String
-    let likes: Int
-    let likedBy: [String]
+    var likes: Int
+    var likedBy: [String]
     let starRating: Int
-    let comments: [String]
+    var comments: [Comment]
     var date: Date? {
         let formatter = ISO8601DateFormatter()
         return formatter.date(from: timestamp)
