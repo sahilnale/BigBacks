@@ -399,4 +399,115 @@ router.get('/getFeed/:id', async(req, res) => {
     }
 });
 
+router.get('/getPostDetailsFromFeed/:id', async(req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        
+
+        let feed = [];
+
+        const userPosts = await User.findById(user._id).populate({
+            path: 'posts', 
+            populate: [
+                { path: 'likedBy', select: 'name username email' }, 
+                {
+                    path: 'comments.userId',
+                    select: 'name username email',
+                },
+                {
+                    path: 'comments.replies.userId',
+                    select: 'name username email',
+                }, 
+            ],
+        });
+
+        
+        if (userPosts && userPosts.posts) {
+            feed = feed.concat(userPosts.posts);
+        }
+
+        
+        const friendsList = user.friends;
+
+        for (let index = 0; index < friendsList.length; index++) {
+            const friend = await User.findById(friendsList[index]).populate({
+                path: 'posts', 
+                populate: [
+                    { path: 'likedBy', select: 'name username email' },
+                    {
+                        path: 'comments.userId',
+                        select: 'name username email',
+                    }, 
+                    {
+                        path: 'comments.replies.userId',
+                        select: 'name username email',
+                    }, 
+                ],
+            });
+
+            if (friend && friend.posts) {
+                feed = feed.concat(friend.posts); 
+            }
+        }
+
+        
+        const postDetails = feed.map(post => ({
+            postId: post._id,
+            likes: post.likedBy.length, 
+            review: post.review,
+            userId: post.userId,
+            imageUrl: post.imageUrl,
+            restaurantName: post.restaurantName,
+            comments: post.comments,
+        }));
+
+        
+        res.json(postDetails);
+    } catch (error) {
+        console.error('Error fetching post details:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+
+
+
+// //This is for getting all the posts of all user's friends
+// router.get('/:id/friends/posts', async (req, res) => {
+//     try {
+//         // Get the user by ID
+//         const user = await User.findById(req.params.id)
+//             .populate('friends') // Populate the user's friends array
+//             .select('friends'); // Only select the friends field
+
+//         if (!user) {
+//             return res.status(404).json({ message: 'User not found' });
+//         }
+
+//         // Get the friends' posts
+//         const friendsPosts = await Post.find({
+//             userId: { $in: user.friends }, // Match posts where userId is one of the friends' IDs
+//         }).populate('likedBy', 'name username email') // Populate the likedBy field
+//           .populate({
+//             path: 'comments.userId', // Populate userId in comments
+//             model: 'User',
+//             select: 'name username email'
+//           })
+//           .populate({
+//             path: 'comments.replies.userId', // Populate userId in replies
+//             model: 'User',
+//             select: 'name username email'
+//           })
+//           .lean(); 
+
+        
+//         res.status(200).json(friendsPosts);
+//     } catch (error) {
+//         console.error('Error fetching friends posts:', error);
+//         res.status(500).json({ message: error.message });
+//     }
+// });
+
+
 export default router;

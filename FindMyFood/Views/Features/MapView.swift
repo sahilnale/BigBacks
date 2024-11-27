@@ -8,12 +8,18 @@ class ImageAnnotation: NSObject, MKAnnotation {
     var title: String?
     var subtitle: String?
     var image: UIImage?
+    var author: String?
+    var rating: Int?
+    var heartC: Int?
     
-    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, image: UIImage?) {
+    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, image: UIImage?, author: String?, rating: Int?, heartC: Int?) {
         self.coordinate = coordinate
         self.title = title
         self.subtitle = subtitle
         self.image = image
+        self.author = author
+        self.rating = rating
+        self.heartC = heartC
     }
 }
 
@@ -25,6 +31,21 @@ class CustomPopupView: UIView {
     private let ratingLabel = UILabel()  // Optional, remove if not used
     private let commentScrollView = UIScrollView()
     private let commentLabel = UILabel()
+
+    private let nameAndStarsStackView = UIStackView()
+    private let profileImageView = UIImageView()
+    private let spacerView = UIView()
+    
+    // Heart icon and count label
+    private let heartImageView = UIImageView()
+    private let heartCountLabel = UILabel()
+    
+    
+    private var starRating: Int = 0
+    private var heartCount: Int = 0
+    
+ 
+
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -83,8 +104,26 @@ class CustomPopupView: UIView {
         }
 
         // Call setRating with the desired rating, for example, 3/5
-        setRating(3)
+        setRating(starRating)
         
+
+        // Heart image view and count label
+       heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.red, renderingMode: .alwaysOriginal)
+       heartImageView.contentMode = .scaleAspectFit
+       heartImageView.translatesAutoresizingMaskIntoConstraints = false
+       heartImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+       heartImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+       
+        heartCountLabel.text = "\(heartCount)"
+        heartCountLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
+       heartCountLabel.textColor = .black
+       heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
+       
+       // Add heart image and count label to nameAndStarsStackView
+       nameAndStarsStackView.addArrangedSubview(heartImageView)
+       nameAndStarsStackView.addArrangedSubview(heartCountLabel)
+        
+
         // Comment Scroll View
         commentScrollView.translatesAutoresizingMaskIntoConstraints = false
         commentScrollView.showsVerticalScrollIndicator = true
@@ -139,13 +178,27 @@ class CustomPopupView: UIView {
             commentLabel.widthAnchor.constraint(equalTo: commentScrollView.widthAnchor)
         ])
     }
+    
+    
 
-    func setDetails(title: String, image: UIImage?, reviewerName: String, rating: String, comment: String) {
+
+    func setDetails(title: String?, image: UIImage?, reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
+        
+        
         titleLabel.text = title
         imageView.image = image
+
         reviewerNameLabel.text = "Reviewer: \(reviewerName)"
         ratingLabel.text = "Rating: \(rating)"  // Set this only if used
         commentLabel.text = comment
+
+        reviewerNameLabel.text = reviewerName
+        
+        commentLabel.text = comment
+        
+        starRating = star ?? 0
+        heartCount = heart ?? 0
+
     }
 }
 
@@ -191,7 +244,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     private var currentPopupView: CustomPopupView?
     
-    override func viewDidLoad() {
+    override func viewDidLoad()  {
         super.viewDidLoad()
         
         // Set up the map view
@@ -212,7 +265,11 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         map.addGestureRecognizer(tapGesture)
         
         // Add image annotation for San Francisco
-        loadImageAnnotation()
+        
+        
+        Task {
+            await loadImageAnnotation()
+            }
     }
     
     override func viewDidLayoutSubviews() {
@@ -232,19 +289,74 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     }
     
     // Load an image annotation for San Francisco
-    func loadImageAnnotation() {
-        let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194) // San Francisco coordinates
-        guard let imageUrl = URL(string: "https://i.imgur.com/zIoAyCx.png"),
-              let imageData = try? Data(contentsOf: imageUrl),
-              let image = UIImage(data: imageData) else { return }
+    func loadImageAnnotation() async  {
         
-        let annotation = ImageAnnotation(
-            coordinate: annotationCoordinate,
-            title: "San Francisco",
-            subtitle: "Golden Gate City",
-            image: image
-        )
-        map.addAnnotation(annotation)
+        
+            
+        guard
+            let userId = AuthManager.shared.userId
+        else {
+            print("Failed to get user")
+            return
+        }
+        
+//        let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194) // San Francisco coordinates
+        do {
+                // Try to fetch post details with await
+                let posts = try await NetworkManager.shared.fetchPostDetailsFromFeed(userId: userId)
+            
+                var x = 0
+
+                for post in posts {
+                    guard
+                        let imageUrl = URL(string: post.imageUrl),
+                        let imageData = try? Data(contentsOf: imageUrl),
+                        let image = UIImage(data: imageData)
+                    else {
+                        print("Failed to load image for post: \(post.id)")
+                        continue
+                    }
+
+                    // Create annotation coordinate from post (replace with actual lat/lon from post)
+                    let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749 + Double(x), longitude: -122.4194 + Double(x))
+
+                    // Create annotation object
+                    let annotation = ImageAnnotation(
+                        coordinate: annotationCoordinate,
+                        title: post.restaurantName, // or use other field as title
+                        subtitle: post.review,     // replace with proper user display name or other subtitle info
+                        image: image,
+                        author: post.userId,
+                        rating: post.starRating,
+                        heartC: post.likes
+                    )
+
+                    // Add annotation to the map
+                    map.addAnnotation(annotation)
+                    
+                    x += 4
+                }
+            } catch {
+                // Handle the error here
+                print("Error fetching post details: \(error)")
+            }
+        
+        
+        
+            
+            
+            
+//        guard let imageUrl = URL(string: postDetails.imageUrl),
+//              let imageData = try? Data(contentsOf: imageUrl),
+//              let image = UIImage(data: imageData) else { return }
+//        
+//        let annotation = ImageAnnotation(
+//            coordinate: annotationCoordinate,
+//            title: postDetails.title,
+//            subtitle: postDetails.reviewerNameLabel,
+//            image: image
+//        )
+//        map.addAnnotation(annotation)
     }
     
     // CLLocationManagerDelegate methods
@@ -301,13 +413,25 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         popupView.layer.cornerRadius = 10
         popupView.layer.masksToBounds = true
         
+        
+        
+        
         // Populate the popup with annotation details
         popupView.setDetails(
             title: annotation.title ?? "Restaurant Name",
             image: annotation.image,
+
             reviewerName: "Nitin",
             rating: "annotation.rating", // Replace with a real rating if available
             comment: "The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out. The food very much sucks ass and is worse than anything I ever put in my mouth. It is so bad, i just wanna barf it all out.  "
+
+            reviewerName: annotation.author,
+            rating: annotation.rating, // Replace with a real rating if available
+            comment: annotation.subtitle,
+            star: annotation.rating,
+            heart: annotation.heartC
+            
+
         )
         
         // Add the popup to the map
@@ -360,6 +484,6 @@ struct MapView: UIViewControllerRepresentable {
     }
 }
 
-#Preview {
-    MapViewModel()
-}
+//#Preview {
+//    MapViewModel()
+//}
