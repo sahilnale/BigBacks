@@ -237,7 +237,8 @@ class NetworkManager {
         imageUrl: String,
         review: String,
         location: String,
-        restaurantName: String
+        restaurantName: String,
+        starRating: Int
     ) async throws -> Post {
         let endpoint = "\(baseURL)/post/upload/\(userId)"
         guard let url = URL(string: endpoint) else {

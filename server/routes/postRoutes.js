@@ -47,6 +47,7 @@ router.post('/upload/:userId', upload.single('image'), async (req, res) => {
             review: req.body.review,
             location: req.body.location,
             restaurantName: req.body.restaurantName,
+            starRating: req.body.starRating,
             userId: req.params.userId,
         });
 

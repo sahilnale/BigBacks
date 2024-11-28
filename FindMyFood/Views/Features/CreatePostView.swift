@@ -247,7 +247,8 @@ struct CreatePostView: View {
                             imageUrl: imageUrl,
                             review: review,
                             location: location,
-                            restaurantName: restaurant
+                            restaurantName: restaurant,
+                            starRating: rating
                         )
                         print("Post created successfully: \(post)")
                         
