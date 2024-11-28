@@ -399,4 +399,74 @@ router.get('/getFeed/:id', async(req, res) => {
     }
 });
 
+router.get('/getPostDetailsFromFeed/:id', async(req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        
+
+        let feed = [];
+
+        const userPosts = await User.findById(user._id).populate({
+            path: 'posts', 
+            populate: [
+                { path: 'likedBy', select: 'name username email' }, 
+                {
+                    path: 'comments.userId',
+                    select: 'name username email',
+                },
+                {
+                    path: 'comments.replies.userId',
+                    select: 'name username email',
+                }, 
+            ],
+        });
+
+        
+        if (userPosts && userPosts.posts) {
+            feed = feed.concat(userPosts.posts);
+        }
+
+        
+        const friendsList = user.friends;
+
+        for (let index = 0; index < friendsList.length; index++) {
+            const friend = await User.findById(friendsList[index]).populate({
+                path: 'posts', 
+                populate: [
+                    { path: 'likedBy', select: 'name username email' },
+                    {
+                        path: 'comments.userId',
+                        select: 'name username email',
+                    }, 
+                    {
+                        path: 'comments.replies.userId',
+                        select: 'name username email',
+                    }, 
+                ],
+            });
+
+            if (friend && friend.posts) {
+                feed = feed.concat(friend.posts); 
+            }
+        }
+
+        
+        const postDetails = feed.map(post => ({
+            postId: post._id,
+            likes: post.likedBy.length, 
+            review: post.review,
+            userId: post.userId,
+            imageUrl: post.imageUrl,
+            restaurantName: post.restaurantName,
+            comments: post.comments,
+        }));
+
+        
+        res.json(postDetails);
+    } catch (error) {
+        console.error('Error fetching post details:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 export default router;
