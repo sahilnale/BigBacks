@@ -451,18 +451,10 @@ router.get('/getPostDetailsFromFeed/:id', async(req, res) => {
         }
 
         
-        const postDetails = feed.map(post => ({
-            postId: post._id,
-            likes: post.likedBy.length, 
-            review: post.review,
-            userId: post.userId,
-            imageUrl: post.imageUrl,
-            restaurantName: post.restaurantName,
-            comments: post.comments,
-        }));
+        
 
         
-        res.json(postDetails);
+        res.json(feed);
     } catch (error) {
         console.error('Error fetching post details:', error);
         res.status(500).json({ message: error.message });
