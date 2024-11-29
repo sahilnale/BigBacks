@@ -22,7 +22,6 @@ struct CreatePostView: View {
     @State private var locationDisplay: String = "Location not found"
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
-
     
     var body: some View {
         NavigationStack {
