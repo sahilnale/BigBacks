@@ -24,43 +24,74 @@ const upload = multer({ storage: storage });
 
 // Route to upload a post image to S3, create a new post in MongoDB, and add it to the user's posts
 router.post('/upload/:userId', upload.single('image'), async (req, res) => {
-
     try {
-        // Finding the user
+        // Log incoming request details
+        console.log('--- New Request ---');
+        console.log('Headers:', req.headers);
+        console.log('Body:', req.body);
+        console.log('File:', req.file);
+        console.log('User ID:', req.params.userId);
+
+        // Step 1: Validate user existence
         const user = await User.findById(req.params.userId);
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user) {
+            console.error('User not found with ID:', req.params.userId);
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-        // Generate a unique filename for the image using the uuidv4
+        // Step 2: Validate file upload
+        if (!req.file) {
+            console.error('No file uploaded in the request');
+            return res.status(400).json({ message: 'No file uploaded. Ensure the field name is "image".' });
+        }
+
+        // Generate a unique filename for the image
         const imageKey = `posts/${uuidv4()}_${req.file.originalname}`;
+        console.log('Generated Image Key:', imageKey);
 
+        // Step 3: Upload to AWS S3
         const uploadParams = {
             Bucket: process.env.S3_BUCKET_NAME,
             Key: imageKey,
             Body: req.file.buffer,
             ContentType: req.file.mimetype,
         };
-        
-        await s3.send(new PutObjectCommand(uploadParams));
+
+        console.log('Uploading image to S3 with params:', uploadParams);
+        const uploadResponse = await s3.send(new PutObjectCommand(uploadParams));
+        console.log('Image uploaded to S3 successfully:', uploadResponse);
+
+        const imageUrl = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${imageKey}`;
+        console.log('Image URL:', imageUrl);
+
+        // Step 4: Create the post in MongoDB
         const newPost = new Post({
-            imageUrl: `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${imageKey}`,
-            timestamp: new Date(),
-            review: req.body.review,
-            location: req.body.location,
-            restaurantName: req.body.restaurantName,
+            imageUrl,
+            timestamp: Date.now(),
+            review: req.body.review || '',
+            location: req.body.location || '',
+            restaurantName: req.body.restaurantName || '',
             userId: req.params.userId,
+            starRating: req.params.starRating
         });
 
+        console.log('Attempting to save new post:', newPost);
         await newPost.save();
+        console.log('New post saved successfully:', newPost);
 
+        // Step 5: Add post to user's posts array
         user.posts.push(newPost._id);
         await user.save();
+        console.log('Post added to user\'s posts array successfully.');
 
-        res.status(201).json({ message: 'Post created and added to user successfully', post: newPost });
+        // Return success response
+        res.status(201).json({ message: 'Post created successfully', post: newPost });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error uploading image and creating post' });
+        console.error('Error during /upload request processing:', error);
+        res.status(500).json({ message: 'Server error occurred', error: error.message });
     }
 });
+
 
 // Route to retrieve all posts
 router.get('/', async (req, res) => {

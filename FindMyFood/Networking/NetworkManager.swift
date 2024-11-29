@@ -237,7 +237,8 @@ class NetworkManager {
         imageUrl: String,
         review: String,
         location: String,
-        restaurantName: String
+        restaurantName: String,
+        starRating: Int
     ) async throws -> Post {
         let endpoint = "\(baseURL)/post/upload/\(userId)"
         guard let url = URL(string: endpoint) else {
@@ -253,7 +254,8 @@ class NetworkManager {
             "imageUrl": imageUrl,
             "review": review,
             "location": location,
-            "restaurantName": restaurantName
+            "restaurantName": restaurantName,
+            "starRating": starRating
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -326,38 +328,16 @@ class NetworkManager {
         }
 
         do {
-            var postIds = try JSONDecoder().decode([String].self, from: data)
-            print("Decoded Post IDs: \(postIds)")
-            postIds = Array(postIds.reversed())
-            
-            let posts = try await withThrowingTaskGroup(of: Post?.self) { group in
-                for postId in postIds {
-                    group.addTask {
-                        return try? await self.fetchPostDetails(postId: postId)
-                    }
-                }
-
-                var results: [Post] = []
-                for try await result in group {
-                    if let post = result {
-                        results.append(post)
-                    }
-                }
-                return results
-            }
-
-            // Ensure posts are ordered by postIds
-            let orderedPosts = postIds.compactMap { postId in
-                posts.first { $0._id == postId }
-            }
-
-            print("Ordered Posts: \(orderedPosts.map { $0.timestamp })")
-            return orderedPosts
+            // Decode the array of posts directly
+            let posts = try JSONDecoder().decode([Post].self, from: data)
+            print("Decoded Posts: \(posts)")
+            return posts
         } catch {
-            print("Error decoding post IDs or fetching details: \(error)")
+            print("Error decoding posts: \(error)")
             throw NetworkError.decodingError
         }
     }
+
 
 
 
