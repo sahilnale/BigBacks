@@ -232,6 +232,63 @@ class NetworkManager {
                throw error
            }
        }
+    
+    func acceptFriendRequest(userId: String, friendId: String) async throws {
+        let endpoint = "\(baseURL)/user/\(userId)/acceptFriend/\(friendId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+    }
+
+    func rejectFriendRequest(userId: String, friendId: String) async throws {
+        let endpoint = "\(baseURL)/user/\(userId)/rejectFriend/\(friendId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+    }
+
+    func getFriendRequests(userId: String) async throws -> [User] {
+        // First get the current user to access their friend requests
+        let user = try await getCurrentUser(userId: userId)
+        
+        // Then fetch full user details for each friend request ID
+        var requesters: [User] = []
+        for requesterId in user.friendRequests {
+            let requester = try await getUserById(userId: requesterId)
+            requesters.append(requester)
+        }
+        
+        return requesters
+    }
+    
     func addPost(
         userId: String,
         imageUrl: String,
