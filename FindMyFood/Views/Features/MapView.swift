@@ -8,12 +8,18 @@ class ImageAnnotation: NSObject, MKAnnotation {
     var title: String?
     var subtitle: String?
     var image: UIImage?
+    var author: String?
+    var rating: Int?
+    var heartC: Int?
     
-    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, image: UIImage?) {
+    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, image: UIImage?, author: String?, rating: Int?, heartC: Int?) {
         self.coordinate = coordinate
         self.title = title
         self.subtitle = subtitle
         self.image = image
+        self.author = author
+        self.rating = rating
+        self.heartC = heartC
     }
 }
 
@@ -22,8 +28,10 @@ class CustomPopupView: UIView {
     private let titleLabel = UILabel()
     private let imageView = UIImageView()
     private let reviewerNameLabel = UILabel()
+    private let ratingLabel = UILabel()  // Optional, remove if not used
     private let commentScrollView = UIScrollView()
     private let commentLabel = UILabel()
+
     private let nameAndStarsStackView = UIStackView()
     private let profileImageView = UIImageView()
     private let spacerView = UIView()
@@ -32,7 +40,12 @@ class CustomPopupView: UIView {
     private let heartImageView = UIImageView()
     private let heartCountLabel = UILabel()
     
+    
+    private var starRating: Int = 0
+    private var heartCount: Int = 0
+    
  
+
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -48,18 +61,9 @@ class CustomPopupView: UIView {
         layer.borderWidth = 1
         layer.borderColor = UIColor.lightGray.cgColor
         
-        // Create star images (filled and empty)
-        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.orange, renderingMode: .alwaysOriginal)
-        let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
-        
-        // Array to hold star image views
-        var starImageViews: [UIImageView] = []
-        
         // Title label
-        titleLabel.font = UIFont(name: "Helvetica-Bold", size: 30)
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 30)
         titleLabel.textAlignment = .center
-        titleLabel.adjustsFontSizeToFitWidth = true
-        titleLabel.textColor = .orange
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Image view
@@ -68,53 +72,25 @@ class CustomPopupView: UIView {
         imageView.layer.cornerRadius = 8
         imageView.translatesAutoresizingMaskIntoConstraints = false
         
-    
-        
-        // Reviewer name and stars stack view
-        nameAndStarsStackView.axis = .horizontal
-        nameAndStarsStackView.alignment = .center
-        nameAndStarsStackView.spacing = 4
-        nameAndStarsStackView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Profile picture view
-        
-        profileImageView.image = UIImage(systemName: "person.crop.circle")?.withTintColor(.gray, renderingMode: .alwaysOriginal) // Replace with actual profile picture
-        profileImageView.contentMode = .scaleAspectFill
-        profileImageView.layer.cornerRadius = 20 // Make it round
-        profileImageView.clipsToBounds = true
-        profileImageView.translatesAutoresizingMaskIntoConstraints = false
-        profileImageView.heightAnchor.constraint(equalToConstant: 40).isActive = true
-        profileImageView.widthAnchor.constraint(equalToConstant: 40).isActive = true
-        nameAndStarsStackView.addArrangedSubview(profileImageView) // Add profile image to stack view
-        
-        
         // Reviewer name
-        reviewerNameLabel.font = UIFont(name: "Helvetica-Regular", size: 25)
+        reviewerNameLabel.font = UIFont.systemFont(ofSize: 20)
         reviewerNameLabel.textColor = .orange
         reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameAndStarsStackView.addArrangedSubview(reviewerNameLabel)
-  
+        
+        // Create star images (filled and empty)
+        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.yellow, renderingMode: .alwaysOriginal)
+        let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
+
+        // Array to hold star image views
+        var starImageViews: [UIImageView] = []
+
         // Create 5 star image views
         for _ in 0..<5 {
-
             let starImageView = UIImageView()
-                starImageView.contentMode = .scaleAspectFit
-                starImageView.image = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
-                starImageView.translatesAutoresizingMaskIntoConstraints = false
-                starImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
-                starImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
-                
-                starImageViews.append(starImageView) // Add to the array
-                nameAndStarsStackView.addArrangedSubview(starImageView)
+            starImageView.translatesAutoresizingMaskIntoConstraints = false
+            starImageViews.append(starImageView)
+            addSubview(starImageView)
         }
-        
-        // Add a spacer view after the last star
-        
-        spacerView.translatesAutoresizingMaskIntoConstraints = false
-        nameAndStarsStackView.addArrangedSubview(spacerView)
-        spacerView.widthAnchor.constraint(equalToConstant: 50).isActive = true  // Adjust the width for desired spacing
-        
-        
 
         // Function to set the rating (e.g., 3/5 stars)
         func setRating(_ rating: Int) {
@@ -128,8 +104,9 @@ class CustomPopupView: UIView {
         }
 
         // Call setRating with the desired rating, for example, 3/5
-        setRating(3)
+        setRating(starRating)
         
+
         // Heart image view and count label
        heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.red, renderingMode: .alwaysOriginal)
        heartImageView.contentMode = .scaleAspectFit
@@ -137,7 +114,8 @@ class CustomPopupView: UIView {
        heartImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
        heartImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
        
-       heartCountLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
+        heartCountLabel.text = "\(heartCount)"
+        heartCountLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
        heartCountLabel.textColor = .black
        heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
        
@@ -145,12 +123,13 @@ class CustomPopupView: UIView {
        nameAndStarsStackView.addArrangedSubview(heartImageView)
        nameAndStarsStackView.addArrangedSubview(heartCountLabel)
         
+
         // Comment Scroll View
         commentScrollView.translatesAutoresizingMaskIntoConstraints = false
         commentScrollView.showsVerticalScrollIndicator = true
         
         // Comment label
-        commentLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
+        commentLabel.font = UIFont.systemFont(ofSize: 16)
         commentLabel.textColor = .black
         commentLabel.numberOfLines = 0 // Unlimited lines for full text rendering
         commentLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -159,7 +138,7 @@ class CustomPopupView: UIView {
         // Add subviews
         addSubview(titleLabel)
         addSubview(imageView)
-        addSubview(nameAndStarsStackView)
+        addSubview(reviewerNameLabel)
         addSubview(commentScrollView)
         
         // Setup constraints
@@ -170,36 +149,56 @@ class CustomPopupView: UIView {
             
             imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            imageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.8),
-            imageView.heightAnchor.constraint(equalTo: widthAnchor, multiplier: 0.8),
+            imageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
+            imageView.heightAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
             
+            reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
+            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             
-            nameAndStarsStackView.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 19),
-            nameAndStarsStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            starImageViews[0].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[0].leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            starImageViews[1].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[1].leadingAnchor.constraint(equalTo: starImageViews[0].trailingAnchor, constant: 4),
+            starImageViews[2].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[2].leadingAnchor.constraint(equalTo: starImageViews[1].trailingAnchor, constant: 4),
+            starImageViews[3].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[3].leadingAnchor.constraint(equalTo: starImageViews[2].trailingAnchor, constant: 4),
+            starImageViews[4].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starImageViews[4].leadingAnchor.constraint(equalTo: starImageViews[3].trailingAnchor, constant: 4),
             
-          
-                        
-        
-            
-            commentScrollView.topAnchor.constraint(equalTo: nameAndStarsStackView.bottomAnchor, constant: 8),
+            commentScrollView.topAnchor.constraint(equalTo: starImageViews[0].bottomAnchor, constant: 8),
             commentScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             commentScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             commentScrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
             
-            commentLabel.topAnchor.constraint(equalTo: commentScrollView.topAnchor, constant: 10),
+            commentLabel.topAnchor.constraint(equalTo: commentScrollView.topAnchor),
             commentLabel.leadingAnchor.constraint(equalTo: commentScrollView.leadingAnchor),
             commentLabel.trailingAnchor.constraint(equalTo: commentScrollView.trailingAnchor),
             commentLabel.bottomAnchor.constraint(equalTo: commentScrollView.bottomAnchor),
             commentLabel.widthAnchor.constraint(equalTo: commentScrollView.widthAnchor)
         ])
     }
+    
+    
 
-    func setDetails(title: String, image: UIImage?, reviewerName: String, rating: String, comment: String) {
+
+    func setDetails(title: String?, image: UIImage?, reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
+        
+        
         titleLabel.text = title
         imageView.image = image
-        reviewerNameLabel.text = reviewerName
+
+        reviewerNameLabel.text = "Reviewer: \(reviewerName)"
+        ratingLabel.text = "Rating: \(rating)"  // Set this only if used
         commentLabel.text = comment
-        heartCountLabel.text = "4.5"
+
+        reviewerNameLabel.text = reviewerName
+        
+        commentLabel.text = comment
+        
+        starRating = star ?? 0
+        heartCount = heart ?? 0
+
     }
 }
 
@@ -266,7 +265,9 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         map.addGestureRecognizer(tapGesture)
         
         // Add image annotation for San Francisco
-        loadImageAnnotation()
+        Task {
+                    await loadImageAnnotation()
+                    }
     }
     
     override func viewDidLayoutSubviews() {
@@ -286,19 +287,60 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     }
     
     // Load an image annotation for San Francisco
-    func loadImageAnnotation() {
-        let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194) // San Francisco coordinates
-        guard let imageUrl = URL(string: "https://i.imgur.com/zIoAyCx.png"),
-              let imageData = try? Data(contentsOf: imageUrl),
-              let image = UIImage(data: imageData) else { return }
-        
-        let annotation = ImageAnnotation(
-            coordinate: annotationCoordinate,
-            title: "San Francisco",
-            subtitle: "Golden Gate City",
-            image: image
-        )
-        map.addAnnotation(annotation)
+    func loadImageAnnotation() async {
+        guard
+                    let userId = AuthManager.shared.userId
+                else {
+                    print("Failed to get user")
+                    return
+                }
+                
+        //        let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194) // San Francisco coordinates
+                do {
+                        // Try to fetch post details with await
+                        let posts = try await NetworkManager.shared.fetchPostDetailsFromFeed(userId: userId)
+                    
+                        var x = 0
+
+                        for post in posts {
+                            guard
+                                
+                                
+                                
+                                
+                                
+                                let imageUrl = URL(string: post.imageUrl),
+                                
+                                let imageData = try? Data(contentsOf: imageUrl),
+                                let image = UIImage(data: imageData)
+                            else {
+                                print("Failed to load image for post: \(post.id)")
+                                continue
+                            }
+
+                            // Create annotation coordinate from post (replace with actual lat/lon from post)
+                            let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749 + Double(x), longitude: -122.4194 + Double(x))
+
+                            // Create annotation object
+                            let annotation = ImageAnnotation(
+                                coordinate: annotationCoordinate,
+                                title: post.restaurantName, // or use other field as title
+                                subtitle: post.review,     // replace with proper user display name or other subtitle info
+                                image: image,
+                                author: post.userId,
+                                rating: post.starRating,
+                                heartC: post.likes
+                            )
+
+                            // Add annotation to the map
+                            map.addAnnotation(annotation)
+                            
+                            x += 4
+                        }
+                    } catch {
+                        // Handle the error here
+                        print("Error fetching post details: \(error)")
+                    }
     }
     
     // CLLocationManagerDelegate methods
@@ -357,12 +399,18 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         // Populate the popup with annotation details
         popupView.setDetails(
-            title: annotation.title ?? "Restaurant Name",
-            image: annotation.image,
-            reviewerName: "Nitin",
-            rating: "annotation.rating", // Replace with a real rating if available
-            comment: "The food very much sucks ass"
-        )
+                    title: annotation.title ?? "Restaurant Name",
+                    image: annotation.image,
+
+
+                    reviewerName: annotation.author,
+                    rating: annotation.rating, // Replace with a real rating if available
+                    comment: annotation.subtitle,
+                    star: annotation.rating,
+                    heart: annotation.heartC
+                    
+
+                )
         
         // Add the popup to the map
         map.addSubview(popupView)
@@ -414,6 +462,6 @@ struct MapView: UIViewControllerRepresentable {
     }
 }
 
-#Preview {
-    MapViewModel()
-}
+//#Preview {
+//    MapViewModel()
+//}
