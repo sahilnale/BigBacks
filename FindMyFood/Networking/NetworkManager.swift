@@ -3,6 +3,7 @@ import Foundation
 class NetworkManager {
     static let shared = NetworkManager()
     private let baseURL = "https://api.bigbacksapp.com/api/v1"
+//    private let baseURL = "http://localhost.8080/api/v1"
     
     private var idNumber: String? {
         get {
@@ -418,6 +419,38 @@ class NetworkManager {
         return try JSONDecoder().decode(Post.self, from: data)
     }
     
+    func fetchPostDetailsFromFeed(userId: String) async throws -> [Post] {
+            let endpoint = "\(baseURL)/user/getPostDetailsFromFeed/\(userId)"
+            guard let url = URL(string: endpoint) else {
+                throw NetworkError.invalidURL
+            }
+
+            print("Fetching post details from feed for user ID: \(userId)")
+            print("Fetching from URL: \(url)")
+
+            let (data, response) = try await URLSession.shared.data(from: url)
+         
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+        
+                throw NetworkError.invalidResponse
+            }
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                
+                throw NetworkError.error(from: httpResponse.statusCode)
+            }
+
+            do {
+                // Decode the response into an array of Post objects
+                let posts = try JSONDecoder().decode([Post].self, from: data)
+                print("Successfully fetched post details: \(posts)")
+                return posts
+            } catch {
+                throw NetworkError.decodingError
+            }
+        }
+    
 
     //THIS DOESNT WORK DO NOT USE
 //    func getAllPostsByUser(userId: String) async throws -> [Post] {
@@ -488,3 +521,6 @@ struct Post: Codable, Identifiable {
         return formatter.date(from: timestamp)
     }
 }
+
+
+
