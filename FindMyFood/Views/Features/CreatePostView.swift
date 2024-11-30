@@ -22,7 +22,6 @@ struct CreatePostView: View {
     @State private var locationDisplay: String = "Location not found"
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
-
     
     var body: some View {
         NavigationStack {
@@ -227,45 +226,77 @@ struct CreatePostView: View {
             return
         }
 
-        // Upload the image and then create the post
-        ImageUploader.uploadImage(image: image) { result in
-            switch result {
-            case .success(let imageUrl):
-                print("Image uploaded successfully. URL: \(imageUrl)")
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            print("Failed to convert image to JPEG.")
+            return
+        }
 
-                // Make the API call to create the post
-                Task {
-                    do {
-                        let userId = AuthManager.shared.userId
-                        print(userId ?? "fail")// Replace with the actual user ID
-                        let review = reviewText.isEmpty ? postText : reviewText
-                        let location = locationDisplay
-                        let restaurant = restaurantName
-                        
-                        let post = try await NetworkManager.shared.addPost(
-                            userId: userId ?? "",
-                            imageUrl: imageUrl,
-                            review: review,
-                            location: location,
-                            restaurantName: restaurant
-                        )
-                        print("Post created successfully: \(post)")
-                        
-                        // Reset the UI and navigate to the feed
-                        dismiss()
-                        selectedTab = 1 // Switch to Feed tab
-                        
-                        
-                        print(userId ?? "fail")
-                    } catch {
-                        print("Error creating post: \(error.localizedDescription)")
+        // Create the FormData payload
+        let boundary = UUID().uuidString
+        var body = Data()
+        let lineBreak = "\r\n"
+
+        // Add the file
+        body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        body.append(imageData)
+        body.append(lineBreak.data(using: .utf8)!)
+
+        // Add the other fields
+        let fields: [String: String] = [
+            "review": reviewText.isEmpty ? postText : reviewText,
+            "location": locationDisplay,
+            "restaurantName": restaurantName,
+            "starRating": "\(rating)" // Convert Int to String
+        ]
+
+        for (key, value) in fields {
+            body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+            body.append("\(value)\(lineBreak)".data(using: .utf8)!)
+        }
+
+        body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
+
+        // Prepare the request
+        guard let url = URL(string: "https://api.bigbacksapp.com/api/v1/post/upload/\(AuthManager.shared.userId ?? "")") else {
+            print("Invalid URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+
+        // Send the request
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Error creating post: \(error.localizedDescription)")
+                return
+            }
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("HTTP Status Code: \(httpResponse.statusCode)")
+            }
+
+            if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                print("Response: \(responseString)")
+                if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
+                    DispatchQueue.main.async {
+                        self.dismiss()
+                        self.selectedTab = 1 // Switch to Feed tab
                     }
                 }
-            case .failure(let error):
-                print("Failed to upload image: \(error.localizedDescription)")
             }
         }
+
+        task.resume()
     }
+
+
+
 
 
     

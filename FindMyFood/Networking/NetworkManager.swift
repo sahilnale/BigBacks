@@ -233,12 +233,70 @@ class NetworkManager {
                throw error
            }
        }
+    
+    func acceptFriendRequest(userId: String, friendId: String) async throws {
+        let endpoint = "\(baseURL)/user/\(userId)/acceptFriend/\(friendId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+    }
+
+    func rejectFriendRequest(userId: String, friendId: String) async throws {
+        let endpoint = "\(baseURL)/user/\(userId)/rejectFriend/\(friendId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+    }
+
+    func getFriendRequests(userId: String) async throws -> [User] {
+        // First get the current user to access their friend requests
+        let user = try await getCurrentUser(userId: userId)
+        
+        // Then fetch full user details for each friend request ID
+        var requesters: [User] = []
+        for requesterId in user.friendRequests {
+            let requester = try await getUserById(userId: requesterId)
+            requesters.append(requester)
+        }
+        
+        return requesters
+    }
+    
     func addPost(
         userId: String,
         imageUrl: String,
         review: String,
         location: String,
-        restaurantName: String
+        restaurantName: String,
+        starRating: Int
     ) async throws -> Post {
         let endpoint = "\(baseURL)/post/upload/\(userId)"
         guard let url = URL(string: endpoint) else {
@@ -254,7 +312,8 @@ class NetworkManager {
             "imageUrl": imageUrl,
             "review": review,
             "location": location,
-            "restaurantName": restaurantName
+            "restaurantName": restaurantName,
+            "starRating": starRating
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -327,38 +386,16 @@ class NetworkManager {
         }
 
         do {
-            var postIds = try JSONDecoder().decode([String].self, from: data)
-            print("Decoded Post IDs: \(postIds)")
-            postIds = Array(postIds.reversed())
-            
-            let posts = try await withThrowingTaskGroup(of: Post?.self) { group in
-                for postId in postIds {
-                    group.addTask {
-                        return try? await self.fetchPostDetails(postId: postId)
-                    }
-                }
-
-                var results: [Post] = []
-                for try await result in group {
-                    if let post = result {
-                        results.append(post)
-                    }
-                }
-                return results
-            }
-
-            // Ensure posts are ordered by postIds
-            let orderedPosts = postIds.compactMap { postId in
-                posts.first { $0._id == postId }
-            }
-
-            print("Ordered Posts: \(orderedPosts.map { $0.timestamp })")
-            return orderedPosts
+            // Decode the array of posts directly
+            let posts = try JSONDecoder().decode([Post].self, from: data)
+            print("Decoded Posts: \(posts)")
+            return posts
         } catch {
-            print("Error decoding post IDs or fetching details: \(error)")
+            print("Error decoding posts: \(error)")
             throw NetworkError.decodingError
         }
     }
+
 
 
 

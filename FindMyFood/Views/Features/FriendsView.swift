@@ -376,52 +376,129 @@ struct FriendsView: View {
 
 struct FriendRequestView: View {
     @Environment(\.dismiss) var dismiss
+    @State private var friendRequests: [User] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
     
     var body: some View {
-        VStack {
-            List {
-                ForEach(0..<3) { _ in
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.blue)
-                        
-                        VStack(alignment: .leading) {
-                            Text("Request Name")
-                                .font(.headline)
-                            Text("@username")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 15) {
-                            Button(action: {
-                                // Will implement accept later
-                            }) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                                    .font(.system(size: 25))
-                            }
-                            
-                            Button(action: {
-                                // Will implement reject later
-                            }) {
-                                Image(systemName: "x.circle.fill")
-                                    .foregroundColor(.red)
-                                    .font(.system(size: 25))
-                            }
-                        }
+        Group {
+            if isLoading {
+                ProgressView()
+            } else if friendRequests.isEmpty {
+                Text("No friend requests")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                List {
+                    ForEach(friendRequests) { requester in
+                        FriendRequestRow(
+                            requester: requester,
+                            onAccept: { acceptRequest(from: requester) },
+                            onReject: { rejectRequest(from: requester) }
+                        )
                     }
-                    .padding(.vertical, 4)
                 }
             }
         }
         .navigationTitle("Friend Requests")
-        .navigationBarItems(trailing: Button("Done") {
-            dismiss()
-        })
+        .navigationBarItems(trailing: Button("Done") { dismiss() })
+        .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+        .task {
+            await loadFriendRequests()
+        }
+    }
+    
+    private func loadFriendRequests() async {
+        guard let currentUserId = AuthManager.shared.userId else {
+            errorMessage = "Not logged in"
+            isLoading = false
+            return
+        }
+        
+        do {
+            friendRequests = try await NetworkManager.shared.getFriendRequests(userId: currentUserId)
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+    
+    private func acceptRequest(from user: User) {
+        guard let currentUserId = AuthManager.shared.userId else {
+            errorMessage = "Not logged in"
+            return
+        }
+        
+        Task {
+            do {
+                try await NetworkManager.shared.acceptFriendRequest(userId: currentUserId, friendId: user.id)
+                // Remove the accepted request from the list
+                friendRequests.removeAll { $0.id == user.id }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+    
+    private func rejectRequest(from user: User) {
+        guard let currentUserId = AuthManager.shared.userId else {
+            errorMessage = "Not logged in"
+            return
+        }
+        
+        Task {
+            do {
+                try await NetworkManager.shared.rejectFriendRequest(userId: currentUserId, friendId: user.id)
+                // Remove the rejected request from the list
+                friendRequests.removeAll { $0.id == user.id }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+}
+
+struct FriendRequestRow: View {
+    let requester: User
+    let onAccept: () -> Void
+    let onReject: () -> Void
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.blue)
+            
+            VStack(alignment: .leading) {
+                Text(requester.name)
+                    .font(.headline)
+                Text("@\(requester.username)")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 15) {
+                Button(action: onAccept) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.system(size: 25))
+                }
+                
+                Button(action: onReject) {
+                    Image(systemName: "x.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.system(size: 25))
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
