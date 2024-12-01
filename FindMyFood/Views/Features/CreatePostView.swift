@@ -20,13 +20,16 @@ struct CreatePostView: View {
     @State private var navigateToFeed = false
     @State private var navigateToMain = false
     @State private var locationDisplay: String = "Location not found"
+    @State private var isUploading = false
+    @State private var uploadStatus: String = ""
+
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                // Image Preview or Tappable Placeholder
+                // Image Preview or Placeholder
                 if let image = selectedImage {
                     Image(uiImage: image)
                         .resizable()
@@ -52,7 +55,7 @@ struct CreatePostView: View {
                         }
                         .padding()
                 }
-                
+
                 // Star Rating
                 HStack {
                     ForEach(1...5, id: \.self) { index in
@@ -64,27 +67,24 @@ struct CreatePostView: View {
                             }
                     }
                 }
-                
+
                 // Location Display
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
                         .foregroundColor(.accentColor)
                         .font(.system(size: 16, weight: .semibold))
-                    
+
                     Text(locationDisplay)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(Color.primary)
                 }
-                .frame(alignment: .center)
-                
-                // Manually Change Location
+
                 Button(action: {
                     showRestaurantPicker = true
                 }) {
                     Text("Change Location")
                         .foregroundColor(.blue)
                         .font(.system(size: 16, weight: .semibold))
-                        .frame(alignment: .center)
                 }
                 .sheet(isPresented: $showRestaurantPicker) {
                     NearbyRestaurantPicker(
@@ -96,9 +96,8 @@ struct CreatePostView: View {
                         }
                     )
                 }
-                
+
                 ZStack(alignment: .topLeading) {
-                    // Placeholder
                     if postText.isEmpty {
                         Text("Write your review here...")
                             .foregroundColor(.gray)
@@ -106,8 +105,7 @@ struct CreatePostView: View {
                             .padding(.vertical, 12)
                             .allowsHitTesting(false)
                     }
-                    
-                    // TextEditor
+
                     TextEditor(text: $postText)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
@@ -119,41 +117,27 @@ struct CreatePostView: View {
                         .frame(maxWidth: UIScreen.main.bounds.width - 32, maxHeight: 200)
                         .scrollContentBackground(.hidden)
                 }
-                
+
                 Spacer()
             }
             .toolbar {
-                //ToolbarItem(placement: .navigationBarLeading) {
-//                    Button(action: {
-//                        navigateToMain = true
-//                    }) {
-//                        HStack {
-//                            Image(systemName: "chevron.backward")
-//                            Text("Back")
-//                        }
-//                        .foregroundColor(.accentColor)
-//                    }
                 ToolbarItem(placement: .navigationBarLeading) {
-                                Button(action: {
-                                    dismiss()
-                                }) {
-                                    HStack {
-                                        Image(systemName: "chevron.backward")
-                                        Text("Back")
-                                    }
-                                    .foregroundColor(.accentColor)
-                                }
+                    Button(action: { dismiss() }) {
+                        HStack {
+                            Image(systemName: "chevron.backward")
+                            Text("Back")
+                        }
+                        .foregroundColor(.accentColor)
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                   Button(action: {
-                       postReview()
-                   }) {
-                       Text("Post")
-                           .font(.headline)
-                           .foregroundColor(postText.isEmpty || selectedImage == nil ? .gray : .accentColor)
-                   }
-                   .disabled(postText.isEmpty || selectedImage == nil)
-               }
+                    Button(action: { postReview() }) {
+                        Text("Post")
+                            .font(.headline)
+                            .foregroundColor(postText.isEmpty || selectedImage == nil ? .gray : .accentColor)
+                    }
+                    .disabled(postText.isEmpty || selectedImage == nil)
+                }
             }
             .confirmationDialog("Choose Image Source", isPresented: $showPhotoOptions) {
                 Button("Take a Photo") {
@@ -168,31 +152,11 @@ struct CreatePostView: View {
                 Button("Cancel", role: .cancel) {}
             }
             .sheet(isPresented: $showImagePicker) {
-                ImagePicker(
-                    sourceType: sourceType,
-                    selectedImage: $selectedImage,
-                    imageLocation: $imageLocation,
-                    locationDisplay: $locationDisplay
-                )
-            }
-            .navigationDestination(isPresented: $navigateToFeed) {
-                if let userId = AuthManager.shared.userId {
-                    FeedView()
-                        .tabItem {
-                            Label("Feed", systemImage: "list.bullet")
-                        }.tag(1)
-                } else {
-                    Text("Please log in to view your feed.")
-                        .tabItem {
-                            Label("Feed", systemImage: "list.bullet")
-                        }.tag(1)
-                }
-
+                ImagePicker(sourceType: sourceType, selectedImage: $selectedImage, imageLocation: $imageLocation, locationDisplay: $locationDisplay)
             }
         }
-        .navigationBarBackButtonHidden(true)
     }
-    
+
     private func fetchUserLocation() {
         LocationManager.shared.startUpdatingLocation { location in
             DispatchQueue.main.async {
@@ -201,20 +165,14 @@ struct CreatePostView: View {
             }
         }
     }
-    
+
     private func reverseGeocode(_ location: CLLocation) {
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
             if let placemark = placemarks?.first {
-                if let placeName = placemark.name {
-                    self.locationDisplay = placeName
-                } else if let locality = placemark.locality {
-                    self.locationDisplay = locality
-                } else {
-                    self.locationDisplay = "Location not found"
-                }
+                locationDisplay = placemark.name ?? placemark.locality ?? "Location not found"
             } else {
-                self.locationDisplay = "Location not found"
+                locationDisplay = "Location not found"
             }
         }
     }
@@ -226,29 +184,35 @@ struct CreatePostView: View {
             return
         }
 
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            print("Failed to convert image to JPEG.")
-            return
+        isUploading = true
+        ImageUploader.uploadImage(image: image) { result in
+            DispatchQueue.main.async {
+                self.isUploading = false
+            }
+            switch result {
+            case .success(let imageURL):
+                // Continue with posting the review
+                self.postDataToServer(imageURL: imageURL)
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    print("Image upload failed: \(error.localizedDescription)")
+                }
+            }
         }
+    }
 
-        // Create the FormData payload
+    private func postDataToServer(imageURL: String) {
         let boundary = UUID().uuidString
         var body = Data()
         let lineBreak = "\r\n"
 
-        // Add the file
-        body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-        body.append(imageData)
-        body.append(lineBreak.data(using: .utf8)!)
-
-        // Add the other fields
+        // Add fields
         let fields: [String: String] = [
             "review": reviewText.isEmpty ? postText : reviewText,
             "location": locationDisplay,
             "restaurantName": restaurantName,
-            "starRating": "\(rating)" // Convert Int to String
+            "starRating": "\(rating)",
+            "imageURL": imageURL
         ]
 
         for (key, value) in fields {
@@ -259,7 +223,6 @@ struct CreatePostView: View {
 
         body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
 
-        // Prepare the request
         guard let url = URL(string: "https://api.bigbacksapp.com/api/v1/post/upload/\(AuthManager.shared.userId ?? "")") else {
             print("Invalid URL")
             return
@@ -270,10 +233,10 @@ struct CreatePostView: View {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
 
-        // Send the request
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        // Perform request asynchronously
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("Error creating post: \(error.localizedDescription)")
+                print("Error posting data: \(error.localizedDescription)")
                 return
             }
 
@@ -283,22 +246,13 @@ struct CreatePostView: View {
 
             if let data = data, let responseString = String(data: data, encoding: .utf8) {
                 print("Response: \(responseString)")
-                if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
-                    DispatchQueue.main.async {
-                        self.dismiss()
-                        self.selectedTab = 1 // Switch to Feed tab
-                    }
+                DispatchQueue.main.async {
+                    self.dismiss()
+                    self.selectedTab = 1 // Switch to Feed tab
                 }
             }
-        }
-
-        task.resume()
+        }.resume()
     }
-
-
-
-
-
     
     // IMAGE PICKER
     struct ImagePicker: UIViewControllerRepresentable {
