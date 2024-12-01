@@ -488,6 +488,25 @@ class NetworkManager {
             }
         }
     
+    func deletePost(postId: String) async throws {
+            let endpoint = "\(baseURL)/post/\(postId)"
+            guard let url = URL(string: endpoint) else {
+                throw NetworkError.invalidURL
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NetworkError.invalidResponse
+            }
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw NetworkError.error(from: httpResponse.statusCode)
+            }
+        }
 
     //THIS DOESNT WORK DO NOT USE
 //    func getAllPostsByUser(userId: String) async throws -> [Post] {
