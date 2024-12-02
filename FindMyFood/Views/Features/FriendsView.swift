@@ -356,11 +356,11 @@ struct FriendsView: View {
                 }
             }
             .onAppear {
-                            // Wrap async function call in a Task to support concurrency
-                            Task {
-                                await viewModel.loadFriends(for: currentUserId) // Fetch friends when the view appears
-                            }
-                        }
+                // Wrap async function call in a Task to support concurrency
+                Task {
+                    await viewModel.loadFriends(for: currentUserId) // Fetch friends when the view appears
+                }
+            }
             .navigationTitle("Friends")
             .navigationBarItems(trailing: Button("Add") {
                 showingAddFriend = true
@@ -368,7 +368,10 @@ struct FriendsView: View {
         }
         .sheet(isPresented: $showingAddFriend) {
             NavigationView {
-                AddFriendView(currentUserId: currentUserId)
+                AddFriendView(
+                    currentUserId: currentUserId,
+                    friends: viewModel.friends.map { $0.id } // Extract friend IDs
+                )
             }
         }
     }
@@ -502,7 +505,7 @@ struct FriendRequestRow: View {
     }
 }
 
-// New AddFriendView
+//Add friend view
 struct AddFriendView: View {
     @Environment(\.dismiss) var dismiss
     @State private var searchText = ""
@@ -510,6 +513,7 @@ struct AddFriendView: View {
     @State private var searchResults: [User] = []
     @State private var errorMessage: String?
     let currentUserId: String
+    let friends: [String] // Pass the list of friend IDs
     
     var body: some View {
         VStack {
@@ -521,6 +525,7 @@ struct AddFriendView: View {
                 searchResults: searchResults,
                 searchText: searchText,
                 currentUserId: currentUserId,
+                friends: friends,
                 errorMessage: $errorMessage
             )
         }
@@ -531,7 +536,6 @@ struct AddFriendView: View {
         }
         .navigationTitle("Add Friends")
         .navigationBarItems(trailing: Button("Done") { dismiss() })
-       // .onChange(of: searchText) { performSearch($0) }
     }
     
     private func performSearch(_ query: String) {
@@ -539,12 +543,9 @@ struct AddFriendView: View {
             if !query.isEmpty {
                 isSearching = true
                 do {
-                    print("Searching for user with query: \(query)")
                     let results = try await NetworkManager.shared.searchUsers(query: query)
-                    print("Search results: \(results)")
                     searchResults = results
                 } catch {
-                    print("Search error: \(error)")
                     errorMessage = error.localizedDescription
                 }
                 isSearching = false
@@ -589,6 +590,7 @@ private struct SearchResultsListView: View {
     let searchResults: [User]
     let searchText: String
     let currentUserId: String
+    let friends: [String] // Pass friends list here
     @Binding var errorMessage: String?
     
     var body: some View {
@@ -599,13 +601,19 @@ private struct SearchResultsListView: View {
                 EmptyResultsView()
             } else {
                 ForEach(searchResults) { user in
-                    UserRowView(user: user, currentUserId: currentUserId, errorMessage: $errorMessage)
+                    UserRowView(
+                        user: user,
+                        currentUserId: currentUserId,
+                        errorMessage: $errorMessage,
+                        isAlreadyFriend: friends.contains(user.id) // Check if user is a friend
+                    )
                 }
             }
         }
         .listStyle(PlainListStyle())
     }
 }
+
 
 private struct SearchLoadingView: View {
     var body: some View {
@@ -634,6 +642,7 @@ private struct UserRowView: View {
     let user: User
     let currentUserId: String
     @Binding var errorMessage: String?
+    let isAlreadyFriend: Bool // Check if the user is already a friend
     
     var body: some View {
         HStack {
@@ -650,17 +659,20 @@ private struct UserRowView: View {
             }
             
             Spacer()
-        
-            AddFriendButton(
-                user: user,
-                currentUserId: currentUserId,
-                isRequestPending: user.pendingRequests.contains(currentUserId),
-                errorMessage: $errorMessage
-            )
+            
+            if !isAlreadyFriend {
+                AddFriendButton(
+                    user: user,
+                    currentUserId: currentUserId,
+                    isRequestPending: user.pendingRequests.contains(currentUserId),
+                    errorMessage: $errorMessage
+                )
+            }
         }
         .padding(.vertical, 4)
     }
 }
+
 
 private struct AddFriendButton: View {
     let user: User

@@ -12,6 +12,7 @@ class ProfileViewModel: ObservableObject {
     @Published var username: String = "Loading..."
     @Published var errorMessage: String? = nil
     @Published var posts: [Post] = []
+    @Published var friendsCount: Int = 0
     @Published var isLoading: Bool = false
     
         func loadProfile() async {
@@ -30,7 +31,8 @@ class ProfileViewModel: ObservableObject {
                 DispatchQueue.main.async {
                     self.name = user.name
                     self.username = user.username
-                    self.posts = user.posts 
+                    self.posts = user.posts
+                    self.friendsCount = user.friends.count
                     self.isLoading = false
                 }
             } catch {

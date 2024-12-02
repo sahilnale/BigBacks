@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct ProfileView: View {
@@ -15,45 +14,93 @@ struct ProfileView: View {
         NavigationView {
             ScrollView {
                 VStack {
-                    ProfileHeaderView(
-                        name: viewModel.name,
-                        username: viewModel.username,
-                        errorMessage: viewModel.errorMessage
-                    )
-                    .padding()
-
+                    // Profile Header
+                    VStack(spacing: 16) {
+                        // Name and Username Section
+                        VStack(spacing: 4) {
+                            Text(viewModel.name)
+                                .font(.custom("Lobster-Regular", size: 28)) // Creative, bold, and eye-catching
+                                .foregroundColor(.primary)
+                            
+                            Text("@\(viewModel.username)")
+                                .font(.custom("Lobster-Regular", size: 18)) // Stylish and complementary
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.top)
+                        
+                        // Profile Image
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .foregroundColor(Color.accentColor)
+                            .padding(.bottom, 8)
+                        
+                        // Posts and Friends Count
+                        HStack(spacing: 32) {
+                            VStack {
+                                Text("\(viewModel.posts.count)")
+                                    .font(.custom("Lobster-Regular", size: 20)) // Consistent and stylish
+                                    .foregroundColor(.primary)
+                                Text("Posts")
+                                    .font(.system(size: 14, weight: .regular)) // Keep labels clean for balance
+                                    .foregroundColor(.gray)
+                            }
+                            
+                            VStack {
+                                Text("\(viewModel.friendsCount)")
+                                    .font(.custom("Lobster-Regular", size: 20)) // Consistent and stylish
+                                    .foregroundColor(.primary)
+                                Text("Friends")
+                                    .font(.system(size: 14, weight: .regular)) // Keep labels clean for balance
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Divider()
+                        .padding(.vertical, 16)
+                    
+                    // Posts Section
                     if viewModel.isLoading {
                         ProgressView("Loading posts...")
                             .padding()
                     } else if viewModel.posts.isEmpty {
                         Text("No posts yet.")
+                            .font(.custom("Lobster-Regular", size: 16))
                             .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .center)
                             .padding()
                     } else {
                         PostGridView(posts: viewModel.posts, columns: columns)
                             .padding(.horizontal)
                     }
-
+                    
+                    // Logout Button
                     LogoutButton {
                         authViewModel.logout()
                     }
                 }
-                .navigationTitle("Profile")
-                .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 20))
-                })
             }
+            .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 20))
+            })
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
-                    //await viewModel.loadProfilePosts()
                 }
-                
             }
         }
     }
 }
+
+
+
+
+
 
 // MARK: - Profile Header
 struct ProfileHeaderView: View {
@@ -140,6 +187,11 @@ struct LogoutButton: View {
 // MARK: - Post Detail View
 struct PostDetailView: View {
     var post: Post // Pass the entire `Post` object
+    @Environment(\.dismiss) var dismiss
+    @State private var isDeleting = false
+    @State private var showAlert = false
+    @State private var errorMessage: String?
+
     
     var body: some View {
         ScrollView {
@@ -217,14 +269,53 @@ struct PostDetailView: View {
                         .font(.body)
                         .foregroundColor(.gray)
                 }
+                HStack {
+                   Spacer()
+                   Button(action: {
+                       showAlert = true
+                   }) {
+                       Text("Delete Post")
+                           .foregroundColor(.accentColor)
+                   }
+                   Spacer()
+               }
+               .padding()
+           }
+           .padding()
+       }
+       .navigationTitle("Post Details")
+       .navigationBarTitleDisplayMode(.inline)
+       .alert("Delete Post", isPresented: $showAlert) {
+           Button("Cancel", role: .cancel) {}
+           Button("Delete", role: .destructive) {
+               Task {
+                   await deletePost()
+               }
+           }
+       } message: {
+           Text("Are you sure you want to delete this post? This action cannot be undone.")
+       }
+   }
+
+    
+private func deletePost() async {
+        print("Starting deletePost function")
+        isDeleting = true
+        do {
+            print("Attempting to delete post with ID: \(post.id)")
+            try await NetworkManager.shared.deletePost(postId: post.id)
+            print("Post deletion successful")
+            DispatchQueue.main.async {
+                print("Attempting to dismiss the view")
+                dismiss()
             }
-            .padding()
+        } catch {
+            print("Error deleting post: \(error)")
+            errorMessage = error.localizedDescription
         }
-        .navigationTitle("Post Details")
-        .navigationBarTitleDisplayMode(.inline)
+        isDeleting = false
     }
 }
-
 
 // MARK: - Preview
 #Preview {

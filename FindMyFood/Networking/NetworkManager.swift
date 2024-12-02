@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 class NetworkManager {
     static let shared = NetworkManager()
@@ -290,9 +291,10 @@ class NetworkManager {
         return requesters
     }
     
+    
     func addPost(
         userId: String,
-        imageUrl: String,
+        imageData: Data,
         review: String,
         location: String,
         restaurantName: String,
@@ -302,41 +304,58 @@ class NetworkManager {
         guard let url = URL(string: endpoint) else {
             throw NetworkError.invalidURL
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Create the body with the required fields
-        let body: [String: Any] = [
-            "imageUrl": imageUrl,
+        // Create a multipart form-data boundary
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        // Build multipart form-data body
+        var body = Data()
+        let lineBreak = "\r\n"
+
+        // Add the image as a file
+        body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        body.append(imageData)
+        body.append(lineBreak.data(using: .utf8)!)
+
+        // Add additional fields
+        let fields: [String: Any] = [
             "review": review,
             "location": location,
             "restaurantName": restaurantName,
             "starRating": starRating
         ]
         
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
+        for (key, value) in fields {
+            body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+            body.append("\(value)\(lineBreak)".data(using: .utf8)!)
+        }
+
+        // Close the body
+        body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
+        request.httpBody = body
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
-        
+
         print("HTTP Status Code: \(httpResponse.statusCode)")
-        
+
         guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 404 {
-                throw NetworkError.badRequest("User not found")
+            if let responseBody = String(data: data, encoding: .utf8) {
+                print("Server Error Response: \(responseBody)")
             }
             throw NetworkError.error(from: httpResponse.statusCode)
         }
-        
-        if let dataString = String(data: data, encoding: .utf8) {
-            print("Raw Response JSON: \(dataString)")
-        }
-        
+
         // Manually parse the JSON response
         do {
             if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
@@ -366,6 +385,7 @@ class NetworkManager {
             throw NetworkError.decodingError
         }
     }
+    
     func userFeed(userId: String) async throws -> [Post] {
         let endpoint = "\(baseURL)/user/getFeed/\(userId)"
         guard let url = URL(string: endpoint) else {
@@ -457,6 +477,7 @@ class NetworkManager {
     }
     
 
+
     
     
     
@@ -513,7 +534,52 @@ class NetworkManager {
         }
     }
 
+
+    func likeThePost(postId: String, likerId: String) async throws -> Post {
+        let endpoint = "\(baseURL)/posts/\(postId)/like/\(likerId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST" // Ensure the method matches the backend route
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 404 {
+                throw NetworkError.badRequest("Post not found")
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+
+        return try JSONDecoder().decode(Post.self, from: data)
+    }
     
+    func deletePost(postId: String) async throws {
+            let endpoint = "\(baseURL)/post/\(postId)"
+            guard let url = URL(string: endpoint) else {
+                throw NetworkError.invalidURL
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NetworkError.invalidResponse
+            }
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw NetworkError.error(from: httpResponse.statusCode)
+            }
+        }
 
     //THIS DOESNT WORK DO NOT USE
 //    func getAllPostsByUser(userId: String) async throws -> [Post] {
