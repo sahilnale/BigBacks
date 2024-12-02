@@ -210,43 +210,46 @@ struct CreatePostView: View {
 
         isUploading = true
         do {
-            // Convert image to Data
+            // Compress image to JPEG
             guard let imageData = image.jpegData(compressionQuality: 0.8) else {
                 print("Failed to compress image.")
+                isUploading = false
                 return
             }
 
-            // Prepare API endpoint
+            // API endpoint
             guard let userId = AuthManager.shared.userId else {
                 print("User ID is not available.")
+                isUploading = false
                 return
             }
             let endpoint = "https://api.bigbacksapp.com/api/v1/post/upload/\(userId)"
             guard let url = URL(string: endpoint) else {
                 print("Invalid URL.")
+                isUploading = false
                 return
             }
 
-            // Prepare multipart request
+            // Create the request
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
-
+            
             // Multipart boundary
             let boundary = UUID().uuidString
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-            // Build the body
+            // Create multipart body
             var body = Data()
             let lineBreak = "\r\n"
 
-            // Add image field
+            // Add image to the body
             body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
             body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
             body.append(imageData)
             body.append(lineBreak.data(using: .utf8)!)
 
-            // Add text fields
+            // Add other fields
             let fields: [String: String] = [
                 "review": reviewText.isEmpty ? postText : reviewText,
                 "location": locationDisplay,
@@ -259,15 +262,17 @@ struct CreatePostView: View {
                 body.append("\(value)\(lineBreak)".data(using: .utf8)!)
             }
 
+            // End boundary
             body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
             request.httpBody = body
 
-            // Send the request
+            // Execute the request
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            // Handle response
+            // Handle the response
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("Invalid response.")
+                print("Invalid response from server.")
+                isUploading = false
                 return
             }
 
@@ -278,7 +283,7 @@ struct CreatePostView: View {
                 }
                 DispatchQueue.main.async {
                     dismiss()
-                    selectedTab = 1 // Switch to Feed tab
+                    selectedTab = 1 // Navigate to feed tab
                 }
             } else {
                 print("Server error: \(httpResponse.statusCode)")
