@@ -69,9 +69,9 @@ git clone https://github.com/yourusername/BigBacks.git
 cd BigBacks
 ```
 
-3. Open the Xcode workspace
+3. Open the Xcode Project
 ```bash
-open FindMyFood.xcworkspace
+open FindMyFood.xcodeproj
 ```
 
 4. Install package dependencies
