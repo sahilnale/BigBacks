@@ -286,62 +286,68 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         map.setRegion(region, animated: true)
     }
     
-    // Load an image annotation for San Francisco
+    //Load image annotation
     func loadImageAnnotation() async {
-        guard
-                    let userId = AuthManager.shared.userId
-                else {
-                    print("Failed to get user")
-                    return
+        guard let userId = AuthManager.shared.userId else {
+            print("Failed to get user")
+            return
+        }
+
+        do {
+            let posts = try await NetworkManager.shared.fetchPostDetailsFromFeed(userId: userId)
+            var x = 0
+
+            for post in posts {
+                guard let imageUrl = URL(string: post.imageUrl) else {
+                    print("Invalid URL for post: \(post.id)")
+                    continue
                 }
-                
-        //        let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194) // San Francisco coordinates
-                do {
-                        // Try to fetch post details with await
-                        let posts = try await NetworkManager.shared.fetchPostDetailsFromFeed(userId: userId)
-                    
-                        var x = 0
 
-                        for post in posts {
-                            guard
-                                
-                                
-                                
-                                
-                                
-                                let imageUrl = URL(string: post.imageUrl),
-                                
-                                let imageData = try? Data(contentsOf: imageUrl),
-                                let image = UIImage(data: imageData)
-                            else {
-                                print("Failed to load image for post: \(post.id)")
-                                continue
-                            }
-
-                            // Create annotation coordinate from post (replace with actual lat/lon from post)
-                            let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749 + Double(x), longitude: -122.4194 + Double(x))
-
-                            // Create annotation object
-                            let annotation = ImageAnnotation(
-                                coordinate: annotationCoordinate,
-                                title: post.restaurantName, // or use other field as title
-                                subtitle: post.review,     // replace with proper user display name or other subtitle info
-                                image: image,
-                                author: post.userId,
-                                rating: post.starRating,
-                                heartC: post.likes
-                            )
-
-                            // Add annotation to the map
-                            map.addAnnotation(annotation)
-                            
-                            x += 4
+                // Load the image asynchronously
+                let image: UIImage? = await withCheckedContinuation { continuation in
+                    URLSession.shared.dataTask(with: imageUrl) { data, _, error in
+                        if let data = data, let fetchedImage = UIImage(data: data) {
+                            continuation.resume(returning: fetchedImage)
+                        } else {
+                            print("Failed to fetch image for post: \(post.id), error: \(String(describing: error))")
+                            continuation.resume(returning: nil)
                         }
-                    } catch {
-                        // Handle the error here
-                        print("Error fetching post details: \(error)")
-                    }
+                    }.resume()
+                }
+
+                guard let image = image else {
+                    continue
+                }
+
+                // Create annotation coordinate (replace with actual latitude/longitude from post)
+                let annotationCoordinate = CLLocationCoordinate2D(
+                    latitude: 37.7749 + Double(x),
+                    longitude: -122.4194 + Double(x)
+                )
+
+                // Create annotation object
+                let annotation = ImageAnnotation(
+                    coordinate: annotationCoordinate,
+                    title: post.restaurantName,
+                    subtitle: post.review,
+                    image: image,
+                    author: post.userId,
+                    rating: post.starRating,
+                    heartC: post.likes
+                )
+
+                // Add annotation to the map
+                DispatchQueue.main.async {
+                    self.map.addAnnotation(annotation)
+                }
+
+                x += 4
+            }
+        } catch {
+            print("Error fetching post details: \(error)")
+        }
     }
+
     
     // CLLocationManagerDelegate methods
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
