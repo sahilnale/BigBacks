@@ -456,37 +456,63 @@ class NetworkManager {
         return try JSONDecoder().decode(Post.self, from: data)
     }
     
-    func fetchPostDetailsFromFeed(userId: String) async throws -> [Post] {
-            let endpoint = "\(baseURL)/user/getPostDetailsFromFeed/\(userId)"
-            guard let url = URL(string: endpoint) else {
-                throw NetworkError.invalidURL
-            }
 
-            print("Fetching post details from feed for user ID: \(userId)")
-            print("Fetching from URL: \(url)")
-
-            let (data, response) = try await URLSession.shared.data(from: url)
-         
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-        
-                throw NetworkError.invalidResponse
-            }
-
-            guard (200...299).contains(httpResponse.statusCode) else {
-                
-                throw NetworkError.error(from: httpResponse.statusCode)
-            }
-
-            do {
-                // Decode the response into an array of Post objects
-                let posts = try JSONDecoder().decode([Post].self, from: data)
-                print("Successfully fetched post details: \(posts)")
-                return posts
-            } catch {
-                throw NetworkError.decodingError
-            }
+    
+    
+    
+    func fetchPostDetailsFromFeed(userId: String) async throws -> [(Post, User)] {
+        let endpoint = "\(baseURL)/user/getPostDetailsFromFeed/\(userId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
         }
+
+        print("Fetching post details from feed for user ID: \(userId)")
+        print("Fetching from URL: \(url)")
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+
+        do {
+            // Decode the response into an array of Post objects
+            let posts = try JSONDecoder().decode([Post].self, from: data)
+            print("Successfully fetched post details: \(posts)")
+
+            // Fetch user details for each post
+            var postUserPairs: [(Post, User)] = []
+
+            try await withThrowingTaskGroup(of: (Post, User)?.self) { group in
+                for post in posts {
+                    group.addTask {
+                        do {
+                            let user = try await self.getCurrentUser(userId: post.userId)
+                            return (post, user)
+                        } catch {
+                            print("Failed to fetch user for post ID: \(post.id) - Error: \(error)")
+                            return nil
+                        }
+                    }
+                }
+
+                for try await pair in group {
+                    if let pair = pair {
+                        postUserPairs.append(pair)
+                    }
+                }
+            }
+
+            return postUserPairs
+        } catch {
+            throw NetworkError.decodingError
+        }
+    }
+
     
 
     //THIS DOESNT WORK DO NOT USE

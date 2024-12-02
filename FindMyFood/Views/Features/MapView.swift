@@ -302,7 +302,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     
                         var x = 0
 
-                        for post in posts {
+                        for (post, user) in posts {
                             guard
                                 
                                 
@@ -327,7 +327,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                                 title: post.restaurantName, // or use other field as title
                                 subtitle: post.review,     // replace with proper user display name or other subtitle info
                                 image: image,
-                                author: post.userId,
+                                author: user.name,
                                 rating: post.starRating,
                                 heartC: post.likes
                             )
