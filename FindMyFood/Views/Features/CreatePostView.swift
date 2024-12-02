@@ -121,17 +121,8 @@ struct CreatePostView: View {
                 Spacer()
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        HStack {
-                            Image(systemName: "chevron.backward")
-                            Text("Back")
-                        }
-                        .foregroundColor(.accentColor)
-                    }
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { postReview() }) {
+                    Button(action: { Task { await postReview() } }) {
                         Text("Post")
                             .font(.headline)
                             .foregroundColor(postText.isEmpty || selectedImage == nil ? .gray : .accentColor)
@@ -177,36 +168,24 @@ struct CreatePostView: View {
         }
     }
 
-    
-    private func postReview() {
+    private func postReview() async {
         guard let image = selectedImage else {
             print("No image selected.")
             return
         }
 
         isUploading = true
-        ImageUploader.uploadImage(image: image) { result in
-            DispatchQueue.main.async {
-                self.isUploading = false
-            }
-            switch result {
-            case .success(let imageURL):
-                // Continue with posting the review
-                self.postDataToServer(imageURL: imageURL)
-            case .failure(let error):
-                DispatchQueue.main.async {
-                    print("Image upload failed: \(error.localizedDescription)")
-                }
-            }
+        do {
+            let imageURL = try await ImageUploader.uploadImageAsync(image: image)
+            print("Image uploaded successfully: \(imageURL)")
+            await postDataToServer(imageURL: imageURL)
+        } catch {
+            print("Image upload failed: \(error.localizedDescription)")
         }
+        isUploading = false
     }
 
-    private func postDataToServer(imageURL: String) {
-        let boundary = UUID().uuidString
-        var body = Data()
-        let lineBreak = "\r\n"
-
-        // Add fields
+    private func postDataToServer(imageURL: String) async {
         let fields: [String: String] = [
             "review": reviewText.isEmpty ? postText : reviewText,
             "location": locationDisplay,
@@ -215,12 +194,15 @@ struct CreatePostView: View {
             "imageURL": imageURL
         ]
 
+        let boundary = UUID().uuidString
+        var body = Data()
+        let lineBreak = "\r\n"
+
         for (key, value) in fields {
             body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
             body.append("\(value)\(lineBreak)".data(using: .utf8)!)
         }
-
         body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
 
         guard let url = URL(string: "https://api.bigbacksapp.com/api/v1/post/upload/\(AuthManager.shared.userId ?? "")") else {
@@ -233,25 +215,21 @@ struct CreatePostView: View {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
 
-        // Perform request asynchronously
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("Error posting data: \(error.localizedDescription)")
-                return
-            }
-
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
                 print("HTTP Status Code: \(httpResponse.statusCode)")
             }
-
-            if let data = data, let responseString = String(data: data, encoding: .utf8) {
+            if let responseString = String(data: data, encoding: .utf8) {
                 print("Response: \(responseString)")
                 DispatchQueue.main.async {
                     self.dismiss()
                     self.selectedTab = 1 // Switch to Feed tab
                 }
             }
-        }.resume()
+        } catch {
+            print("Error posting data: \(error.localizedDescription)")
+        }
     }
     
     // IMAGE PICKER
@@ -321,25 +299,7 @@ struct CreatePostView: View {
                 }
             }
 
-//            @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
-//                if let error = error {
-//                    print("Error saving image: \(error)")
-//                    parent.locationDisplay = "Unable to save image."
-//                } else {
-//                    print("Image saved successfully.")
-//                    
-//                    // Fetch the most recently added photo for its PHAsset
-//                    PHPhotoLibrary.shared().performChanges({
-//                        PHAssetChangeRequest.creationRequestForAsset(from: image)
-//                    }) { success, error in
-//                        if success {
-//                            self.fetchLastSavedPhoto()
-//                        } else if let error = error {
-//                            print("Error fetching saved photo: \(error)")
-//                        }
-//                    }
-//                }
-//            }
+
             @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
                 if let error = error {
                     print("Error saving image: \(error)")
@@ -361,22 +321,6 @@ struct CreatePostView: View {
                 }
             }
 
-            
-//            private func fetchLastSavedPhoto() {
-//                let fetchOptions = PHFetchOptions()
-//                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-//                fetchOptions.fetchLimit = 1
-//                
-//                let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-//                if let lastAsset = assets.firstObject, let location = lastAsset.location {
-//                    print("Location from saved photo: \(location)")
-//                    parent.imageLocation = location
-//                    reverseGeocode(location)
-//                } else {
-//                    print("No location metadata found in saved photo.")
-//                    parent.locationDisplay = "Location not found"
-//                }
-//            }
             private func fetchLastSavedPhoto() {
                 let fetchOptions = PHFetchOptions()
                 fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
@@ -400,25 +344,6 @@ struct CreatePostView: View {
                     print("No photo assets found.")
                 }
             }
-
-            
-//            private func reverseGeocode(_ location: CLLocation) {
-//                let geocoder = CLGeocoder()
-//                geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-//                    guard let self = self else { return }
-//                    if let placemark = placemarks?.first {
-//                        let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
-//                        print("Geocoded Location: \(locationName)")
-//                        DispatchQueue.main.async {
-//                            self.parent.locationDisplay = locationName
-//                        }
-//                    } else {
-//                        DispatchQueue.main.async {
-//                            self.parent.locationDisplay = "Location not found"
-//                        }
-//                    }
-//                }
-//            }
             
             private func reverseGeocode(_ location: CLLocation) {
                 let geocoder = CLGeocoder()
