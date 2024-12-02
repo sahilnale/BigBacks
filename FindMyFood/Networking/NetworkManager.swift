@@ -266,14 +266,27 @@ class NetworkManager {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let (_, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
-        }
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.error(from: httpResponse.statusCode)
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NetworkError.invalidResponse
+            }
+            
+            if let responseBody = String(data: data, encoding: .utf8) {
+                print("Response Body: \(responseBody)")
+            }
+
+            if httpResponse.statusCode == 400 {
+                throw NetworkError.badRequest("Invalid friend request")
+            } else if httpResponse.statusCode == 404 {
+                throw NetworkError.badRequest("User not found")
+            } else if !(200...299).contains(httpResponse.statusCode) {
+                throw NetworkError.serverError("\(httpResponse.statusCode): \(String(data: data, encoding: .utf8) ?? "No response body")")
+            }
+        } catch {
+            print("Error during reject Friend Request: \(error.localizedDescription)")
+            throw error
         }
     }
 

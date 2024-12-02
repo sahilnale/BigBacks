@@ -449,18 +449,35 @@ struct FriendRequestView: View {
     }
     
     private func rejectRequest(from user: User) {
-        guard let currentUserId = AuthManager.shared.userId else {
+        guard let currentUserId = AuthManager.shared.userId, !currentUserId.isEmpty else {
             errorMessage = "Not logged in"
+            return
+        }
+        
+        guard !user.id.isEmpty else {
+            errorMessage = "Invalid friend ID"
             return
         }
         
         Task {
             do {
                 try await NetworkManager.shared.rejectFriendRequest(userId: currentUserId, friendId: user.id)
-                // Remove the rejected request from the list
                 friendRequests.removeAll { $0.id == user.id }
+            } catch let networkError as NetworkError {
+                switch networkError {
+                case .invalidURL:
+                    errorMessage = "Invalid URL"
+                case .invalidResponse:
+                    errorMessage = "Invalid response from server"
+                case .badRequest(let message):
+                    errorMessage = "Bad request: \(message)"
+                default:
+                    errorMessage = "Unknown error occurred"
+                }
+                print("Error rejecting friend request: \(errorMessage ?? "Unknown error")")
             } catch {
                 errorMessage = error.localizedDescription
+                print("Unexpected error: \(error.localizedDescription)")
             }
         }
     }
@@ -492,13 +509,13 @@ struct FriendRequestRow: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                         .font(.system(size: 25))
-                }
+                }.buttonStyle(BorderlessButtonStyle())
                 
                 Button(action: onReject) {
                     Image(systemName: "x.circle.fill")
                         .foregroundColor(.red)
                         .font(.system(size: 25))
-                }
+                }.buttonStyle(BorderlessButtonStyle())
             }
         }
         .padding(.vertical, 4)
