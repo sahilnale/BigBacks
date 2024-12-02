@@ -140,6 +140,11 @@ struct LogoutButton: View {
 // MARK: - Post Detail View
 struct PostDetailView: View {
     var post: Post // Pass the entire `Post` object
+    @Environment(\.dismiss) var dismiss
+    @State private var isDeleting = false
+    @State private var showAlert = false
+    @State private var errorMessage: String?
+
     
     var body: some View {
         ScrollView {
@@ -217,14 +222,53 @@ struct PostDetailView: View {
                         .font(.body)
                         .foregroundColor(.gray)
                 }
+                HStack {
+                   Spacer()
+                   Button(action: {
+                       showAlert = true
+                   }) {
+                       Text("Delete Post")
+                           .foregroundColor(.accentColor)
+                   }
+                   Spacer()
+               }
+               .padding()
+           }
+           .padding()
+       }
+       .navigationTitle("Post Details")
+       .navigationBarTitleDisplayMode(.inline)
+       .alert("Delete Post", isPresented: $showAlert) {
+           Button("Cancel", role: .cancel) {}
+           Button("Delete", role: .destructive) {
+               Task {
+                   await deletePost()
+               }
+           }
+       } message: {
+           Text("Are you sure you want to delete this post? This action cannot be undone.")
+       }
+   }
+
+    
+private func deletePost() async {
+        print("Starting deletePost function")
+        isDeleting = true
+        do {
+            print("Attempting to delete post with ID: \(post.id)")
+            try await NetworkManager.shared.deletePost(postId: post.id)
+            print("Post deletion successful")
+            DispatchQueue.main.async {
+                print("Attempting to dismiss the view")
+                dismiss()
             }
-            .padding()
+        } catch {
+            print("Error deleting post: \(error)")
+            errorMessage = error.localizedDescription
         }
-        .navigationTitle("Post Details")
-        .navigationBarTitleDisplayMode(.inline)
+        isDeleting = false
     }
 }
-
 
 // MARK: - Preview
 #Preview {
