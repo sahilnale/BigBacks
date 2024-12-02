@@ -318,8 +318,23 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 guard let image = image else {
                     continue
                 }
+                
+                
+                let locate = post.location
+                
+                let locationComponents = locate.split(separator: ",")
+
+               
+                guard locationComponents.count == 2,
+              let latitude = Double(locationComponents[0]),
+              let longitude = Double(locationComponents[1]) else {
+                    print("Invalid location format for post: \(post.id)")
+                    continue
+                }
+                    
+                    
                 // Create annotation coordinate from post (replace with actual lat/lon from post)
-                let annotationCoordinate = CLLocationCoordinate2D(latitude: 37.7749 + Double(x), longitude: -122.4194 + Double(x))
+                let annotationCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
 
                 // Create annotation object
                 let annotation = ImageAnnotation(
@@ -337,7 +352,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     self.map.addAnnotation(annotation)
                 }
                             
-                x += 4
+           
 
                 }
 
