@@ -61,7 +61,7 @@ A social networking app that connects food enthusiasts and helps them discover g
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/BigBacks.git
+git clone https://github.com/sahilnale/BigBacks.git
 ```
 
 2. Navigate to the project directory
