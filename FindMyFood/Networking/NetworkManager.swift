@@ -486,7 +486,33 @@ class NetworkManager {
             } catch {
                 throw NetworkError.decodingError
             }
+    }
+    
+    func likeThePost(postId: String, likerId: String) async throws -> Post {
+        let endpoint = "\(baseURL)/posts/\(postId)/like/\(likerId)"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
         }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST" // Ensure the method matches the backend route
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 404 {
+                throw NetworkError.badRequest("Post not found")
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+
+        return try JSONDecoder().decode(Post.self, from: data)
+    }
     
 
     //THIS DOESNT WORK DO NOT USE
