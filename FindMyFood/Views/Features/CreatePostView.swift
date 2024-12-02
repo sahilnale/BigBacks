@@ -172,8 +172,8 @@ struct CreatePostView: View {
                     locationDisplay: $locationDisplay
                 )
             }
-            .navigationBarBackButtonHidden(true)
         }
+        .navigationBarBackButtonHidden(true)
     }
 
     private func fetchUserLocation() {
