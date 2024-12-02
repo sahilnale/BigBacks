@@ -20,6 +20,7 @@ struct CreatePostView: View {
     @State private var navigateToFeed = false
     @State private var navigateToMain = false
     @State private var locationDisplay: String = "Location not found"
+    @State private var selectedLocationCoordinates: CLLocationCoordinate2D? = nil
     @State private var isUploading = false
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
@@ -90,9 +91,10 @@ struct CreatePostView: View {
                 .sheet(isPresented: $showRestaurantPicker) {
                     NearbyRestaurantPicker(
                         userLocation: imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-                        onRestaurantSelected: { name in
+                        onRestaurantSelected: { name, coordinates in
                             restaurantName = name
                             locationDisplay = name
+                            selectedLocationCoordinates = coordinates
                             showRestaurantPicker = false
                         }
                     )
@@ -210,42 +212,40 @@ struct CreatePostView: View {
 
         isUploading = true
         do {
-            // Compress the image to Data
             guard let imageData = image.jpegData(compressionQuality: 0.8) else {
                 print("Failed to compress image.")
                 isUploading = false
                 return
             }
 
-            // Ensure valid user ID
             guard let userId = AuthManager.shared.userId else {
                 print("User ID is not available.")
                 isUploading = false
                 return
             }
 
-            // Prepare the restaurant name
             if restaurantName.isEmpty || restaurantName == "Location not found" {
                 restaurantName = locationDisplay
             }
 
-            // Call `addPost` to create the post
+            let coordinates = selectedLocationCoordinates ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+            let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
+
             let reviewContent = reviewText.isEmpty ? postText : reviewText
             let newPost = try await NetworkManager.shared.addPost(
                 userId: userId,
                 imageData: imageData,
                 review: reviewContent,
-                location: locationDisplay,
+                location: locationString,
                 restaurantName: restaurantName,
                 starRating: rating
             )
 
-            // Handle successful post creation
             print("Post created successfully: \(newPost)")
             resetPostState()
             DispatchQueue.main.async {
                 dismiss()
-                selectedTab = 1 // Navigate to Feed tab
+                selectedTab = 1
             }
         } catch {
             print("Failed to create post: \(error.localizedDescription)")
@@ -253,7 +253,6 @@ struct CreatePostView: View {
 
         isUploading = false
     }
-
 
     private func resetPostState() {
         selectedImage = nil
@@ -263,38 +262,37 @@ struct CreatePostView: View {
         locationDisplay = "Location not found"
     }
 
-    // IMAGE PICKER
     struct ImagePicker: UIViewControllerRepresentable {
         var sourceType: UIImagePickerController.SourceType
         @Binding var selectedImage: UIImage?
         @Binding var imageLocation: CLLocation?
         @Binding var locationDisplay: String
         @Environment(\.dismiss) var dismiss
-        
+
         func makeUIViewController(context: Context) -> UIImagePickerController {
             let picker = UIImagePickerController()
             picker.delegate = context.coordinator
             picker.sourceType = sourceType
             return picker
         }
-        
+
         func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-        
+
         func makeCoordinator() -> Coordinator {
             Coordinator(self)
         }
-        
+
         class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
             let parent: ImagePicker
-            
+
             init(_ parent: ImagePicker) {
                 self.parent = parent
             }
-                        
+
             func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
                 if let image = info[.originalImage] as? UIImage {
                     parent.selectedImage = image
-                    
+
                     // Attempt to retrieve PHAsset directly
                     if let asset = info[.phAsset] as? PHAsset {
                         processAsset(asset)
@@ -330,109 +328,9 @@ struct CreatePostView: View {
                 }
             }
 
-//            @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
-//                if let error = error {
-//                    print("Error saving image: \(error)")
-//                    parent.locationDisplay = "Unable to save image."
-//                } else {
-//                    print("Image saved successfully.")
-//
-//                    // Fetch the most recently added photo for its PHAsset
-//                    PHPhotoLibrary.shared().performChanges({
-//                        PHAssetChangeRequest.creationRequestForAsset(from: image)
-//                    }) { success, error in
-//                        if success {
-//                            self.fetchLastSavedPhoto()
-//                        } else if let error = error {
-//                            print("Error fetching saved photo: \(error)")
-//                        }
-//                    }
-//                }
-//            }
-            @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
-                if let error = error {
-                    print("Error saving image: \(error)")
-                    parent.locationDisplay = "Unable to save image."
-                } else {
-                    print("Image saved successfully.")
-                    
-                    // Fetch the most recently added photo for its PHAsset
-                    PHPhotoLibrary.shared().performChanges({
-                        PHAssetChangeRequest.creationRequestForAsset(from: image)
-                    }) { success, error in
-                        if success {
-                            print("Image saved. Attempting to fetch the last saved photo.")
-                            self.fetchLastSavedPhoto()
-                        } else if let error = error {
-                            print("Error fetching saved photo: \(error)")
-                        }
-                    }
-                }
-            }
-
-            
-//            private func fetchLastSavedPhoto() {
-//                let fetchOptions = PHFetchOptions()
-//                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-//                fetchOptions.fetchLimit = 1
-//
-//                let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-//                if let lastAsset = assets.firstObject, let location = lastAsset.location {
-//                    print("Location from saved photo: \(location)")
-//                    parent.imageLocation = location
-//                    reverseGeocode(location)
-//                } else {
-//                    print("No location metadata found in saved photo.")
-//                    parent.locationDisplay = "Location not found"
-//                }
-//            }
-            private func fetchLastSavedPhoto() {
-                let fetchOptions = PHFetchOptions()
-                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                fetchOptions.fetchLimit = 1
-                
-                let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-                if let lastAsset = assets.firstObject {
-                    print("Fetched last saved photo: \(lastAsset)")
-                    if let creationDate = lastAsset.creationDate {
-                        print("Last photo creation date: \(creationDate)")
-                    }
-                    if let location = lastAsset.location {
-                        print("Location from saved photo: \(location)")
-                        parent.imageLocation = location
-                        reverseGeocode(location)
-                    } else {
-                        print("No location metadata found in the last saved photo.")
-                        parent.locationDisplay = "Location not found"
-                    }
-                } else {
-                    print("No photo assets found.")
-                }
-            }
-
-            
-//            private func reverseGeocode(_ location: CLLocation) {
-//                let geocoder = CLGeocoder()
-//                geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-//                    guard let self = self else { return }
-//                    if let placemark = placemarks?.first {
-//                        let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
-//                        print("Geocoded Location: \(locationName)")
-//                        DispatchQueue.main.async {
-//                            self.parent.locationDisplay = locationName
-//                        }
-//                    } else {
-//                        DispatchQueue.main.async {
-//                            self.parent.locationDisplay = "Location not found"
-//                        }
-//                    }
-//                }
-//            }
-            
             private func reverseGeocode(_ location: CLLocation) {
                 let geocoder = CLGeocoder()
-                geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-                    guard let self = self else { return }
+                geocoder.reverseGeocodeLocation(location) { placemarks, error in
                     if let placemark = placemarks?.first {
                         let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
                         print("Geocoded Location: \(locationName)")
@@ -440,7 +338,6 @@ struct CreatePostView: View {
                             self.parent.locationDisplay = locationName
                         }
                     } else {
-                        print("Failed to reverse geocode location: \(location)")
                         DispatchQueue.main.async {
                             self.parent.locationDisplay = "Location not found"
                         }
@@ -453,15 +350,15 @@ struct CreatePostView: View {
             }
         }
     }
-    
-    // NEARBY RESTAURANT PICKER (unchanged from previous code)
+
+
     struct NearbyRestaurantPicker: View {
         @Environment(\.dismiss) var dismiss
         @State private var nearbyRestaurants: [MKMapItem] = []
         @State private var isLoading = false
         var userLocation: CLLocationCoordinate2D
-        var onRestaurantSelected: (String) -> Void
-        
+        var onRestaurantSelected: (String, CLLocationCoordinate2D) -> Void
+
         var body: some View {
             NavigationView {
                 VStack {
@@ -475,10 +372,10 @@ struct CreatePostView: View {
                     } else {
                         List(nearbyRestaurants, id: \.self) { restaurant in
                             Button(action: {
-                                if let name = restaurant.name {
-                                    onRestaurantSelected(name)
-                                    dismiss()
-                                }
+                                let name = restaurant.name ?? "Unnamed Restaurant"
+                                let coordinate = restaurant.placemark.coordinate
+                                onRestaurantSelected(name, coordinate)
+                                dismiss()
                             }) {
                                 Text(restaurant.name ?? "Unnamed Restaurant")
                                     .font(.headline)
@@ -499,16 +396,16 @@ struct CreatePostView: View {
                 }
             }
         }
-        
+
         private func fetchNearbyRestaurants() {
             isLoading = true
             let request = MKLocalSearch.Request()
             request.naturalLanguageQuery = "food"
             request.region = MKCoordinateRegion(
                 center: userLocation,
-                span: MKCoordinateSpan(latitudeDelta: 0.005 , longitudeDelta: 0.01)
+                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.01)
             )
-            
+
             let search = MKLocalSearch(request: request)
             search.start { response, error in
                 isLoading = false
