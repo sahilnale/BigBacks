@@ -210,86 +210,42 @@ struct CreatePostView: View {
 
         isUploading = true
         do {
-            // Compress image to JPEG
+            // Compress the image to Data
             guard let imageData = image.jpegData(compressionQuality: 0.8) else {
                 print("Failed to compress image.")
                 isUploading = false
                 return
             }
 
-            // API endpoint
+            // Ensure valid user ID
             guard let userId = AuthManager.shared.userId else {
                 print("User ID is not available.")
                 isUploading = false
                 return
             }
-            let endpoint = "https://api.bigbacksapp.com/api/v1/post/upload/\(userId)"
-            guard let url = URL(string: endpoint) else {
-                print("Invalid URL.")
-                isUploading = false
-                return
+
+            // Prepare the restaurant name
+            if restaurantName.isEmpty || restaurantName == "Location not found" {
+                restaurantName = locationDisplay
             }
 
-            // Create the request
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            
-            // Multipart boundary
-            let boundary = UUID().uuidString
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            // Call `addPost` to create the post
+            let reviewContent = reviewText.isEmpty ? postText : reviewText
+            let newPost = try await NetworkManager.shared.addPost(
+                userId: userId,
+                imageData: imageData,
+                review: reviewContent,
+                location: locationDisplay,
+                restaurantName: restaurantName,
+                starRating: rating
+            )
 
-            // Create multipart body
-            var body = Data()
-            let lineBreak = "\r\n"
-
-            // Add image to the body
-            body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
-            body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-            body.append(imageData)
-            body.append(lineBreak.data(using: .utf8)!)
-
-            // Add other fields
-            let fields: [String: String] = [
-                "review": reviewText.isEmpty ? postText : reviewText,
-                "location": locationDisplay,
-                "restaurantName": restaurantName,
-                "starRating": "\(rating)" // Convert Int to String
-            ]
-            for (key, value) in fields {
-                body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-                body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-                body.append("\(value)\(lineBreak)".data(using: .utf8)!)
-            }
-
-            // End boundary
-            body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
-            request.httpBody = body
-
-            // Execute the request
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            // Handle the response
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("Invalid response from server.")
-                isUploading = false
-                return
-            }
-
-            if (200...299).contains(httpResponse.statusCode) {
-                print("Post created successfully.")
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("Response: \(responseString)")
-                }
-                DispatchQueue.main.async {
-                    dismiss()
-                    selectedTab = 1 // Navigate to feed tab
-                }
-            } else {
-                print("Server error: \(httpResponse.statusCode)")
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("Error Response: \(responseString)")
-                }
+            // Handle successful post creation
+            print("Post created successfully: \(newPost)")
+            resetPostState()
+            DispatchQueue.main.async {
+                dismiss()
+                selectedTab = 1 // Navigate to Feed tab
             }
         } catch {
             print("Failed to create post: \(error.localizedDescription)")
@@ -298,6 +254,14 @@ struct CreatePostView: View {
         isUploading = false
     }
 
+
+    private func resetPostState() {
+        selectedImage = nil
+        postText = ""
+        reviewText = ""
+        rating = 0
+        locationDisplay = "Location not found"
+    }
 
     // IMAGE PICKER
     struct ImagePicker: UIViewControllerRepresentable {
