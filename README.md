@@ -82,8 +82,3 @@ FirebaseFirestoreCombine-Community
 FirebaseStorage
 FirebaseStorageCombine-Community
 ```
-
-
-## 📝 Documentation
-
-For detailed documentation about the API and component usage, please refer to the [Wiki](wiki-link).
