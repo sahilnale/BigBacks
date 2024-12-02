@@ -21,8 +21,6 @@ struct CreatePostView: View {
     @State private var navigateToMain = false
     @State private var locationDisplay: String = "Location not found"
     @State private var isUploading = false
-    @State private var uploadStatus: String = ""
-
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
 
@@ -73,18 +71,21 @@ struct CreatePostView: View {
                     Image(systemName: "mappin.and.ellipse")
                         .foregroundColor(.accentColor)
                         .font(.system(size: 16, weight: .semibold))
-
+                    
                     Text(locationDisplay)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(Color.primary)
                 }
+                .frame(alignment: .center)
 
+                // Change Location Button
                 Button(action: {
                     showRestaurantPicker = true
                 }) {
                     Text("Change Location")
                         .foregroundColor(.blue)
                         .font(.system(size: 16, weight: .semibold))
+                        .frame(alignment: .center)
                 }
                 .sheet(isPresented: $showRestaurantPicker) {
                     NearbyRestaurantPicker(
@@ -97,6 +98,7 @@ struct CreatePostView: View {
                     )
                 }
 
+                // TextEditor for Review
                 ZStack(alignment: .topLeading) {
                     if postText.isEmpty {
                         Text("Write your review here...")
@@ -105,7 +107,7 @@ struct CreatePostView: View {
                             .padding(.vertical, 12)
                             .allowsHitTesting(false)
                     }
-
+                    
                     TextEditor(text: $postText)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
@@ -119,15 +121,35 @@ struct CreatePostView: View {
                 }
 
                 Spacer()
+
+                // Uploading Status
+                if isUploading {
+                    ProgressView("Uploading...")
+                }
             }
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        HStack {
+                            Image(systemName: "chevron.backward")
+                            Text("Back")
+                        }
+                        .foregroundColor(.accentColor)
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { Task { await postReview() } }) {
+                    Button(action: {
+                        Task {
+                            await postReview()
+                        }
+                    }) {
                         Text("Post")
                             .font(.headline)
-                            .foregroundColor(postText.isEmpty || selectedImage == nil ? .gray : .accentColor)
+                            .foregroundColor(postText.isEmpty || selectedImage == nil || isUploading ? .gray : .accentColor)
                     }
-                    .disabled(postText.isEmpty || selectedImage == nil)
+                    .disabled(postText.isEmpty || selectedImage == nil || isUploading)
                 }
             }
             .confirmationDialog("Choose Image Source", isPresented: $showPhotoOptions) {
@@ -143,8 +165,14 @@ struct CreatePostView: View {
                 Button("Cancel", role: .cancel) {}
             }
             .sheet(isPresented: $showImagePicker) {
-                ImagePicker(sourceType: sourceType, selectedImage: $selectedImage, imageLocation: $imageLocation, locationDisplay: $locationDisplay)
+                ImagePicker(
+                    sourceType: sourceType,
+                    selectedImage: $selectedImage,
+                    imageLocation: $imageLocation,
+                    locationDisplay: $locationDisplay
+                )
             }
+            .navigationBarBackButtonHidden(true)
         }
     }
 
@@ -161,9 +189,15 @@ struct CreatePostView: View {
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
             if let placemark = placemarks?.first {
-                locationDisplay = placemark.name ?? placemark.locality ?? "Location not found"
+                if let placeName = placemark.name {
+                    self.locationDisplay = placeName
+                } else if let locality = placemark.locality {
+                    self.locationDisplay = locality
+                } else {
+                    self.locationDisplay = "Location not found"
+                }
             } else {
-                locationDisplay = "Location not found"
+                self.locationDisplay = "Location not found"
             }
         }
     }
@@ -176,62 +210,90 @@ struct CreatePostView: View {
 
         isUploading = true
         do {
-            let imageURL = try await ImageUploader.uploadImageAsync(image: image)
-            print("Image uploaded successfully: \(imageURL)")
-            await postDataToServer(imageURL: imageURL)
-        } catch {
-            print("Image upload failed: \(error.localizedDescription)")
-        }
-        isUploading = false
-    }
-
-    private func postDataToServer(imageURL: String) async {
-        let fields: [String: String] = [
-            "review": reviewText.isEmpty ? postText : reviewText,
-            "location": locationDisplay,
-            "restaurantName": restaurantName,
-            "starRating": "\(rating)",
-            "imageURL": imageURL
-        ]
-
-        let boundary = UUID().uuidString
-        var body = Data()
-        let lineBreak = "\r\n"
-
-        for (key, value) in fields {
-            body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-            body.append("\(value)\(lineBreak)".data(using: .utf8)!)
-        }
-        body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
-
-        guard let url = URL(string: "https://api.bigbacksapp.com/api/v1/post/upload/\(AuthManager.shared.userId ?? "")") else {
-            print("Invalid URL")
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = body
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse {
-                print("HTTP Status Code: \(httpResponse.statusCode)")
+            // Convert image to Data
+            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+                print("Failed to compress image.")
+                return
             }
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("Response: \(responseString)")
+
+            // Prepare API endpoint
+            guard let userId = AuthManager.shared.userId else {
+                print("User ID is not available.")
+                return
+            }
+            let endpoint = "https://api.bigbacksapp.com/api/v1/post/upload/\(userId)"
+            guard let url = URL(string: endpoint) else {
+                print("Invalid URL.")
+                return
+            }
+
+            // Prepare multipart request
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+
+            // Multipart boundary
+            let boundary = UUID().uuidString
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+            // Build the body
+            var body = Data()
+            let lineBreak = "\r\n"
+
+            // Add image field
+            body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+            body.append(imageData)
+            body.append(lineBreak.data(using: .utf8)!)
+
+            // Add text fields
+            let fields: [String: String] = [
+                "review": reviewText.isEmpty ? postText : reviewText,
+                "location": locationDisplay,
+                "restaurantName": restaurantName,
+                "starRating": "\(rating)" // Convert Int to String
+            ]
+            for (key, value) in fields {
+                body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+                body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+                body.append("\(value)\(lineBreak)".data(using: .utf8)!)
+            }
+
+            body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
+            request.httpBody = body
+
+            // Send the request
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            // Handle response
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Invalid response.")
+                return
+            }
+
+            if (200...299).contains(httpResponse.statusCode) {
+                print("Post created successfully.")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("Response: \(responseString)")
+                }
                 DispatchQueue.main.async {
-                    self.dismiss()
-                    self.selectedTab = 1 // Switch to Feed tab
+                    dismiss()
+                    selectedTab = 1 // Switch to Feed tab
+                }
+            } else {
+                print("Server error: \(httpResponse.statusCode)")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("Error Response: \(responseString)")
                 }
             }
         } catch {
-            print("Error posting data: \(error.localizedDescription)")
+            print("Failed to create post: \(error.localizedDescription)")
         }
+
+        isUploading = false
     }
-    
+
+
     // IMAGE PICKER
     struct ImagePicker: UIViewControllerRepresentable {
         var sourceType: UIImagePickerController.SourceType
@@ -299,7 +361,25 @@ struct CreatePostView: View {
                 }
             }
 
-
+//            @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+//                if let error = error {
+//                    print("Error saving image: \(error)")
+//                    parent.locationDisplay = "Unable to save image."
+//                } else {
+//                    print("Image saved successfully.")
+//
+//                    // Fetch the most recently added photo for its PHAsset
+//                    PHPhotoLibrary.shared().performChanges({
+//                        PHAssetChangeRequest.creationRequestForAsset(from: image)
+//                    }) { success, error in
+//                        if success {
+//                            self.fetchLastSavedPhoto()
+//                        } else if let error = error {
+//                            print("Error fetching saved photo: \(error)")
+//                        }
+//                    }
+//                }
+//            }
             @objc private func saveImageCompletion(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
                 if let error = error {
                     print("Error saving image: \(error)")
@@ -321,6 +401,22 @@ struct CreatePostView: View {
                 }
             }
 
+            
+//            private func fetchLastSavedPhoto() {
+//                let fetchOptions = PHFetchOptions()
+//                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+//                fetchOptions.fetchLimit = 1
+//
+//                let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+//                if let lastAsset = assets.firstObject, let location = lastAsset.location {
+//                    print("Location from saved photo: \(location)")
+//                    parent.imageLocation = location
+//                    reverseGeocode(location)
+//                } else {
+//                    print("No location metadata found in saved photo.")
+//                    parent.locationDisplay = "Location not found"
+//                }
+//            }
             private func fetchLastSavedPhoto() {
                 let fetchOptions = PHFetchOptions()
                 fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
@@ -344,6 +440,25 @@ struct CreatePostView: View {
                     print("No photo assets found.")
                 }
             }
+
+            
+//            private func reverseGeocode(_ location: CLLocation) {
+//                let geocoder = CLGeocoder()
+//                geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
+//                    guard let self = self else { return }
+//                    if let placemark = placemarks?.first {
+//                        let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+//                        print("Geocoded Location: \(locationName)")
+//                        DispatchQueue.main.async {
+//                            self.parent.locationDisplay = locationName
+//                        }
+//                    } else {
+//                        DispatchQueue.main.async {
+//                            self.parent.locationDisplay = "Location not found"
+//                        }
+//                    }
+//                }
+//            }
             
             private func reverseGeocode(_ location: CLLocation) {
                 let geocoder = CLGeocoder()
@@ -437,6 +552,3 @@ struct CreatePostView: View {
         }
     }
 }
-
-
-
