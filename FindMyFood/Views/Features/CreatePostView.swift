@@ -20,13 +20,14 @@ struct CreatePostView: View {
     @State private var navigateToFeed = false
     @State private var navigateToMain = false
     @State private var locationDisplay: String = "Location not found"
+    @State private var isUploading = false
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
-                // Image Preview or Tappable Placeholder
+                // Image Preview or Placeholder
                 if let image = selectedImage {
                     Image(uiImage: image)
                         .resizable()
@@ -52,7 +53,7 @@ struct CreatePostView: View {
                         }
                         .padding()
                 }
-                
+
                 // Star Rating
                 HStack {
                     ForEach(1...5, id: \.self) { index in
@@ -64,7 +65,7 @@ struct CreatePostView: View {
                             }
                     }
                 }
-                
+
                 // Location Display
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
@@ -76,8 +77,8 @@ struct CreatePostView: View {
                         .foregroundColor(Color.primary)
                 }
                 .frame(alignment: .center)
-                
-                // Manually Change Location
+
+                // Change Location Button
                 Button(action: {
                     showRestaurantPicker = true
                 }) {
@@ -96,9 +97,9 @@ struct CreatePostView: View {
                         }
                     )
                 }
-                
+
+                // TextEditor for Review
                 ZStack(alignment: .topLeading) {
-                    // Placeholder
                     if postText.isEmpty {
                         Text("Write your review here...")
                             .foregroundColor(.gray)
@@ -107,7 +108,6 @@ struct CreatePostView: View {
                             .allowsHitTesting(false)
                     }
                     
-                    // TextEditor
                     TextEditor(text: $postText)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
@@ -119,41 +119,38 @@ struct CreatePostView: View {
                         .frame(maxWidth: UIScreen.main.bounds.width - 32, maxHeight: 200)
                         .scrollContentBackground(.hidden)
                 }
-                
+
                 Spacer()
+
+                // Uploading Status
+                if isUploading {
+                    ProgressView("Uploading...")
+                }
             }
             .toolbar {
-                //ToolbarItem(placement: .navigationBarLeading) {
-//                    Button(action: {
-//                        navigateToMain = true
-//                    }) {
-//                        HStack {
-//                            Image(systemName: "chevron.backward")
-//                            Text("Back")
-//                        }
-//                        .foregroundColor(.accentColor)
-//                    }
                 ToolbarItem(placement: .navigationBarLeading) {
-                                Button(action: {
-                                    dismiss()
-                                }) {
-                                    HStack {
-                                        Image(systemName: "chevron.backward")
-                                        Text("Back")
-                                    }
-                                    .foregroundColor(.accentColor)
-                                }
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        HStack {
+                            Image(systemName: "chevron.backward")
+                            Text("Back")
+                        }
+                        .foregroundColor(.accentColor)
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                   Button(action: {
-                       postReview()
-                   }) {
-                       Text("Post")
-                           .font(.headline)
-                           .foregroundColor(postText.isEmpty || selectedImage == nil ? .gray : .accentColor)
-                   }
-                   .disabled(postText.isEmpty || selectedImage == nil)
-               }
+                    Button(action: {
+                        Task {
+                            await postReview()
+                        }
+                    }) {
+                        Text("Post")
+                            .font(.headline)
+                            .foregroundColor(postText.isEmpty || selectedImage == nil || isUploading ? .gray : .accentColor)
+                    }
+                    .disabled(postText.isEmpty || selectedImage == nil || isUploading)
+                }
             }
             .confirmationDialog("Choose Image Source", isPresented: $showPhotoOptions) {
                 Button("Take a Photo") {
@@ -175,24 +172,10 @@ struct CreatePostView: View {
                     locationDisplay: $locationDisplay
                 )
             }
-            .navigationDestination(isPresented: $navigateToFeed) {
-                if let userId = AuthManager.shared.userId {
-                    FeedView()
-                        .tabItem {
-                            Label("Feed", systemImage: "list.bullet")
-                        }.tag(1)
-                } else {
-                    Text("Please log in to view your feed.")
-                        .tabItem {
-                            Label("Feed", systemImage: "list.bullet")
-                        }.tag(1)
-                }
-
-            }
         }
         .navigationBarBackButtonHidden(true)
     }
-    
+
     private func fetchUserLocation() {
         LocationManager.shared.startUpdatingLocation { location in
             DispatchQueue.main.async {
@@ -201,7 +184,7 @@ struct CreatePostView: View {
             }
         }
     }
-    
+
     private func reverseGeocode(_ location: CLLocation) {
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
@@ -219,87 +202,67 @@ struct CreatePostView: View {
         }
     }
 
-    
-    private func postReview() {
+    private func postReview() async {
         guard let image = selectedImage else {
             print("No image selected.")
             return
         }
 
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            print("Failed to convert image to JPEG.")
-            return
-        }
-
-        // Create the FormData payload
-        let boundary = UUID().uuidString
-        var body = Data()
-        let lineBreak = "\r\n"
-
-        // Add the file
-        body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-        body.append(imageData)
-        body.append(lineBreak.data(using: .utf8)!)
-
-        // Add the other fields
-        let fields: [String: String] = [
-            "review": reviewText.isEmpty ? postText : reviewText,
-            "location": locationDisplay,
-            "restaurantName": restaurantName,
-            "starRating": "\(rating)" // Convert Int to String
-        ]
-
-        for (key, value) in fields {
-            body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-            body.append("\(value)\(lineBreak)".data(using: .utf8)!)
-        }
-
-        body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
-
-        // Prepare the request
-        guard let url = URL(string: "https://api.bigbacksapp.com/api/v1/post/upload/\(AuthManager.shared.userId ?? "")") else {
-            print("Invalid URL")
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = body
-
-        // Send the request
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("Error creating post: \(error.localizedDescription)")
+        isUploading = true
+        do {
+            // Compress the image to Data
+            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+                print("Failed to compress image.")
+                isUploading = false
                 return
             }
 
-            if let httpResponse = response as? HTTPURLResponse {
-                print("HTTP Status Code: \(httpResponse.statusCode)")
+            // Ensure valid user ID
+            guard let userId = AuthManager.shared.userId else {
+                print("User ID is not available.")
+                isUploading = false
+                return
             }
 
-            if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                print("Response: \(responseString)")
-                if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
-                    DispatchQueue.main.async {
-                        self.dismiss()
-                        self.selectedTab = 1 // Switch to Feed tab
-                    }
-                }
+            // Prepare the restaurant name
+            if restaurantName.isEmpty || restaurantName == "Location not found" {
+                restaurantName = locationDisplay
             }
+
+            // Call `addPost` to create the post
+            let reviewContent = reviewText.isEmpty ? postText : reviewText
+            let newPost = try await NetworkManager.shared.addPost(
+                userId: userId,
+                imageData: imageData,
+                review: reviewContent,
+                location: locationDisplay,
+                restaurantName: restaurantName,
+                starRating: rating
+            )
+
+            // Handle successful post creation
+            print("Post created successfully: \(newPost)")
+            resetPostState()
+            DispatchQueue.main.async {
+                dismiss()
+                selectedTab = 1 // Navigate to Feed tab
+            }
+        } catch {
+            print("Failed to create post: \(error.localizedDescription)")
         }
 
-        task.resume()
+        isUploading = false
     }
 
 
+    private func resetPostState() {
+        selectedImage = nil
+        postText = ""
+        reviewText = ""
+        rating = 0
+        locationDisplay = "Location not found"
+    }
 
-
-
-    
     // IMAGE PICKER
     struct ImagePicker: UIViewControllerRepresentable {
         var sourceType: UIImagePickerController.SourceType
@@ -373,7 +336,7 @@ struct CreatePostView: View {
 //                    parent.locationDisplay = "Unable to save image."
 //                } else {
 //                    print("Image saved successfully.")
-//                    
+//
 //                    // Fetch the most recently added photo for its PHAsset
 //                    PHPhotoLibrary.shared().performChanges({
 //                        PHAssetChangeRequest.creationRequestForAsset(from: image)
@@ -412,7 +375,7 @@ struct CreatePostView: View {
 //                let fetchOptions = PHFetchOptions()
 //                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
 //                fetchOptions.fetchLimit = 1
-//                
+//
 //                let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
 //                if let lastAsset = assets.firstObject, let location = lastAsset.location {
 //                    print("Location from saved photo: \(location)")
@@ -558,6 +521,3 @@ struct CreatePostView: View {
         }
     }
 }
-
-
-

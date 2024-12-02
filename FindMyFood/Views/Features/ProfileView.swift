@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct ProfileView: View {
@@ -15,45 +14,93 @@ struct ProfileView: View {
         NavigationView {
             ScrollView {
                 VStack {
-                    ProfileHeaderView(
-                        name: viewModel.name,
-                        username: viewModel.username,
-                        errorMessage: viewModel.errorMessage
-                    )
-                    .padding()
-
+                    // Profile Header
+                    VStack(spacing: 16) {
+                        // Name and Username Section
+                        VStack(spacing: 4) {
+                            Text(viewModel.name)
+                                .font(.custom("Lobster-Regular", size: 28)) // Creative, bold, and eye-catching
+                                .foregroundColor(.primary)
+                            
+                            Text("@\(viewModel.username)")
+                                .font(.custom("Lobster-Regular", size: 18)) // Stylish and complementary
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.top)
+                        
+                        // Profile Image
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .foregroundColor(Color.accentColor)
+                            .padding(.bottom, 8)
+                        
+                        // Posts and Friends Count
+                        HStack(spacing: 32) {
+                            VStack {
+                                Text("\(viewModel.posts.count)")
+                                    .font(.custom("Lobster-Regular", size: 20)) // Consistent and stylish
+                                    .foregroundColor(.primary)
+                                Text("Posts")
+                                    .font(.system(size: 14, weight: .regular)) // Keep labels clean for balance
+                                    .foregroundColor(.gray)
+                            }
+                            
+                            VStack {
+                                Text("\(viewModel.friendsCount)")
+                                    .font(.custom("Lobster-Regular", size: 20)) // Consistent and stylish
+                                    .foregroundColor(.primary)
+                                Text("Friends")
+                                    .font(.system(size: 14, weight: .regular)) // Keep labels clean for balance
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Divider()
+                        .padding(.vertical, 16)
+                    
+                    // Posts Section
                     if viewModel.isLoading {
                         ProgressView("Loading posts...")
                             .padding()
                     } else if viewModel.posts.isEmpty {
                         Text("No posts yet.")
+                            .font(.custom("Lobster-Regular", size: 16))
                             .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .center)
                             .padding()
                     } else {
                         PostGridView(posts: viewModel.posts, columns: columns)
                             .padding(.horizontal)
                     }
-
+                    
+                    // Logout Button
                     LogoutButton {
                         authViewModel.logout()
                     }
                 }
-                .navigationTitle("Profile")
-                .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 20))
-                })
             }
+            .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 20))
+            })
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
-                    //await viewModel.loadProfilePosts()
                 }
-                
             }
         }
     }
 }
+
+
+
+
+
 
 // MARK: - Profile Header
 struct ProfileHeaderView: View {
