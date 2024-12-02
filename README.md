@@ -10,7 +10,6 @@ A social networking app that connects food enthusiasts and helps them discover g
 
 - **Location-Based Search**
   - Discover food spots and eateries nearby in real-time
-  - Integrated with Google Maps SDK for accurate location services
 
 - **Social Feed**
   - View friends' past dining experiences
