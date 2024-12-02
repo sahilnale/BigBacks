@@ -26,14 +26,11 @@ A social networking app that connects food enthusiasts and helps them discover g
 
 ### Frontend
 - Swift UI for native iOS development
-- RESTful API integration
-- WebSocket implementation for real-time features
 
 ### Backend
 - Node.js with Express framework
 - MongoDB for flexible data storage
 - AWS S3 for media storage
-- Google Maps SDK integration
 
 ## 👥 Target Users
 
@@ -65,12 +62,12 @@ A social networking app that connects food enthusiasts and helps them discover g
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/FindMyFood.git
+git clone https://github.com/yourusername/BigBacks.git
 ```
 
 2. Navigate to the project directory
 ```bash
-cd FindMyFood
+cd BigBacks
 ```
 
 3. Open the Xcode workspace
@@ -78,10 +75,12 @@ cd FindMyFood
 open FindMyFood.xcworkspace
 ```
 
-4. Install backend dependencies
+4. Install package dependencies
 ```bash
-cd backend
-npm install
+FirebaseFirestore
+FirebaseFirestoreCombine-Community
+FirebaseStorage
+FirebaseStorageCombine-Community
 ```
 
 
