@@ -5,6 +5,7 @@ enum NetworkError: LocalizedError {
     case noData
     case decodingError
     case invalidResponse
+    case invalidRequest(String)
     case serverError(String)
     case unauthorized
     case badRequest(String)
@@ -16,10 +17,13 @@ enum NetworkError: LocalizedError {
     case weakPassword
     case invalidEmail
     
+    
     var errorDescription: String? {
         switch self {
         case .invalidURL:
             return "Invalid URL. Please try again."
+        case .invalidRequest(let message):
+            return "Invalid Request. Please try again."
         case .noData:
             return "No data received from the server"
         case .decodingError:
