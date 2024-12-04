@@ -2,6 +2,9 @@ import SwiftUI
 import MapKit
 import CoreLocation
 
+
+
+
 // Custom annotation class
 class ImageAnnotation: NSObject, MKAnnotation {
     var coordinate: CLLocationCoordinate2D
@@ -36,13 +39,23 @@ class CustomPopupView: UIView {
     private let profileImageView = UIImageView()
     private let spacerView = UIView()
     
-    // Heart icon and count label
+    
+    private let starStackView = UIStackView()
     private let heartImageView = UIImageView()
     private let heartCountLabel = UILabel()
     
     
-    private var starRating: Int = 0
-    private var heartCount: Int = 0
+    // Create a horizontal stack view for stars and heart
+    
+    
+    private var starRating: Int = 0 {
+        didSet { updateStars() }
+    }
+    private var heartCount: Int = 0 {
+        didSet { heartCountLabel.text = "\(heartCount)" }
+    }
+    
+    private var starImageViews: [UIImageView] = []
     
  
 
@@ -60,117 +73,97 @@ class CustomPopupView: UIView {
         backgroundColor = .white
         layer.borderWidth = 1
         layer.borderColor = UIColor.lightGray.cgColor
-        
-        // Title label
+
+        // Configure title label
         titleLabel.font = UIFont.boldSystemFont(ofSize: 30)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Image view
+
+        // Configure image view
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 8
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Reviewer name
+
+        // Configure reviewer name
         reviewerNameLabel.font = UIFont.systemFont(ofSize: 20)
         reviewerNameLabel.textColor = .orange
         reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Create star images (filled and empty)
-        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.yellow, renderingMode: .alwaysOriginal)
-        let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
 
-        // Array to hold star image views
-        var starImageViews: [UIImageView] = []
+        // Configure star stack view
+        starStackView.axis = .horizontal
+        starStackView.spacing = 4
+        starStackView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Create 5 star image views
         for _ in 0..<5 {
-            let starImageView = UIImageView()
+            let starImageView = UIImageView(image: UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal))
             starImageView.translatesAutoresizingMaskIntoConstraints = false
+            starImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+            starImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+            starStackView.addArrangedSubview(starImageView)
             starImageViews.append(starImageView)
-            addSubview(starImageView)
         }
+      
 
-        // Function to set the rating (e.g., 3/5 stars)
-        func setRating(_ rating: Int) {
-            for i in 0..<5 {
-                if i < rating {
-                    starImageViews[i].image = filledStarImage  // Set filled star
-                } else {
-                    starImageViews[i].image = emptyStarImage  // Set empty star
-                }
-            }
-        }
+        // Configure heart image and label
+        heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.red, renderingMode: .alwaysOriginal)
+        heartImageView.contentMode = .scaleAspectFit
+        heartImageView.translatesAutoresizingMaskIntoConstraints = false
+        heartImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+        heartImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
 
-        // Call setRating with the desired rating, for example, 3/5
-        setRating(starRating)
-        
+        heartCountLabel.font = UIFont.systemFont(ofSize: 16)
+        heartCountLabel.textColor = .black
+        heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // Heart image view and count label
-       heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.red, renderingMode: .alwaysOriginal)
-       heartImageView.contentMode = .scaleAspectFit
-       heartImageView.translatesAutoresizingMaskIntoConstraints = false
-       heartImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
-       heartImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
-       
-        heartCountLabel.text = "\(heartCount)"
-        heartCountLabel.font = UIFont(name: "Helvetica-Regular", size: 16)
-       heartCountLabel.textColor = .black
-       heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
-       
-       // Add heart image and count label to nameAndStarsStackView
-       nameAndStarsStackView.addArrangedSubview(heartImageView)
-       nameAndStarsStackView.addArrangedSubview(heartCountLabel)
-        
+        spacerView.widthAnchor.constraint(equalToConstant: 140).isActive = true
+        // Combine stars and heart into a stack view
+        let starsAndHeartStackView = UIStackView(arrangedSubviews: [starStackView, spacerView, heartImageView, heartCountLabel])
+        starsAndHeartStackView.axis = .horizontal
+        starsAndHeartStackView.alignment = .center
+        starsAndHeartStackView.spacing = 8
+        starsAndHeartStackView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Comment Scroll View
+        // Configure comment scroll view
         commentScrollView.translatesAutoresizingMaskIntoConstraints = false
         commentScrollView.showsVerticalScrollIndicator = true
-        
-        // Comment label
+
         commentLabel.font = UIFont.systemFont(ofSize: 16)
         commentLabel.textColor = .black
-        commentLabel.numberOfLines = 0 // Unlimited lines for full text rendering
+        commentLabel.numberOfLines = 0
         commentLabel.translatesAutoresizingMaskIntoConstraints = false
         commentScrollView.addSubview(commentLabel)
-        
-        // Add subviews
+
+        // Add subviews to main view
         addSubview(titleLabel)
         addSubview(imageView)
         addSubview(reviewerNameLabel)
+        addSubview(starsAndHeartStackView)
         addSubview(commentScrollView)
-        
-        // Setup constraints
+
+        // Apply constraints
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            
+
             imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
             imageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
             imageView.heightAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
-            
+
             reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
             reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            
-            starImageViews[0].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[0].leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            starImageViews[1].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[1].leadingAnchor.constraint(equalTo: starImageViews[0].trailingAnchor, constant: 4),
-            starImageViews[2].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[2].leadingAnchor.constraint(equalTo: starImageViews[1].trailingAnchor, constant: 4),
-            starImageViews[3].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[3].leadingAnchor.constraint(equalTo: starImageViews[2].trailingAnchor, constant: 4),
-            starImageViews[4].topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starImageViews[4].leadingAnchor.constraint(equalTo: starImageViews[3].trailingAnchor, constant: 4),
-            
-            commentScrollView.topAnchor.constraint(equalTo: starImageViews[0].bottomAnchor, constant: 8),
+
+            starsAndHeartStackView.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
+            starsAndHeartStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            starsAndHeartStackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
+
+            commentScrollView.topAnchor.constraint(equalTo: starsAndHeartStackView.bottomAnchor, constant: 8),
             commentScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             commentScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             commentScrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
-            
+
             commentLabel.topAnchor.constraint(equalTo: commentScrollView.topAnchor),
             commentLabel.leadingAnchor.constraint(equalTo: commentScrollView.leadingAnchor),
             commentLabel.trailingAnchor.constraint(equalTo: commentScrollView.trailingAnchor),
@@ -178,7 +171,16 @@ class CustomPopupView: UIView {
             commentLabel.widthAnchor.constraint(equalTo: commentScrollView.widthAnchor)
         ])
     }
+
     
+    private func updateStars() {
+            let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.yellow, renderingMode: .alwaysOriginal)
+            let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
+            
+            for (index, starImageView) in starImageViews.enumerated() {
+                starImageView.image = index < starRating ? filledStarImage : emptyStarImage
+            }
+        }
     
 
 
@@ -244,8 +246,12 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     private var currentPopupView: CustomPopupView?
     
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        
         
         // Set up the map view
         view.addSubview(map)
@@ -264,10 +270,18 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
         map.addGestureRecognizer(tapGesture)
         
+        // Add observer for adding annotations
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAddUserAnnotationNotification(_:)),
+            name: .postAdded,
+            object: nil
+        )
+        
         // Add image annotation for San Francisco
         Task {
-                    await loadImageAnnotation()
-                    }
+            await loadImageAnnotation()
+        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -286,6 +300,125 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         map.setRegion(region, animated: true)
     }
     
+    
+    @objc func handleAddUserAnnotationNotification(_ notification: Notification) {
+        
+        print("Adding annotation based on notification")
+        
+        Task {
+            
+            guard let userInfo = notification.userInfo,
+                  let coordinate = userInfo["coordinate"] as? String,
+                  let title = userInfo["title"] as? String,
+                  let review = userInfo["review"] as? String,
+                  let imageIdentifier = userInfo["image"] as? String,
+                  let author = userInfo["author"] as? String,
+                  let rating = userInfo["rating"] as? Int,
+                  let heartC = userInfo["heartC"] as? Int else {
+                return
+            }
+            
+            guard let imageUrl = URL(string: imageIdentifier) else {
+                print("Invalid URL for post:")
+                return
+            }
+            
+            // Load the image asynchronously
+            let image: UIImage? = await withCheckedContinuation { continuation in
+                URLSession.shared.dataTask(with: imageUrl) { data, _, error in
+                    if let data = data, let fetchedImage = UIImage(data: data) {
+                        continuation.resume(returning: fetchedImage)
+                    } else {
+                        print("Failed to fetch image for post:), error:")
+                        continuation.resume(returning: nil)
+                    }
+                }.resume()
+            }
+            
+            guard let image = image else {
+                return
+            }
+            
+            // Parse the coordinate
+            let components = coordinate.split(separator: ",")
+            guard components.count == 2,
+                  let latitude = Double(components[0].trimmingCharacters(in: .whitespaces)),
+                  let longitude = Double(components[1].trimmingCharacters(in: .whitespaces)) else {
+                return
+            }
+            let coordinateC = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            
+            
+            print("hello sahil")
+            
+            // Add annotation
+            addUserAnnotation(
+                coordinate_in: coordinateC,
+                title_in: title,
+                review: review,
+                image_in: image,
+                author_in: author,
+                rating_in: rating,
+                heartC_in: heartC
+                )
+            }
+        }
+    
+    
+    
+    
+    
+    
+    func addUserAnnotation(
+            coordinate_in: CLLocationCoordinate2D,
+            title_in: String,
+            review: String,
+            image_in: UIImage, // The identifier or URL for the image
+            author_in: String,
+            rating_in: Int,
+            heartC_in: Int
+        ) {
+            let annotation = ImageAnnotation(
+                coordinate: coordinate_in,
+                title: title_in,
+                subtitle: review,
+                image: image_in, // Store the image identifier here
+                author: author_in,
+                rating: rating_in,
+                heartC: heartC_in
+            )
+            print("working")
+            self.map.addAnnotation(annotation)
+        }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     //Load image annotation
     func loadImageAnnotation() async {
         guard let userId = AuthManager.shared.userId else {
@@ -295,7 +428,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
 
         do {
             let posts = try await NetworkManager.shared.fetchPostDetailsFromFeed(userId: userId)
-            var x = 0
+           
 
             for (post, user) in posts {
                 guard let imageUrl = URL(string: post.imageUrl) else {
@@ -361,6 +494,16 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             print("Error fetching post details: \(error)")
         }
     }
+    
+    func removeAllAnnotations() {
+        map.removeAnnotations(map.annotations)
+    }
+    
+    func removeSpecificAnnotation(annotation: MKAnnotation) {
+        map.removeAnnotation(annotation)
+    }
+
+
 
     
     // CLLocationManagerDelegate methods
@@ -401,6 +544,8 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         return nil
     }
+    
+    
     
     // Show popup when annotation is selected
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
@@ -466,6 +611,10 @@ extension MKMapView {
         }
         return annotationsInRect
     }
+}
+
+extension Notification.Name {
+    static let addUserAnnotationNotification = Notification.Name("postAdded")
 }
 
 

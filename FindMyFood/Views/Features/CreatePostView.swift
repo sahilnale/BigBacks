@@ -240,6 +240,19 @@ struct CreatePostView: View {
                 restaurantName: restaurantName,
                 starRating: rating
             )
+            
+            NotificationCenter.default.post(
+                name: .postAdded,
+                object: nil,
+                userInfo: [
+                    "userId": userId,
+                    "imageData": imageData,
+                    "review": reviewContent,
+                    "location": locationString,
+                    "restaurantName": restaurantName,
+                    "starRating": rating
+                ]
+            )
 
             print("Post created successfully: \(newPost)")
             resetPostState()

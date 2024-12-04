@@ -22,7 +22,7 @@ struct FeedView: View {
                 } else if let errorMessage = errorMessage {
                     Text("Error: \(errorMessage)")
                         .foregroundColor(.red)
-                        .padding()
+                         .padding()
                 } else if posts.isEmpty {
                     VStack {
                         Spacer()

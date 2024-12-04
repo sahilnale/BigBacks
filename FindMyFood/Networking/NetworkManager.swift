@@ -337,6 +337,8 @@ class NetworkManager {
         body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
         body.append(imageData)
         body.append(lineBreak.data(using: .utf8)!)
+        
+        
 
         // Add additional fields
         let fields: [String: Any] = [
@@ -391,6 +393,14 @@ class NetworkManager {
                 )
                 
                 print("Manually Parsed Post: \(post)")
+                
+                // Post a notification to trigger addAnnotation in MapView
+                
+                
+                print("getting post rn")
+                
+                
+                
                 return post
             } else {
                 throw NetworkError.decodingError
@@ -681,6 +691,10 @@ class NetworkManager {
 
 
     
+}
+
+extension NSNotification.Name {
+    static let postAdded = NSNotification.Name("postAdded")
 }
 
 // MARK: - Models
