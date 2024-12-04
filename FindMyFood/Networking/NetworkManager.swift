@@ -1,6 +1,8 @@
 import Foundation
 import UIKit
 
+import FirebaseStorage
+
 class NetworkManager {
     static let shared = NetworkManager()
     private let baseURL = "https://api.bigbacksapp.com/api/v1"
@@ -594,6 +596,69 @@ class NetworkManager {
             }
         }
 
+
+    // Upload Profile Image
+    struct UploadResponse: Decodable {
+        let message: String
+        let profilePicture: String
+    }
+
+    func uploadProfilePic(userId: String, image: UIImage) async throws -> String {
+        let endpoint = "\(baseURL)/user/\(userId)/profile-pic/"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        let imageData = image.jpegData(compressionQuality: 0.8)
+        guard let imageData = imageData else {
+            throw NetworkError.invalidRequest("Invalid image data")
+        }
+
+        let httpBody = createMultipartBody(with: imageData, boundary: boundary, fieldName: "image", fileName: "profile-pic.jpg")
+        request.httpBody = httpBody
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 404 {
+                throw NetworkError.badRequest("User not found")
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+
+        // Decode the response and extract the profilePicture URL
+        let responseDecoded = try JSONDecoder().decode(UploadResponse.self, from: data)
+        return responseDecoded.profilePicture
+    }
+
+    // Helper function to create multipart body
+    private func createMultipartBody(with data: Data, boundary: String, fieldName: String, fileName: String) -> Data {
+        var body = Data()
+        let lineBreak = "\r\n"
+        
+        // Add boundary
+        body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\(lineBreak)".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        body.append(data)
+        body.append("\(lineBreak)--\(boundary)--\(lineBreak)".data(using: .utf8)!)
+        
+        return body
+    }
+
+
+
+    
     //THIS DOESNT WORK DO NOT USE
 //    func getAllPostsByUser(userId: String) async throws -> [Post] {
 //        let endpoint = "\(baseURL)/users/\(userId)/posts"

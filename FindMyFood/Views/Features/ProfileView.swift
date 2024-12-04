@@ -4,6 +4,10 @@ struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = ProfileViewModel()
     
+    @State private var isPickerPresented = false // State to control picker presentation
+    @State private var selectedImage: UIImage? // Store the selected image
+
+    
     private let columns = [
         GridItem(.flexible()),
         GridItem(.flexible()),
@@ -14,6 +18,26 @@ struct ProfileView: View {
         NavigationView {
             ScrollView {
                 VStack {
+                    // Profile Image Placeholder
+                        VStack {
+                            Image(uiImage: selectedImage ?? UIImage(systemName: "person.circle.fill")!)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 100, height: 100)
+                                                .clipShape(Circle())
+                                                .foregroundColor(.accentColor)
+                                            
+                                            // "Change profile pic" Text
+                                            Text("Change profile pic")
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(.blue)
+                                                .padding(.top, 8)
+                                                .onTapGesture {
+                                                    isPickerPresented = true // Open the gallery
+                                                }
+                                        }
+                                        .padding(.top)
+                    
                     // Profile Header
                     VStack(spacing: 16) {
                         // Name and Username Section
@@ -29,13 +53,15 @@ struct ProfileView: View {
                         .padding(.top)
                         
                         // Profile Image
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                            .foregroundColor(Color.accentColor)
-                            .padding(.bottom, 8)
+//                        Image(systemName: "person.circle.fill")
+//                            .resizable()
+//                            .scaledToFit()
+//                            .frame(width: 100, height: 100)
+//                            .clipShape(Circle())
+//                            .foregroundColor(Color.accentColor)
+//                            .padding(.bottom, 8)
+                        
+                        
                         
                         // Posts and Friends Count
                         HStack(spacing: 32) {
@@ -84,22 +110,68 @@ struct ProfileView: View {
                     }
                 }
             }
-            .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
-                Image(systemName: "pencil")
-                    .font(.system(size: 20))
-            })
+//            .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
+//                Image(systemName: "pencil")
+//                    .font(.system(size: 20))
+//            })
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
                 }
             }
+            // Attach image picker
+            .sheet(isPresented: $isPickerPresented) {
+                            ImagePicker(selectedImage: $selectedImage)
+                        }
+                        .onChange(of: selectedImage) { newImage in
+                            guard let newImage = newImage else { return }
+                            Task {
+                                await viewModel.uploadProfilePicture(image: newImage)
+                            }
+                        }
         }
     }
 }
 
 
 
-
+// MARK: - Image Picker Component
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var selectedImage: UIImage?
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.allowsEditing = true
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let uiImage = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage {
+                parent.selectedImage = uiImage
+            }
+            picker.dismiss(animated: true)
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
 
 
 // MARK: - Profile Header
@@ -316,6 +388,8 @@ private func deletePost() async {
         isDeleting = false
     }
 }
+
+
 
 // MARK: - Preview
 #Preview {
