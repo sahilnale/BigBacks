@@ -398,23 +398,70 @@ struct CreatePostView: View {
         }
 
         private func fetchNearbyRestaurants() {
+            let searchTerms = ["food", "coffee", "grocery store"] // Define terms
+            var allPlaces: [MKMapItem] = []
+            let group = DispatchGroup() // To manage asynchronous calls
             isLoading = true
-            let request = MKLocalSearch.Request()
-            request.naturalLanguageQuery = "food"
-            request.region = MKCoordinateRegion(
-                center: userLocation,
-                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.01)
-            )
 
-            let search = MKLocalSearch(request: request)
-            search.start { response, error in
-                isLoading = false
-                if let error = error {
-                    print("Error fetching nearby restaurants: \(error)")
-                    return
+            for term in searchTerms {
+                group.enter()
+                let request = MKLocalSearch.Request()
+                request.naturalLanguageQuery = term
+                request.region = MKCoordinateRegion(
+                    center: userLocation,
+                    span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.01)
+                )
+                
+                let search = MKLocalSearch(request: request)
+                search.start { response, error in
+                    if let error = error {
+                        print("Error fetching nearby \(term): \(error)")
+                    } else if let mapItems = response?.mapItems {
+                        allPlaces.append(contentsOf: mapItems)
+                    }
+                    group.leave()
                 }
-                nearbyRestaurants = response?.mapItems ?? []
+            }
+
+            group.notify(queue: .main) {
+                isLoading = false
+
+                // Remove duplicates using Coordinate as a key
+                let uniquePlaces = Dictionary(grouping: allPlaces, by: { Coordinate($0.placemark.coordinate) })
+                    .compactMap { $0.value.first } // Get one instance of each coordinate
+
+                // Sort by distance from userLocation
+                let sortedPlaces = uniquePlaces.sorted {
+                    let distance1 = $0.placemark.location?.distance(from: CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)) ?? Double.infinity
+                    let distance2 = $1.placemark.location?.distance(from: CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)) ?? Double.infinity
+                    return distance1 < distance2
+                }
+
+                nearbyRestaurants = sortedPlaces // Assign compiled results
+                print("Fetched \(sortedPlaces.count) unique places sorted by distance for terms: \(searchTerms)")
             }
         }
+
+
+    }
+}
+
+
+struct Coordinate: Hashable {
+    let latitude: Double
+    let longitude: Double
+
+    init(_ coordinate: CLLocationCoordinate2D) {
+        self.latitude = coordinate.latitude
+        self.longitude = coordinate.longitude
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(latitude)
+        hasher.combine(longitude)
+    }
+
+    static func == (lhs: Coordinate, rhs: Coordinate) -> Bool {
+        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
     }
 }
