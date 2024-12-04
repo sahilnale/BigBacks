@@ -398,7 +398,7 @@ struct CreatePostView: View {
         }
 
         private func fetchNearbyRestaurants() {
-            let searchTerms = ["food", "coffee", "grocery store"] // Define terms
+            let searchTerms = ["food", "coffee", "grocery store", "restaurants", "restaurant", "bars", "clubs", "fast food"] // Define terms
             var allPlaces: [MKMapItem] = []
             let group = DispatchGroup() // To manage asynchronous calls
             isLoading = true
