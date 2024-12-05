@@ -427,10 +427,12 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         }
 
         do {
+            
             let posts = try await NetworkManager.shared.fetchPostDetailsFromFeed(userId: userId)
-           
 
             for (post, user) in posts {
+                
+                
                 guard let imageUrl = URL(string: post.imageUrl) else {
                     print("Invalid URL for post: \(post.id)")
                     continue
@@ -451,6 +453,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 guard let image = image else {
                     continue
                 }
+                
                 
                 
                 let locate = post.location
