@@ -54,7 +54,7 @@ struct RestaurantCard: View {
     @State private var isExpanded: Bool = false // Tracks if the description is expanded
     @State private var newCommentText: String = ""
     @State private var showComments: Bool = false
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Dynamic image from post.imageUrl
@@ -99,38 +99,92 @@ struct RestaurantCard: View {
                             .foregroundColor(Color.primary)
                     }
                     
-                    Button(action: {
-                        isLiked.toggle()
-                        likeCount += isLiked ? 1 : -1
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                                .foregroundColor(isLiked ? .accentColor : .gray)
-                            Text("\(likeCount)")
-                                .foregroundColor(Color.primary)
-                                .font(.subheadline)
+                    //                    Button(action: {
+                    //                        isLiked.toggle()
+                    //                        likeCount += isLiked ? 1 : -1
+                    //                    }) {
+                    //                        HStack(spacing: 4) {
+                    //                            Image(systemName: isLiked ? "heart.fill" : "heart")
+                    //                                .foregroundColor(isLiked ? .accentColor : .gray)
+                    //                            Text("\(likeCount)")
+                    //                                .foregroundColor(Color.primary)
+                    //                                .font(.subheadline)
+                    //                        }
+                    //                    }
+                    //                    .buttonStyle(PlainButtonStyle())
+                    
+                    //Ridhima's version
+                    
+                    //                    Button(action: {
+                    //                        NetworkManager.shared.toggleLike(postId: post.id, currentLikeCount: likeCount, isLiked: isLiked) { newLikeCount, newIsLiked in
+                    //                            // Update the UI with the new like count and like status
+                    //                            likeCount = newLikeCount
+                    //                            isLiked = newIsLiked
+                    //                        }
+                    //                    }) {
+                    //                        HStack(spacing: 4) {
+                    //                            Image(systemName: isLiked ? "heart.fill" : "heart")
+                    //                                .foregroundColor(isLiked ? .accentColor : .gray)
+                    //                            Text("\(likeCount)")
+                    //                                .foregroundColor(Color.primary)
+                    //                                .font(.subheadline)
+                    //                        }
+                    //                    }
+                    //                    .buttonStyle(PlainButtonStyle())
+                    
+                    
+                    VStack {
+                        Button(action: {
+                            // Provide immediate feedback
+                            isLiked.toggle()
+                            likeCount += isLiked ? 1 : -1
+                            
+                            // Call the backend to persist the state
+                            NetworkManager.shared.toggleLike(postId: post.id, currentLikeCount: likeCount, isLiked: !isLiked) { newLikeCount, newIsLiked in
+                                // Sync state with backend in case of conflict
+                                DispatchQueue.main.async {
+                                    self.likeCount = newLikeCount
+                                    self.isLiked = newIsLiked
+                                }
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                    .foregroundColor(isLiked ? .red : .gray)
+                                    .scaleEffect(isLiked ? 1.2 : 1.0) // Add scaling animation
+                                    .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.5), value: isLiked)
+                                
+                                Text("\(likeCount) likes")
+                                    .font(.subheadline)
+                            }
                         }
+                        .buttonStyle(PlainButtonStyle()) // Ensure no additional styles
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    
+                    
+                    
+                    
+                    
+                    
                 }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
             
             Button(action: {
-                            withAnimation {
-                                showComments.toggle()
-                            }
-                        }) {
-                            HStack {
-                                Text("Comments (\(post.comments.count))")
-                                    .font(.subheadline)
-                                    .foregroundColor(.accentColor)
-                            }
-                        }
-                        .padding(.leading)
-                        .padding(.bottom)
-                        
+                withAnimation {
+                    showComments.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Comments (\(post.comments.count))")
+                        .font(.subheadline)
+                        .foregroundColor(.accentColor)
+                }
+            }
+            .padding(.leading)
+            .padding(.bottom)
+            
             if showComments {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(post.comments) { comment in
@@ -199,10 +253,23 @@ struct RestaurantCard: View {
         .cornerRadius(10)
         .shadow(color: Color.primary.opacity(0.1), radius: 5)
         .padding(.horizontal)
+        //       .onAppear {
+        //            likeCount = post.likes
+        //            isLiked = post.likedBy.contains(AuthManager.shared.userId ?? "")
+        
+        //        }
+        
         .onAppear {
-            // Initialize the like count and status from the post
-            likeCount = post.likes
-            isLiked = post.likedBy.contains(AuthManager.shared.userId ?? "")
+            Task {
+                do {
+                    let updatedPost = try await NetworkManager.shared.fetchPostDetails(postId: post.id)
+                    self.likeCount = updatedPost.likes
+                    self.isLiked = updatedPost.likedBy.contains(AuthManager.shared.userId ?? "")
+                } catch {
+                    // Handle any error that occurred during the fetch
+                    print("Failed to fetch post details: \(error.localizedDescription)")
+                }
+            }
         }
     }
 }
