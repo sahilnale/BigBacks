@@ -513,6 +513,8 @@ class NetworkManager {
         }
 
         print("Fetching post details from feed for user ID: \(userId)")
+        
+        
         print("Fetching from URL: \(url)")
 
         let (data, response) = try await URLSession.shared.data(from: url)
@@ -524,14 +526,19 @@ class NetworkManager {
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.error(from: httpResponse.statusCode)
         }
+        
+        print("Yay1")
 
         do {
             // Decode the response into an array of Post objects
+            print(try JSONDecoder().decode([Post].self, from: data))
             let posts = try JSONDecoder().decode([Post].self, from: data)
+            
             print("Successfully fetched post details: \(posts)")
 
             // Fetch user details for each post
             var postUserPairs: [(Post, User)] = []
+            print("Yay2")
 
             try await withThrowingTaskGroup(of: (Post, User)?.self) { group in
                 for post in posts {
@@ -552,8 +559,9 @@ class NetworkManager {
                     }
                 }
             }
-
+            print("Yay3")
             return postUserPairs
+            
         } catch {
             throw NetworkError.decodingError
         }

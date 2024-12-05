@@ -399,4 +399,91 @@ router.get('/getFeed/:id', async(req, res) => {
     }
 });
 
+
+router.get('/getPostDetailsFromFeed/:id', async(req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        let feed = [];
+
+        const userPosts = await User.findById(user._id).populate({
+            path: 'posts', 
+            populate: [
+                { path: 'likedBy', select: 'name username email' }, 
+                {
+                    path: 'comments.userId',
+                    select: 'name username email',
+                },
+                {
+                    path: 'comments.replies.userId',
+                    select: 'name username email',
+                }, 
+            ],
+        });
+
+        console.log('User posts:', userPosts); // Debug log
+
+        
+        if (userPosts && userPosts.posts) {
+            feed = feed.concat(userPosts.posts);
+        }
+
+        
+        const friendsList = user.friends;
+
+        for (let index = 0; index < friendsList.length; index++) {
+            const friend = await User.findById(friendsList[index]).populate({
+                path: 'posts', 
+                populate: [
+                    { path: 'likedBy', select: 'name username email' },
+                    {
+                        path: 'comments.userId',
+                        select: 'name username email',
+                    }, 
+                    {
+                        path: 'comments.replies.userId',
+                        select: 'name username email',
+                    }, 
+                ],
+            });
+
+            console.log('Friend posts:', friend.posts); // Debug log
+
+            if (friend && friend.posts) {
+                feed = feed.concat(friend.posts); 
+            }
+        }
+
+        console.log('Feed:', feed); // Debug log
+
+        
+        // const postDetails = feed.map(post => ({
+        //     postId: post._id,
+        //     likes: post.likes, 
+        //     review: post.review,
+        //     userId: post.userId,
+        //     imageUrl: post.imageUrl,
+        //     restaurantName: post.restaurantName,
+        //     comments: post.comments,
+        // }));
+
+        // console.log('Post details:', postDetails); // Debug log
+
+        
+        res.json(feed);
+
+
+    } catch (error) {
+        console.error('Error fetching post details:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+
+
 export default router;
