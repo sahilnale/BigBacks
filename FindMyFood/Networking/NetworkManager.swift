@@ -394,7 +394,25 @@ class NetworkManager {
                 
                 print("Manually Parsed Post: \(post)")
                 
+                let user = try await self.getCurrentUser(userId: post.userId)
+                
+                
+                
                 // Post a notification to trigger addAnnotation in MapView
+                NotificationCenter.default.post(
+                    name: .postAdded,
+                    object: nil,
+                    userInfo: [
+                        "userId": user.name,
+                        "imageData": post.imageUrl,
+                        "review": post.review,
+                        "location": post.location,
+                        "restaurantName": post.restaurantName,
+                        "starRating": post.starRating,
+                        "likes":post.likes
+                        
+                    ]
+                )
                 
                 
                 print("getting post rn")

@@ -302,19 +302,26 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     
     @objc func handleAddUserAnnotationNotification(_ notification: Notification) {
-        
         print("Adding annotation based on notification")
         
         Task {
-            
             guard let userInfo = notification.userInfo,
-                  let coordinate = userInfo["coordinate"] as? String,
-                  let title = userInfo["title"] as? String,
+                  
+                let author = userInfo["userId"] as? String,
+                  
+                    
+                  let imageIdentifier = userInfo["imageData"] as? String,
                   let review = userInfo["review"] as? String,
-                  let imageIdentifier = userInfo["image"] as? String,
-                  let author = userInfo["author"] as? String,
-                  let rating = userInfo["rating"] as? Int,
-                  let heartC = userInfo["heartC"] as? Int else {
+                  let coordinate = userInfo["location"] as? String,
+                  let title = userInfo["restaurantName"] as? String,
+                  let likes = userInfo["likes"] as? Int,
+                  
+                  
+                  
+                  let rating = userInfo["starRating"] as? Int else {
+                
+//                  let heartC = userInfo["heartC"] as? Int else {
+                print("Guard failed")
                 return
             }
             
@@ -344,25 +351,24 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             guard components.count == 2,
                   let latitude = Double(components[0].trimmingCharacters(in: .whitespaces)),
                   let longitude = Double(components[1].trimmingCharacters(in: .whitespaces)) else {
+                print("this shit failed")
                 return
             }
             let coordinateC = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
             
+            // Create annotation
             
-            print("hello sahil")
             
-            // Add annotation
-            addUserAnnotation(
-                coordinate_in: coordinateC,
-                title_in: title,
-                review: review,
-                image_in: image,
-                author_in: author,
-                rating_in: rating,
-                heartC_in: heartC
-                )
-            }
+            // Add annotation to map view
+            
+            print("About to add")
+            addUserAnnotation(coordinate_in: coordinateC, title_in: title, review: review, image_in: image, author_in: author, rating_in: rating, heartC_in: likes)
+            print("Done")
+            
+            
         }
+    }
+
     
     
     
@@ -389,6 +395,13 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             )
             print("working")
             self.map.addAnnotation(annotation)
+            
+            // Optionally, adjust map view region to include the new annotation
+            var region = self.map.region
+            region.center = coordinate_in
+            region.span.latitudeDelta = 0.05
+            region.span.longitudeDelta = 0.05
+            self.map.setRegion(region, animated: true)
         }
     
     
