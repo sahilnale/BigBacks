@@ -673,6 +673,59 @@ class NetworkManager {
         
         return body
     }
+    
+
+
+    func toggleLike(postId: String, currentLikeCount: Int, isLiked: Bool, completion: @escaping (Int, Bool) -> Void) {
+        guard let userId = AuthManager.shared.userId else {
+            print("User not authenticated")
+            return
+        }
+
+        // Define the URL for the backend API to toggle like
+        guard let url = URL(string: "\(baseURL)/post/\(postId)/like/\(userId)") else {
+            print("Invalid URL")
+            return
+        }
+
+        // Set up the request
+        var request = URLRequest(url: url)
+        request.httpMethod = isLiked ? "DELETE" : "POST" // Toggle between adding or removing like
+
+        // Perform the API call
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Error during API call: \(error.localizedDescription)")
+                return
+            }
+
+            // Print raw data to check the response
+            if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                print("Raw Response Data: \(responseString)")
+            }
+
+            // Ensure response is valid and contains the necessary information
+            guard let data = data,
+                  let response = try? JSONDecoder().decode(LikeResponse.self, from: data) else {
+                print("Invalid response data")
+                return
+            }
+
+            // Update the like count based on the response
+            DispatchQueue.main.async {
+                let newLikeCount = response.likes
+                let newIsLiked = !isLiked  // Toggle the like status
+
+                // Call the completion handler with updated like count and like status
+                completion(newLikeCount, newIsLiked)
+            }
+        }.resume()
+    }
+
+
+
+
+
 
 
 
@@ -751,5 +804,9 @@ struct Post: Codable, Identifiable {
     }
 }
 
-
+struct LikeResponse: Decodable {
+    let likes: Int
+    let liked: Bool
+    let likedBy: [User]
+}
 
