@@ -42,7 +42,7 @@ class CustomPopupView: UIView {
     
     private let starStackView = UIStackView()
     private let heartImageView = UIImageView()
-    private let heartCountLabel = UILabel()
+    private var heartCountLabel = UILabel()
     
     
     // Create a horizontal stack view for stars and heart
@@ -69,101 +69,138 @@ class CustomPopupView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    
     private func setupView() {
-        backgroundColor = .white
-        layer.borderWidth = 1
-        layer.borderColor = UIColor.lightGray.cgColor
+        // Background setup
+        let lightbeige = UIColor(red: 0.95, green: 0.92, blue: 0.88, alpha: 1)
+        let offWhiteSalmon = UIColor(red: 1.0, green: 0.94, blue: 0.9, alpha: 1)
+        // 1. Soft Creamy White
+        let softCreamyWhite = UIColor(red: 1.0, green: 0.973, blue: 0.953, alpha: 1.0) // Hex: #FFF8F3
 
-        // Configure title label
-        titleLabel.font = UIFont.boldSystemFont(ofSize: 30)
+        // 1. Charcoal Gray
+        let charcoalGray = UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0) // Hex: #262626
+
+        // 2. Warm Deep Gray
+        let warmDeepGray = UIColor(red: 0.2, green: 0.18, blue: 0.18, alpha: 1.0) // Hex: #332F2F
+
+
+        backgroundColor = softCreamyWhite
+        layer.cornerRadius = 20
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.08
+        layer.shadowOffset = CGSize(width: 0, height: 6)
+        layer.shadowRadius = 10
+        
+        
+        // Apply zoom-in animation (pop-up effect)
+        transform = CGAffineTransform(scaleX: 0.8, y: 0.8) // Start smaller
+        UIView.animate(withDuration: 0.4,
+                       delay: 0,
+                       usingSpringWithDamping: 0.6,
+                       initialSpringVelocity: 0.8,
+                       options: .curveEaseOut,
+                       animations: {
+                           self.transform = .identity // Return to original size
+                       },
+                       completion: nil)
+        
+        // Title Label
+        titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 22) ?? UIFont.systemFont(ofSize: 22, weight: .bold)
+        titleLabel.textColor = UIColor(Color.accentColor)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        // Configure image view
+        
+        // Image View
         imageView.contentMode = .scaleAspectFill
-        imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 8
+        imageView.clipsToBounds = true // Removed corner radius
         imageView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Configure reviewer name
-        reviewerNameLabel.font = UIFont.systemFont(ofSize: 20)
-        reviewerNameLabel.textColor = .orange
+        
+        // Reviewer Name Label
+        reviewerNameLabel.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+        reviewerNameLabel.textColor = UIColor.gray
+        reviewerNameLabel.textAlignment = .center
         reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        // Configure star stack view
+        
+        // Star Stack View
         starStackView.axis = .horizontal
         starStackView.spacing = 4
+        starStackView.alignment = .center
         starStackView.translatesAutoresizingMaskIntoConstraints = false
-
+        
         for _ in 0..<5 {
-            let starImageView = UIImageView(image: UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal))
+            let starImageView = UIImageView(image: UIImage(systemName: "star.circle.fill")?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal))
+            starImageView.contentMode = .scaleAspectFit
             starImageView.translatesAutoresizingMaskIntoConstraints = false
-            starImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
-            starImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
             starStackView.addArrangedSubview(starImageView)
             starImageViews.append(starImageView)
+            
+            // Add subtle scale animation for the stars
+            UIView.animate(withDuration: 0.8, delay: Double.random(in: 0...0.5), options: [.autoreverse, .repeat], animations: {
+                starImageView.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
+            }, completion: nil)
         }
-      
-
-        // Configure heart image and label
-        heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.red, renderingMode: .alwaysOriginal)
+        
+        // Heart Icon and Count
+        heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.systemRed, renderingMode: .alwaysOriginal)
         heartImageView.contentMode = .scaleAspectFit
         heartImageView.translatesAutoresizingMaskIntoConstraints = false
-        heartImageView.heightAnchor.constraint(equalToConstant: 20).isActive = true
-        heartImageView.widthAnchor.constraint(equalToConstant: 20).isActive = true
-
+        
+        // Initialize heartCountLabel (assuming it's a UILabel)
+        heartCountLabel = UILabel()
         heartCountLabel.font = UIFont.systemFont(ofSize: 16)
         heartCountLabel.textColor = .black
+        heartCountLabel.text = "0" // Set initial like count (can be dynamically updated)
         heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        spacerView.widthAnchor.constraint(equalToConstant: 140).isActive = true
-        // Combine stars and heart into a stack view
-        let starsAndHeartStackView = UIStackView(arrangedSubviews: [starStackView, spacerView, heartImageView, heartCountLabel])
+        
+        // Stars and Heart Horizontal Stack View
+        let starsAndHeartStackView = UIStackView(arrangedSubviews: [starStackView, heartImageView, heartCountLabel])
         starsAndHeartStackView.axis = .horizontal
-        starsAndHeartStackView.alignment = .center
         starsAndHeartStackView.spacing = 8
+        starsAndHeartStackView.alignment = .center
         starsAndHeartStackView.translatesAutoresizingMaskIntoConstraints = false
-
-        // Configure comment scroll view
+        
+        // Comment Scroll View and Label
+        commentScrollView.showsVerticalScrollIndicator = false
         commentScrollView.translatesAutoresizingMaskIntoConstraints = false
-        commentScrollView.showsVerticalScrollIndicator = true
-
-        commentLabel.font = UIFont.systemFont(ofSize: 16)
-        commentLabel.textColor = .black
+        
+        commentLabel.font = UIFont.systemFont(ofSize: 16, weight: .light)
+        commentLabel.textColor = UIColor.gray
         commentLabel.numberOfLines = 0
         commentLabel.translatesAutoresizingMaskIntoConstraints = false
         commentScrollView.addSubview(commentLabel)
-
-        // Add subviews to main view
+        
+        // Add Subviews
         addSubview(titleLabel)
         addSubview(imageView)
         addSubview(reviewerNameLabel)
         addSubview(starsAndHeartStackView)
         addSubview(commentScrollView)
-
-        // Apply constraints
+        
+        // Apply Constraints
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-
-            imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
-            imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            imageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
-            imageView.heightAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
-
-            reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
-            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-
-            starsAndHeartStackView.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 15),
-            starsAndHeartStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            starsAndHeartStackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
-
-            commentScrollView.topAnchor.constraint(equalTo: starsAndHeartStackView.bottomAnchor, constant: 8),
-            commentScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            commentScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            commentScrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
-
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 20),
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            
+            imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            imageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 1.0), // Vertical image aspect
+            imageView.bottomAnchor.constraint(equalTo: reviewerNameLabel.topAnchor, constant: -8), // Small space between image and reviewer name
+            
+            reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 12),
+            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            reviewerNameLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            
+            starsAndHeartStackView.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 12),
+            starsAndHeartStackView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            
+            commentScrollView.topAnchor.constraint(equalTo: starsAndHeartStackView.bottomAnchor, constant: 16),
+            commentScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            commentScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            commentScrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -20),
+            
             commentLabel.topAnchor.constraint(equalTo: commentScrollView.topAnchor),
             commentLabel.leadingAnchor.constraint(equalTo: commentScrollView.leadingAnchor),
             commentLabel.trailingAnchor.constraint(equalTo: commentScrollView.trailingAnchor),
@@ -173,8 +210,14 @@ class CustomPopupView: UIView {
     }
 
     
+
+
+
+
+    
     private func updateStars() {
-            let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(.yellow, renderingMode: .alwaysOriginal)
+            let goldenYellow = UIColor(red: 255/255, green: 223/255, blue: 0/255, alpha: 1) // Custom golden yellow color
+        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
             let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
             
             for (index, starImageView) in starImageViews.enumerated() {
