@@ -19,24 +19,15 @@ struct ProfileView: View {
             ScrollView {
                 VStack {
                     // Profile Image Placeholder
-                        VStack {
-                            Image(uiImage: selectedImage ?? UIImage(systemName: "person.circle.fill")!)
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 100, height: 100)
-                                                .clipShape(Circle())
-                                                .foregroundColor(.accentColor)
-                                            
-                                            // "Change profile pic" Text
-                                            Text("Change profile pic")
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(.blue)
-                                                .padding(.top, 8)
-                                                .onTapGesture {
-                                                    isPickerPresented = true // Open the gallery
-                                                }
-                                        }
-                                        .padding(.top)
+                    VStack {
+                         Image(systemName: "person.circle.fill")
+                             .resizable()
+                             .scaledToFill()
+                             .frame(width: 100, height: 100)
+                             .clipShape(Circle())
+                             .foregroundColor(.accentColor)
+                     }
+                     .padding(.top)
                     
                     // Profile Header
                     VStack(spacing: 16) {
@@ -120,15 +111,7 @@ struct ProfileView: View {
                 }
             }
             // Attach image picker
-            .sheet(isPresented: $isPickerPresented) {
-                            ImagePicker(selectedImage: $selectedImage)
-                        }
-                        .onChange(of: selectedImage) { newImage in
-                            guard let newImage = newImage else { return }
-                            Task {
-                                await viewModel.uploadProfilePicture(image: newImage)
-                            }
-                        }
+            
         }
     }
 }
