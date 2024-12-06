@@ -22,6 +22,7 @@ struct CreatePostView: View {
     @State private var locationDisplay: String = "Location not found"
     @State private var selectedLocationCoordinates: CLLocationCoordinate2D? = nil
     @State private var isUploading = false
+    @State private var isLocationManuallySet = false // New state to track manual location updates
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
 
@@ -96,6 +97,7 @@ struct CreatePostView: View {
                             locationDisplay = name
                             selectedLocationCoordinates = coordinates
                             showRestaurantPicker = false
+                            isLocationManuallySet = true // Mark as manually set
                         }
                     )
                 }
@@ -171,7 +173,8 @@ struct CreatePostView: View {
                     sourceType: sourceType,
                     selectedImage: $selectedImage,
                     imageLocation: $imageLocation,
-                    locationDisplay: $locationDisplay
+                    locationDisplay: $locationDisplay,
+                    isLocationManuallySet: $isLocationManuallySet // Pass the binding
                 )
             }
         }
@@ -179,6 +182,7 @@ struct CreatePostView: View {
     }
 
     private func fetchUserLocation() {
+        guard !isLocationManuallySet else { return } // Skip if manually set
         LocationManager.shared.startUpdatingLocation { location in
             DispatchQueue.main.async {
                 self.imageLocation = location
@@ -188,18 +192,22 @@ struct CreatePostView: View {
     }
 
     private func reverseGeocode(_ location: CLLocation) {
+        guard !isLocationManuallySet else { return } // Skip if manually set
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
             if let placemark = placemarks?.first {
-                if let placeName = placemark.name {
-                    self.locationDisplay = placeName
-                } else if let locality = placemark.locality {
-                    self.locationDisplay = locality
-                } else {
-                    self.locationDisplay = "Location not found"
+                let placeName = placemark.name ?? placemark.locality ?? "Location not found"
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet { // Double-check before updating
+                        self.locationDisplay = placeName
+                    }
                 }
             } else {
-                self.locationDisplay = "Location not found"
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet {
+                        self.locationDisplay = "Location not found"
+                    }
+                }
             }
         }
     }
@@ -241,7 +249,18 @@ struct CreatePostView: View {
                 starRating: rating
             )
             
-            
+            NotificationCenter.default.post(
+                name: .postAdded,
+                object: nil,
+                userInfo: [
+                    "userId": userId,
+                    "imageData": imageData,
+                    "review": reviewContent,
+                    "location": locationString,
+                    "restaurantName": restaurantName,
+                    "starRating": rating
+                ]
+            )
 
             print("Post created successfully: \(newPost)")
             resetPostState()
@@ -262,6 +281,7 @@ struct CreatePostView: View {
         reviewText = ""
         rating = 0
         locationDisplay = "Location not found"
+        isLocationManuallySet = false // Reset manual state
     }
 
     struct ImagePicker: UIViewControllerRepresentable {
@@ -269,6 +289,7 @@ struct CreatePostView: View {
         @Binding var selectedImage: UIImage?
         @Binding var imageLocation: CLLocation?
         @Binding var locationDisplay: String
+        @Binding var isLocationManuallySet: Bool // New binding to track manual location updates
         @Environment(\.dismiss) var dismiss
 
         func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -294,16 +315,12 @@ struct CreatePostView: View {
             func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
                 if let image = info[.originalImage] as? UIImage {
                     parent.selectedImage = image
-
-                    // Attempt to retrieve PHAsset directly
-                    if let asset = info[.phAsset] as? PHAsset {
-                        processAsset(asset)
-                    } else if let fileURL = info[.imageURL] as? URL {
-                        // Fallback: Fetch PHAsset from file URL
-                        fetchAssetFromFileURL(fileURL)
-                    } else {
-                        print("No PHAsset or file URL found for selected image.")
-                        parent.locationDisplay = "Location not found"
+                    if !parent.isLocationManuallySet {
+                        if let asset = info[.phAsset] as? PHAsset {
+                            processAsset(asset)
+                        } else if let fileURL = info[.imageURL] as? URL {
+                            fetchAssetFromFileURL(fileURL)
+                        }
                     }
                 }
                 parent.dismiss()
@@ -311,11 +328,9 @@ struct CreatePostView: View {
 
             private func processAsset(_ asset: PHAsset) {
                 if let location = asset.location {
-                    print("Location metadata found: \(location)")
                     parent.imageLocation = location
                     reverseGeocode(location)
                 } else {
-                    print("No location metadata in PHAsset.")
                     parent.locationDisplay = "Location not found"
                 }
             }
@@ -325,23 +340,26 @@ struct CreatePostView: View {
                 if let asset = result.firstObject {
                     processAsset(asset)
                 } else {
-                    print("Failed to fetch PHAsset manually.")
                     parent.locationDisplay = "Location not found"
                 }
             }
 
             private func reverseGeocode(_ location: CLLocation) {
+                guard !parent.isLocationManuallySet else { return }
                 let geocoder = CLGeocoder()
                 geocoder.reverseGeocodeLocation(location) { placemarks, error in
                     if let placemark = placemarks?.first {
                         let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
-                        print("Geocoded Location: \(locationName)")
                         DispatchQueue.main.async {
-                            self.parent.locationDisplay = locationName
+                            if !self.parent.isLocationManuallySet {
+                                self.parent.locationDisplay = locationName
+                            }
                         }
                     } else {
                         DispatchQueue.main.async {
-                            self.parent.locationDisplay = "Location not found"
+                            if !self.parent.isLocationManuallySet {
+                                self.parent.locationDisplay = "Location not found"
+                            }
                         }
                     }
                 }
@@ -352,7 +370,6 @@ struct CreatePostView: View {
             }
         }
     }
-
 
     struct NearbyRestaurantPicker: View {
         @Environment(\.dismiss) var dismiss
@@ -400,9 +417,9 @@ struct CreatePostView: View {
         }
 
         private func fetchNearbyRestaurants() {
-            let searchTerms = ["food", "coffee", "grocery store", "restaurants", "restaurant", "bars", "clubs", "fast food"] // Define terms
+            let searchTerms = ["food", "coffee", "grocery store", "restaurants", "restaurant", "bars", "clubs", "fast food"]
             var allPlaces: [MKMapItem] = []
-            let group = DispatchGroup() // To manage asynchronous calls
+            let group = DispatchGroup()
             isLoading = true
 
             for term in searchTerms {
@@ -416,9 +433,7 @@ struct CreatePostView: View {
                 
                 let search = MKLocalSearch(request: request)
                 search.start { response, error in
-                    if let error = error {
-                        print("Error fetching nearby \(term): \(error)")
-                    } else if let mapItems = response?.mapItems {
+                    if let mapItems = response?.mapItems {
                         allPlaces.append(contentsOf: mapItems)
                     }
                     group.leave()
@@ -428,26 +443,20 @@ struct CreatePostView: View {
             group.notify(queue: .main) {
                 isLoading = false
 
-                // Remove duplicates using Coordinate as a key
                 let uniquePlaces = Dictionary(grouping: allPlaces, by: { Coordinate($0.placemark.coordinate) })
-                    .compactMap { $0.value.first } // Get one instance of each coordinate
+                    .compactMap { $0.value.first }
 
-                // Sort by distance from userLocation
                 let sortedPlaces = uniquePlaces.sorted {
                     let distance1 = $0.placemark.location?.distance(from: CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)) ?? Double.infinity
                     let distance2 = $1.placemark.location?.distance(from: CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)) ?? Double.infinity
                     return distance1 < distance2
                 }
 
-                nearbyRestaurants = sortedPlaces // Assign compiled results
-                print("Fetched \(sortedPlaces.count) unique places sorted by distance for terms: \(searchTerms)")
+                nearbyRestaurants = sortedPlaces
             }
         }
-
-
     }
 }
-
 
 struct Coordinate: Hashable {
     let latitude: Double
