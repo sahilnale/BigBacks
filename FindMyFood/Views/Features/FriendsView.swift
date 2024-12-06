@@ -390,7 +390,7 @@ private struct UserRowView: View {
                 AddFriendButton(
                     user: user,
                     currentUserId: currentUserId,
-                    isRequestPending: user.pendingRequests.contains(currentUserId),
+                    isRequestPending: user.friendRequests.contains(currentUserId),
                     errorMessage: $errorMessage
                 )
             }
