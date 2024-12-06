@@ -327,10 +327,30 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         }
     }
     
+    func removeAllAnnotations() {
+        map.removeAnnotations(map.annotations)
+    }
+    
+    func removeSpecificAnnotation(annotation: MKAnnotation) {
+        map.removeAnnotation(annotation)
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         map.frame = view.bounds
     }
+    
+    override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            
+            // Remove all existing annotations
+            removeAllAnnotations()
+            
+            // Reload image annotations asynchronously
+            Task {
+                await loadImageAnnotation()
+            }
+        }
     
     func recenterMap() {
         guard let location = locationManager.location else { return }
@@ -554,13 +574,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         }
     }
     
-    func removeAllAnnotations() {
-        map.removeAnnotations(map.annotations)
-    }
     
-    func removeSpecificAnnotation(annotation: MKAnnotation) {
-        map.removeAnnotation(annotation)
-    }
 
 
 
