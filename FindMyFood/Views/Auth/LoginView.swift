@@ -86,10 +86,6 @@ struct LoginView: View {
             .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 3)
             .disabled(username.isEmpty || password.isEmpty || authViewModel.isLoading)
 
-            // Forgot Password
-            Button("Forgot password?") {
-                // Forgot password functionality
-            }
             .font(.headline)
             .foregroundColor(Color.accentColor)
 
