@@ -54,6 +54,7 @@ struct RestaurantCard: View {
     @State private var isExpanded: Bool = false // Tracks if the description is expanded
     @State private var newCommentText: String = ""
     @State private var showComments: Bool = false
+    var userName: String
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -67,6 +68,11 @@ struct RestaurantCard: View {
             } placeholder: {
                 Color.gray.frame(width: 300, height: 200)
             }
+            
+            Text("@\(userName)")
+                .font(.subheadline.bold())
+                .foregroundColor(.accentColor)
+                .padding(.leading)
             
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {

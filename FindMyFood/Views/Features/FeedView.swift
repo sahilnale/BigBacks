@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FeedView: View {
-    @State private var posts: [Post] = [] // The array to hold the fetched posts
+    @State private var posts: [(post: Post, userName: String)] = [] // The array to hold the fetched posts
     @State private var isLoading: Bool = true // To track loading state
     @State private var errorMessage: String? = nil // To track any error
 
@@ -32,9 +32,9 @@ struct FeedView: View {
                         Spacer()
                     }
                 } else {
-                    List(posts) { post in
-                        RestaurantCard(post: post) // Use a properly designed `RestaurantCard`
-                    }
+                    List(posts, id: \.post.id) { (post, userName) in
+                            RestaurantCard(post: post, userName: userName)
+                        }
                     .listStyle(PlainListStyle())
                 }
             }
@@ -51,8 +51,18 @@ struct FeedView: View {
             do {
                 let userId = AuthManager.shared.userId ?? "" // Replace with actual user ID
                 let fetchedPosts = try await NetworkManager.shared.userFeed(userId: userId)
+                
+                var postsWithUserNames: [(post: Post, userName: String)] = []
+                    for post in fetchedPosts {
+                        if let user = try? await NetworkManager.shared.getUserById(userId: post.userId) {
+                            postsWithUserNames.append((post: post, userName: user.username))
+                        } else {
+                            postsWithUserNames.append((post: post, userName: "Unknown"))
+                        }
+                    }
+                
                 DispatchQueue.main.async {
-                    self.posts = fetchedPosts
+                    self.posts = postsWithUserNames
                     self.isLoading = false
                 }
             } catch {
