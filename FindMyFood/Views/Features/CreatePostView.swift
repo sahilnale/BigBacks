@@ -236,7 +236,7 @@ struct CreatePostView: View {
                 restaurantName = locationDisplay
             }
 
-            let coordinates = selectedLocationCoordinates ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+            let coordinates = selectedLocationCoordinates ?? imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
             let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
 
             let reviewContent = reviewText.isEmpty ? postText : reviewText
@@ -417,7 +417,7 @@ struct CreatePostView: View {
         }
 
         private func fetchNearbyRestaurants() {
-            let searchTerms = ["food", "coffee", "grocery store", "restaurants", "restaurant", "bars", "clubs", "fast food"]
+            let searchTerms = ["food", "coffee", "grocery store", "restaurants", "restaurant", "bars", "clubs", "fast food", "cafe", "bakery", "dining", "bistro", "buffet", "pub", "bar"]
             var allPlaces: [MKMapItem] = []
             let group = DispatchGroup()
             isLoading = true
