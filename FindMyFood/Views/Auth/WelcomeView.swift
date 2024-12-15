@@ -1,4 +1,6 @@
 import SwiftUI
+import Photos
+import AVFoundation
 
 struct WelcomeView: View {
     @State private var textScale: CGFloat = 0.5
@@ -19,6 +21,7 @@ struct WelcomeView: View {
                         withAnimation(.easeIn(duration: 1)) {
                             textOpacity = 1.0
                         }
+                        requestPermissions()
                     }
                     .padding()
                 
@@ -50,9 +53,66 @@ struct WelcomeView: View {
             .navigationBarHidden(true)
         }
     }
+    
+    private func requestPermissions() {
+           PHPhotoLibrary.requestAuthorization { status in
+               switch status {
+               case .authorized:
+                   print("Photo Library access granted.")
+               case .denied, .restricted, .notDetermined:
+                   print("Photo Library access not granted.")
+               case .limited:
+                   print("Photo Library access is limited. Only selected photos are accessible.")
+                       // Optionally, show an alert to suggest enabling full access
+                       DispatchQueue.main.async {
+                           showLimitedAccessAlert()
+                       }
+               @unknown default:
+                   print("Unknown Photo Library status.")
+               }
+           }
+        
+           AVCaptureDevice.requestAccess(for: .video) { granted in
+               if granted {
+                   print("Camera access granted.")
+               } else {
+                   print("Camera access denied.")
+               }
+           }
+       }
+    private func showLimitedAccessAlert() {
+        let alert = UIAlertController(
+            title: "Limited Access",
+            message: "You have granted limited access to your photo library. To use all features, please allow full access in Settings.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Go to Settings", style: .default, handler: { _ in
+            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(settingsURL)
+            }
+        }))
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // Find the topmost view controller in iOS 15+
+        if let topController = UIApplication.shared
+            .connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+            .first(where: { $0.isKeyWindow })?
+            .rootViewController {
+            
+            // Present the alert from the topmost view controller
+            var currentController = topController
+            while let presented = currentController.presentedViewController {
+                currentController = presented
+            }
+            currentController.present(alert, animated: true)
+        }
+    }
+
 }
 
-// Preview Provider
+//Preview Provider
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
