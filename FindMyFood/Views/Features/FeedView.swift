@@ -7,13 +7,8 @@ struct FeedView: View {
 
     var body: some View {
         NavigationView {
+            ZStack {
             VStack(alignment: .leading) {
-                // Title at the top
-                Text("Feed")
-                    .font(.system(size: 34, weight: .bold)) // Apple-like title design
-                    .foregroundColor(.primary)
-                    .padding(.top)
-                    .padding(.leading)
 
                 // Main Content
                 if isLoading {
@@ -43,8 +38,43 @@ struct FeedView: View {
             .onAppear {
                 loadFeed()
             }
+//            VStack {
+//                Text("Feed")
+//                    .font(.system(.largeTitle, design: .serif))
+//                    .fontWeight(.bold)
+//                    .padding(.top, 60)
+//                    .padding(.bottom, 20)
+//                    .frame(maxWidth: .infinity, maxHeight: 90)
+//                    .background(Color.accentColor.opacity(0.8))
+//                    .foregroundColor(.white)
+//                Spacer() // Pushes the main content below
+//            }
+//            .ignoresSafeArea(edges: .top) // Makes the text extend to the top edge
+                
+            VStack {
+                HStack {
+                    Image("transparentLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60) // Adjust the size of the image
+                        .padding(.leading, 10) // Add padding to align properly
+                    Text("FindMyFood")
+                        .font(.system(.largeTitle, design: .serif))
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                       // .padding(.leading, 5) // Add padding between image and text
+                    Spacer()
+                }
+                .padding(.top, 60)
+                .padding(.bottom, 20)
+                .frame(maxWidth: .infinity, maxHeight: 90)
+                .background(Color.accentColor.opacity(0.8))
+                .ignoresSafeArea(edges: .top) // Makes the content extend to the top edge
+                Spacer() // Pushes the main content below
+            }
         }
     }
+}
 
     private func loadFeed() {
         Task {

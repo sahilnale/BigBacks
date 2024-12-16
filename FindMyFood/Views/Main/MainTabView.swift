@@ -32,7 +32,7 @@ struct MainTabView: View {
                 }
 
                 
-                FriendsView(currentUserId: "account123")
+                FriendsView(currentUserId: "account123") //should this be userId??
                     .tabItem {
                         Label("Friends", systemImage: "person.2")
                     }.tag(2)
@@ -47,7 +47,6 @@ struct MainTabView: View {
         .navigationBarBackButtonHidden(true)
     }
 }
-
 
 struct MainTabView_Previews: PreviewProvider {
     static var previews: some View {
