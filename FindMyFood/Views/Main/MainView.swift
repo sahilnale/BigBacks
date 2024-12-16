@@ -8,7 +8,25 @@ struct MainView: View {
             // MapView with the MapViewModel
             MapView(viewModel: mapViewModel)
                 .edgesIgnoringSafeArea(.all)
-            
+            VStack {
+                HStack(spacing: 0) {
+                    Image("orangeLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 70, height: 70)
+                        .padding(.leading, 10)
+                        .padding(.top, 40)
+                    
+                    Text("FindMyFood")
+                        .font(.system(.title2, design: .serif))
+                        .fontWeight(.bold)
+                        .foregroundColor(.accentColor)
+                        .padding(.top, 40)
+                    Spacer()
+                }
+                Spacer()
+            }
+            .ignoresSafeArea(edges: .top)
             // Overlay UI
             VStack {
                 Spacer() // Push buttons to the bottom
