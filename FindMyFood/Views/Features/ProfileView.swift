@@ -190,9 +190,9 @@ struct PostGridView: View {
     
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(posts.reversed(), id: \._id) { post in
+            ForEach(posts.reversed(), id: \.id) { post in
                 NavigationLink(destination: PostDetailView(post: post)) {
-                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
+                    AsyncImage(url: URL(string: post.imageUrl!)) { phase in
                         switch phase {
                         case .empty:
                             ProgressView() // Show a loading indicator while the image loads
@@ -246,13 +246,15 @@ struct PostDetailView: View {
     @State private var isDeleting = false
     @State private var showAlert = false
     @State private var errorMessage: String?
+    @EnvironmentObject var authViewModel: AuthViewModel
+    
 
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // Post Image
-                AsyncImage(url: URL(string: post.imageUrl)) { phase in
+                AsyncImage(url: URL(string: post.imageUrl!)) { phase in
                     switch phase {
                     case .empty:
                         ProgressView() // Show loading spinner
@@ -353,12 +355,19 @@ struct PostDetailView: View {
    }
 
     
-private func deletePost() async {
+    private func deletePost() async {
         print("Starting deletePost function")
         isDeleting = true
         do {
+            guard let userId = authViewModel.currentUser?.id else {
+                print("Error: Current user ID is nil")
+                errorMessage = "User not logged in."
+                isDeleting = false
+                return
+            }
+
             print("Attempting to delete post with ID: \(post.id)")
-            try await NetworkManager.shared.deletePost(postId: post.id)
+            try await NetworkManager.shared.deletePost(postId: post.id, userId: userId)
             print("Post deletion successful")
             DispatchQueue.main.async {
                 print("Attempting to dismiss the view")
@@ -370,6 +379,7 @@ private func deletePost() async {
         }
         isDeleting = false
     }
+
 }
 
 

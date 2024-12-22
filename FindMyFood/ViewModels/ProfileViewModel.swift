@@ -75,18 +75,26 @@ class ProfileViewModel: ObservableObject {
 
         do {
             let user = try await NetworkManager.shared.getCurrentUser(userId: userId)
+
+            // Fetch all posts for the user
+            var postObjects: [Post] = []
+            for postId in user.posts {
+                let post = try await NetworkManager.shared.fetchPostDetails(postId: postId)
+                postObjects.append(post)
+            }
+
             DispatchQueue.main.async {
                 self.name = user.name
                 self.username = user.username
-                self.posts = user.posts
+                self.posts = postObjects // Assign the fetched Post objects
                 self.friendsCount = user.friends.count
-                self.profileImage = user.profilePicture // Assuming the server returns the profile image
+                self.profileImage = user.profilePicture
                 self.isLoading = false
             }
         } catch {
             DispatchQueue.main.async {
-                self.errorMessage = "Failed to load profile: \(error.localizedDescription)"
                 self.isLoading = false
+                print("Error: \(error.localizedDescription)")
             }
         }
     }

@@ -509,7 +509,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             for (post, user) in posts {
                 
                 
-                guard let imageUrl = URL(string: post.imageUrl) else {
+                guard let imageUrl = URL(string: post.imageUrl!) else {
                     print("Invalid URL for post: \(post.id)")
                     continue
                 }
