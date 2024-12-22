@@ -1,121 +1,162 @@
+import Firebase
 import SwiftUI
+import FirebaseAuth
+import FirebaseStorage
 
 @MainActor
 class AuthViewModel: ObservableObject {
-    @Published var currentUser: User? {
-        didSet {
-            // Save currentUser to UserDefaults when it changes
-            if let user = currentUser {
-                if let encodedUser = try? JSONEncoder().encode(user) {
-                    UserDefaults.standard.set(encodedUser, forKey: "currentUser")
-                }
-                // Save ID to Keychain
-                AuthManager.shared.setUserId(user.id)
-            } else {
-                // Clear both UserDefaults and Keychain if user logs out
-                UserDefaults.standard.removeObject(forKey: "currentUser")
-                AuthManager.shared.clearUserId()
-            }
-        }
-    }
     
-    @Published var error: NetworkError?
+    
+    @Published var error: String?
     @Published var isLoading = false
     @Published var showError = false
     
+    @Published var currentUser: User? = nil
+
+
+    func fetchCurrentUser() async throws -> User {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User is not logged in."])
+        }
+
+        let db = Firestore.firestore()
+        let userDoc = try await db.collection("users").document(userId).getDocument()
+
+        guard let data = userDoc.data(),
+              let name = data["name"] as? String,
+              let username = data["username"] as? String else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch user data."])
+        }
+
+        return User(
+            id: userId,
+            name: name,
+            username: username,
+            email: data["email"] as? String ?? "",
+            friends: data["friends"] as? [String] ?? [],
+            friendRequests: data["friendRequests"] as? [String] ?? [],
+            pendingRequests: data["pendingRequests"] as? [String] ?? [],
+            posts: [], // Handle posts separately if needed
+            profilePicture: data["profilePicture"] as? String,
+            loggedIn: true
+        )
+    }
+    
+    
+    
     var isLoggedIn: Bool {
-        currentUser != nil && AuthManager.shared.isLoggedIn
-    }
-    
-    init() {
-        if AuthManager.shared.isLoggedIn {
-            if let savedUserData = UserDefaults.standard.data(forKey: "currentUser"),
-               let decodedUser = try? JSONDecoder().decode(User.self, from: savedUserData) {
-                self.currentUser = decodedUser
-            } else {
-                Task {
-                    await refreshCurrentUser()
-                }
-            }
-        }
-    }
-    
-    func refreshCurrentUser() async {
-        guard let userId = AuthManager.shared.userId else { return }
-        
-        do {
-            let user = try await NetworkManager.shared.getCurrentUser(userId: userId)
-            await MainActor.run {
-                self.currentUser = user
-            }
-        } catch {
-            await MainActor.run {
-                self.logout()
-            }
-        }
-    }
-    
-    func login(username: String, password: String, completion: @escaping (Bool) -> Void) {
-        isLoading = true
-        
-        Task {
-            do {
-                let user = try await NetworkManager.shared.login(username: username, password: password)
-                self.currentUser = user
-                self.isLoading = false
-                print("LOGGED IN: ", user)
-                completion(true)
-            } catch let error as NetworkError {
-                self.error = error
-                self.showError = true
-                self.isLoading = false
-                completion(false)
-            } catch {
-                self.error = .serverError(error.localizedDescription)
-                self.showError = true
-                self.isLoading = false
-                completion(false)
-            }
-        }
+        currentUser != nil
     }
     
     func signUp(name: String, username: String, email: String, password: String, completion: @escaping (Bool) -> Void) {
         isLoading = true
-        
         Task {
             do {
-                let user = try await NetworkManager.shared.signUp(
+                // Create user with Firebase Authentication
+                let result = try await Auth.auth().createUser(withEmail: email, password: password)
+                let userId = result.user.uid
+                
+                // Save additional user details to Firestore
+                let user = User(
+                    id: userId,
                     name: name,
                     username: username,
                     email: email,
-                    password: password
+                    friends: [],
+                    friendRequests: [],
+                    pendingRequests: [],
+                    posts: [],
+                    profilePicture: nil,
+                    loggedIn: true
                 )
-                self.currentUser = user
-                self.isLoading = false
-                login(username: username, password: password) { success in
-                    if success {
-                        print("Login successful!")
-                    } else {
-                        print("Login failed.")
-                    }
+                
+                let db = Firestore.firestore()
+                try await db.collection("users").document(userId).setData([
+                    "id": userId,
+                    "name": name,
+                    "username": username,
+                    "email": email,
+                    "friends": [],
+                    "friendRequests": [],
+                    "pendingRequests": [],
+                    "posts": [],
+                    "profilePicture": "",
+                    "loggedIn": true
+                ])
+                
+                await MainActor.run {
+                    self.currentUser = user
+                    self.isLoading = false
+                    completion(true) // Sign-up succeeded
                 }
-                completion(true)
-            } catch let error as NetworkError {
-                self.error = error
-                self.showError = true
-                self.isLoading = false
-                completion(false)
             } catch {
-                self.error = .serverError(error.localizedDescription)
-                self.showError = true
-                self.isLoading = false
-                completion(false)
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    self.showError = true
+                    self.isLoading = false
+                    completion(false) // Sign-up failed
+                }
             }
         }
     }
+
+    
+    func login(email: String, password: String, completion: @escaping (Bool) -> Void) {
+        isLoading = true
+        Task {
+            do {
+                // Sign in the user with Firebase Authentication
+                let result = try await Auth.auth().signIn(withEmail: email, password: password)
+                let userId = result.user.uid
+                
+                // Fetch user details from Firestore
+                let db = Firestore.firestore()
+                let userDoc = try await db.collection("users").document(userId).getDocument()
+                
+                if let data = userDoc.data(),
+                   let name = data["name"] as? String,
+                   let username = data["username"] as? String {
+                    let user = User(
+                        id: userId,
+                        name: name,
+                        username: username,
+                        email: email,
+                        friends: data["friends"] as? [String] ?? [],
+                        friendRequests: data["friendRequests"] as? [String] ?? [],
+                        pendingRequests: data["pendingRequests"] as? [String] ?? [],
+                        posts: [], // Assume posts are fetched separately
+                        profilePicture: data["profilePicture"] as? String,
+                        loggedIn: true
+                    )
+                    
+                    await MainActor.run {
+                        self.currentUser = user
+                        self.isLoading = false
+                        completion(true) // Login successful
+                    }
+                } else {
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User data not found."])
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    self.showError = true
+                    self.isLoading = false
+                    completion(false) // Login failed
+                }
+            }
+        }
+    }
+
     
     func logout() {
-        currentUser = nil
+        do {
+            try Auth.auth().signOut()
+            currentUser = nil
+        } catch {
+            self.error = error.localizedDescription
+            self.showError = true
+        }
     }
     
     func isValidEmail(_ email: String) -> Bool {
@@ -139,6 +180,68 @@ class AuthViewModel: ObservableObject {
                lowercasePredicate.evaluate(with: password) &&
                numberPredicate.evaluate(with: password)
     }
+    
+    func addPost(
+            imageData: Data,
+            review: String,
+            location: String,
+            restaurantName: String,
+            starRating: Int
+        ) async throws -> Post {
+            guard let userId = Auth.auth().currentUser?.uid else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not logged in."])
+            }
+            
+            print("in progress")
+
+            // Step 1: Upload Image to Firebase Storage
+            let imageRef = Storage.storage().reference().child("posts/\(UUID().uuidString).jpg")
+            let metadata = StorageMetadata()
+            metadata.contentType = "image/jpeg"
+
+            let uploadTask = try await imageRef.putDataAsync(imageData, metadata: metadata)
+            let imageUrl = try await imageRef.downloadURL().absoluteString
+
+            // Step 2: Save Post in Firestore
+            let db = Firestore.firestore()
+            let postId = UUID().uuidString
+            let newPost: [String: Any] = [
+                "id": postId,
+                "userId": userId,
+                "imageUrl": imageUrl,
+                "timestamp": FieldValue.serverTimestamp(),
+                "review": review,
+                "location": location,
+                "restaurantName": restaurantName,
+                "starRating": starRating,
+                "likes": 0,
+                "likedBy": [],
+                "comments": []
+            ]
+
+            try await db.collection("posts").document(postId).setData(newPost)
+
+            // Step 3: Update Current User's Posts
+            let userRef = db.collection("users").document(userId)
+            try await userRef.updateData([
+                "posts": FieldValue.arrayUnion([postId])
+            ])
+
+            // Return the created post object
+            return Post(
+                _id: postId,
+                userId: userId,
+                imageUrl: imageUrl,
+                timestamp: "", // You can fetch the timestamp from Firestore if needed
+                review: review,
+                location: location,
+                restaurantName: restaurantName,
+                likes: 0,
+                likedBy: [],
+                starRating: starRating,
+                comments: []
+            )
+        }
 }
 
 import Foundation

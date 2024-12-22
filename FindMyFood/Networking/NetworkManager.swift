@@ -21,6 +21,48 @@ class NetworkManager {
         }
     }
     
+    func signUp(name: String, username: String, email: String, password: String) async throws -> User {
+        let endpoint = "\(baseURL)/user/"
+        guard let url = URL(string: endpoint) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "name": name,
+            "username": username,
+            "email": email,
+            "password": password
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 409 {
+                throw NetworkError.badRequest("Email or username already exists")
+            }
+            throw NetworkError.error(from: httpResponse.statusCode)
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            return try decoder.decode(User.self, from: data)
+        } catch {
+            print("Decoding error: \(error)")
+            throw NetworkError.decodingError
+        }
+        
+    }
+    
     private init() {}
     
     func login(username: String, password: String) async throws -> User {
@@ -105,47 +147,7 @@ class NetworkManager {
     
     
     // MARK: - Authentication
-    func signUp(name: String, username: String, email: String, password: String) async throws -> User {
-        let endpoint = "\(baseURL)/user/"
-        guard let url = URL(string: endpoint) else {
-            throw NetworkError.invalidURL
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "name": name,
-            "username": username,
-            "email": email,
-            "password": password
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
-        }
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 409 {
-                throw NetworkError.badRequest("Email or username already exists")
-            }
-            throw NetworkError.error(from: httpResponse.statusCode)
-        }
-        
-        do {
-            let decoder = JSONDecoder()
-            return try decoder.decode(User.self, from: data)
-        } catch {
-            print("Decoding error: \(error)")
-            throw NetworkError.decodingError
-        }
-        
-    }
+    
     
     func searchUsers(query: String) async throws -> [User] {
         guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),

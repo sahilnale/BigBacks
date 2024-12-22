@@ -169,7 +169,12 @@ struct RestaurantCard: View {
                     
                     
                     
-                    
+                    Button("Print Comments") {
+                        for comment in post.comments {
+                            print("Comment: \(comment)")
+                        }
+                    }
+
                     
                     
                 }

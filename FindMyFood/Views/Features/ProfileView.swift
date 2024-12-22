@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @StateObject private var viewModel = ProfileViewModel()
+    @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
+    
+    
     
     @State private var isPickerPresented = false // State to control picker presentation
     @State private var selectedImage: UIImage? // Store the selected image
