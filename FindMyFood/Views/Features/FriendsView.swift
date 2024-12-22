@@ -2,27 +2,48 @@ import SwiftUI
 
 struct FriendsView: View {
     @State private var showingFriendRequests = false
-    @State private var showingAddFriend = false // New state for add friend sheet
-    let currentUserId: String  // Add this property
-    @StateObject private var viewModel = FriendsViewModel() // Initialize the view model
-    
+    @State private var showingAddFriend = false // State for add friend sheet
+
+    // Dependency Injection
+    @EnvironmentObject var authViewModel: AuthViewModel // Fetch `authViewModel` from the environment
+    @StateObject private var viewModel: FriendsViewModel
+
+    init(authViewModel: AuthViewModel) {
+        _viewModel = StateObject(wrappedValue: FriendsViewModel(authViewModel: authViewModel))
+    }
+
     var body: some View {
+        
+        
         NavigationView {
+            
             VStack {
+                
+                // View Friend Requests Button
                 Button(action: {
                     showingFriendRequests = true
                 }) {
                     Text("View Requests")
                         .font(.headline)
+                        .foregroundColor(.accentColor)
                 }
-                .foregroundColor(.accentColor)
                 .sheet(isPresented: $showingFriendRequests) {
                     NavigationView {
                         FriendRequestView()
                     }
                 }
-                
-                // Display friends in the List view
+
+                .navigationTitle("Friends")
+                .navigationBarItems(
+                    trailing: Button(action: {
+                        showingAddFriend = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .foregroundColor(.accentColor)
+                    }
+                )
+                // Friends List or Loading/Error States
                 if viewModel.isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
@@ -36,6 +57,7 @@ struct FriendsView: View {
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .font(.system(size: 40))
+                                .foregroundColor(.accentColor)
                             VStack(alignment: .leading) {
                                 Text(friend.name)
                                     .font(.headline)
@@ -47,22 +69,21 @@ struct FriendsView: View {
                     }
                 }
             }
+        
+            
+            
             .onAppear {
-                // Wrap async function call in a Task to support concurrency
                 Task {
-                    await viewModel.loadFriends(for: currentUserId) // Fetch friends when the view appears
+                    await viewModel.loadFriends() // Fetch friends on view appearance
                 }
             }
-            .navigationTitle("Friends")
-            .navigationBarItems(trailing: Button("Add") {
-                showingAddFriend = true
-            })
+            
         }
         .sheet(isPresented: $showingAddFriend) {
             NavigationView {
                 AddFriendView(
-                    currentUserId: currentUserId,
-                    friends: viewModel.friends.map { $0.id } // Extract friend IDs
+                    currentUserId: authViewModel.currentUser?.id ?? "",
+                    friends: viewModel.friends.map { $0.id }
                 )
             }
         }
@@ -215,8 +236,11 @@ struct FriendRequestRow: View {
 }
 
 //Add friend view
+import SwiftUI
+
 struct AddFriendView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var searchResults: [User] = []
@@ -230,11 +254,11 @@ struct AddFriendView: View {
                 performSearch(searchText)
             }
             SearchResultsListView(
-                isSearching: isSearching,
-                searchResults: searchResults,
-                searchText: searchText,
-                friends: friends,
-                errorMessage: $errorMessage
+                searchResults: $searchResults,
+                isSearching: $isSearching,
+                searchText: $searchText,
+                errorMessage: $errorMessage,
+                friends: friends
             )
         }
         .alert("Error", isPresented: .constant(errorMessage != nil)) {
@@ -251,10 +275,14 @@ struct AddFriendView: View {
             if !query.isEmpty {
                 isSearching = true
                 do {
-                    let results = try await NetworkManager.shared.searchUsers(query: query)
-                    searchResults = results
+                    let results = try await authViewModel.searchUsers(by: query)
+                    DispatchQueue.main.async {
+                        searchResults = results
+                    }
                 } catch {
-                    errorMessage = error.localizedDescription
+                    DispatchQueue.main.async {
+                        errorMessage = error.localizedDescription
+                    }
                 }
                 isSearching = false
             } else {
@@ -264,20 +292,22 @@ struct AddFriendView: View {
     }
 }
 
+
 // MARK: - Supporting Views
+// MARK: - Search Bar View
 private struct SearchBarView: View {
     @Binding var searchText: String
     var onSearch: () -> Void
-    
+
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
-            
+
             TextField("Search by username...", text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .onSubmit(onSearch)
-            
+
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
@@ -293,14 +323,16 @@ private struct SearchBarView: View {
     }
 }
 
+
+// MARK: - Search Results List View
 private struct SearchResultsListView: View {
-    let isSearching: Bool
-    let searchResults: [User]
-    let searchText: String
-    @State private var currentUserId: String?
-    let friends: [String] // Pass friends list here
+    @EnvironmentObject var authViewModel: AuthViewModel // Access from environment
+    @Binding var searchResults: [User]
+    @Binding var isSearching: Bool
+    @Binding var searchText: String
     @Binding var errorMessage: String?
-    
+    let friends: [String]
+
     var body: some View {
         List {
             if isSearching {
@@ -311,28 +343,18 @@ private struct SearchResultsListView: View {
                 ForEach(searchResults) { user in
                     UserRowView(
                         user: user,
-                        currentUserId: currentUserId ?? " ",
+                        currentUserId: authViewModel.currentUser?.id ?? "",
                         errorMessage: $errorMessage,
-                        isAlreadyFriend: friends.contains(user.id), // Check if user is a friend
-                        isAlreadyRequestedBy: user.pendingRequests.contains(currentUserId ?? " ")
+                        isAlreadyFriend: friends.contains(user.id),
+                        isAlreadyRequestedBy: user.pendingRequests.contains(authViewModel.currentUser?.id ?? "")
                     )
                 }
             }
         }
         .listStyle(PlainListStyle())
-        .onAppear {
-                    loadCurrentUserId()
-        }
-    }
-
-private func loadCurrentUserId() {
-        guard let id = AuthManager.shared.userId else {
-            errorMessage = "Not logged in"
-            return
-        }
-        currentUserId = id
     }
 }
+
 
 
 private struct SearchLoadingView: View {

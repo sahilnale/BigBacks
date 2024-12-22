@@ -26,6 +26,8 @@ struct CreatePostView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
     @EnvironmentObject var authViewModel: AuthViewModel // Use A
+    
+    var onPostComplete: (() -> Void)? // Completion callback
 
     var body: some View {
         NavigationStack {
@@ -148,6 +150,7 @@ struct CreatePostView: View {
                     Button(action: {
                         Task {
                             await postReview()
+                            onPostComplete?()
                         }
                     }) {
                         Text("Post")

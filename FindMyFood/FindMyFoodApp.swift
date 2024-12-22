@@ -13,7 +13,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct FindMyFoodApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate // Register Firebase AppDelegate
-    @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var authViewModel = AuthViewModel.shared // Use the shared instance
     
     var body: some Scene {
         WindowGroup {
@@ -21,6 +21,11 @@ struct FindMyFoodApp: App {
                 ContentView()
             }
             .environmentObject(authViewModel)
+            .onAppear {
+                Task {
+                    await authViewModel.loadCurrentUser()
+                }
+            }
         }
     }
 }

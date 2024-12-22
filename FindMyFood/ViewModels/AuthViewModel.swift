@@ -5,6 +5,7 @@ import FirebaseStorage
 
 @MainActor
 class AuthViewModel: ObservableObject {
+    static let shared = AuthViewModel()
     
     
     @Published var error: String?
@@ -12,6 +13,51 @@ class AuthViewModel: ObservableObject {
     @Published var showError = false
     
     @Published var currentUser: User? = nil
+    
+    
+    init() {
+            Task {
+                await loadCurrentUser()
+            }
+        }
+    
+    func loadCurrentUser() async {
+            guard let firebaseUser = Auth.auth().currentUser else {
+                self.currentUser = nil
+                return
+            }
+
+            let db = Firestore.firestore()
+            do {
+                let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
+                
+                guard let data = userDoc.data(),
+                      let name = data["name"] as? String,
+                      let username = data["username"] as? String,
+                      let email = data["email"] as? String else {
+                    self.currentUser = nil
+                    return
+                }
+
+                await MainActor.run {
+                    self.currentUser = User(
+                        id: firebaseUser.uid,
+                        name: name,
+                        username: username,
+                        email: email,
+                        friends: data["friends"] as? [String] ?? [],
+                        friendRequests: data["friendRequests"] as? [String] ?? [],
+                        pendingRequests: data["pendingRequests"] as? [String] ?? [],
+                        posts: [],
+                        profilePicture: data["profilePicture"] as? String,
+                        loggedIn: true
+                    )
+                }
+            } catch {
+                print("Failed to fetch current user: \(error.localizedDescription)")
+                self.currentUser = nil
+            }
+        }
 
 
     func fetchCurrentUser() async throws -> User {
@@ -52,11 +98,10 @@ class AuthViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                // Create user with Firebase Authentication
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
                 let userId = result.user.uid
                 
-                // Save additional user details to Firestore
+                let db = Firestore.firestore()
                 let user = User(
                     id: userId,
                     name: name,
@@ -70,7 +115,6 @@ class AuthViewModel: ObservableObject {
                     loggedIn: true
                 )
                 
-                let db = Firestore.firestore()
                 try await db.collection("users").document(userId).setData([
                     "id": userId,
                     "name": name,
@@ -87,29 +131,26 @@ class AuthViewModel: ObservableObject {
                 await MainActor.run {
                     self.currentUser = user
                     self.isLoading = false
-                    completion(true) // Sign-up succeeded
+                    completion(true)
                 }
             } catch {
                 await MainActor.run {
-                    self.error = error.localizedDescription
-                    self.showError = true
                     self.isLoading = false
-                    completion(false) // Sign-up failed
+                    completion(false)
                 }
             }
         }
     }
+
 
     
     func login(email: String, password: String, completion: @escaping (Bool) -> Void) {
         isLoading = true
         Task {
             do {
-                // Sign in the user with Firebase Authentication
                 let result = try await Auth.auth().signIn(withEmail: email, password: password)
                 let userId = result.user.uid
                 
-                // Fetch user details from Firestore
                 let db = Firestore.firestore()
                 let userDoc = try await db.collection("users").document(userId).getDocument()
                 
@@ -124,7 +165,7 @@ class AuthViewModel: ObservableObject {
                         friends: data["friends"] as? [String] ?? [],
                         friendRequests: data["friendRequests"] as? [String] ?? [],
                         pendingRequests: data["pendingRequests"] as? [String] ?? [],
-                        posts: [], // Assume posts are fetched separately
+                        posts: [],
                         profilePicture: data["profilePicture"] as? String,
                         loggedIn: true
                     )
@@ -132,21 +173,20 @@ class AuthViewModel: ObservableObject {
                     await MainActor.run {
                         self.currentUser = user
                         self.isLoading = false
-                        completion(true) // Login successful
+                        completion(true)
                     }
                 } else {
                     throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User data not found."])
                 }
             } catch {
                 await MainActor.run {
-                    self.error = error.localizedDescription
-                    self.showError = true
                     self.isLoading = false
-                    completion(false) // Login failed
+                    completion(false)
                 }
             }
         }
     }
+
 
     
     func logout() {
@@ -242,6 +282,103 @@ class AuthViewModel: ObservableObject {
                 comments: []
             )
         }
+    
+    func getUserById(friendId: String) async throws -> User? {
+        let userDocument = try await Firestore.firestore()
+            .collection("users")
+            .document(friendId)
+            .getDocument()
+
+        guard let data = userDocument.data() else {
+            throw UserFetchError.documentNotFound
+        }
+
+        // Manual decoding of Firestore document
+        guard let id = data["id"] as? String,
+              let name = data["name"] as? String,
+              let username = data["username"] as? String,
+              let email = data["email"] as? String,
+              let friends = data["friends"] as? [String],
+              let friendRequests = data["friendRequests"] as? [String],
+              let pendingRequests = data["pendingRequests"] as? [String],
+              let posts = data["posts"] as? [String] else {
+            throw NetworkError.decodingError
+        }
+
+        let profilePicture = data["profilePicture"] as? String
+        let loggedIn = data["loggedIn"] as? Bool ?? false
+
+        return User(
+            id: id,
+            name: name,
+            username: username,
+            email: email,
+            friends: friends,
+            friendRequests: friendRequests,
+            pendingRequests: pendingRequests,
+            posts: [], // Assuming `Post` initializer for post IDs
+            profilePicture: profilePicture,
+            loggedIn: loggedIn
+        )
+    }
+    
+    func searchUsers(by usernamePrefix: String) async throws -> [User] {
+        let db = Firestore.firestore()
+        let usersRef = db.collection("users")
+        var users: [User] = []
+        
+        // Convert the search prefix to lowercase
+        let lowercasedPrefix = usernamePrefix.lowercased()
+        let endString = lowercasedPrefix + "\u{f8ff}" // Add a high Unicode character to create the upper bound
+        
+        do {
+            // Query using the lowercased prefix
+            let querySnapshot = try await usersRef
+                .whereField("username", isGreaterThanOrEqualTo: lowercasedPrefix)
+                .whereField("username", isLessThanOrEqualTo: endString)
+                .getDocuments()
+            
+            for document in querySnapshot.documents {
+                let data = document.data()
+                guard let id = document.documentID as? String,
+                      let name = data["name"] as? String,
+                      let username = data["username"] as? String,
+                      let email = data["email"] as? String else {
+                    continue
+                }
+                
+                // Optional fields
+                let friends = data["friends"] as? [String] ?? []
+                let friendRequests = data["friendRequests"] as? [String] ?? []
+                let pendingRequests = data["pendingRequests"] as? [String] ?? []
+                let posts = data["posts"] as? [String] ?? []
+                let profilePicture = data["profilePicture"] as? String
+                let loggedIn = data["loggedIn"] as? Bool ?? false
+                
+                let user = User(
+                    id: id,
+                    name: name,
+                    username: username,
+                    email: email,
+                    friends: friends,
+                    friendRequests: friendRequests,
+                    pendingRequests: pendingRequests,
+                    posts: [], // Convert string IDs to Post objects if needed
+                    profilePicture: profilePicture,
+                    loggedIn: loggedIn
+                )
+                users.append(user)
+            }
+        } catch {
+            throw NetworkError.serverError("Failed to search users: \(error.localizedDescription)")
+        }
+        
+        return users
+    }
+
+
+        
+
 }
 
 import Foundation
@@ -325,5 +462,21 @@ private class KeychainHelper {
         ]
         
         SecItemDelete(query as CFDictionary)
+    }
+}
+enum UserFetchError: Error, LocalizedError {
+    case documentNotFound
+    case missingRequiredFields
+    case decodingFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .documentNotFound:
+            return "The user document could not be found."
+        case .missingRequiredFields:
+            return "The user document is missing required fields."
+        case .decodingFailed:
+            return "Failed to decode user data."
+        }
     }
 }
