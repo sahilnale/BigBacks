@@ -2,10 +2,9 @@ import SwiftUI
 
 struct FriendsView: View {
     @State private var showingFriendRequests = false
-    @State private var showingAddFriend = false // State for add friend sheet
+    @State private var showingAddFriend = false
 
-    // Dependency Injection
-    @EnvironmentObject var authViewModel: AuthViewModel // Fetch `authViewModel` from the environment
+    @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel: FriendsViewModel
 
     init(authViewModel: AuthViewModel) {
@@ -13,13 +12,9 @@ struct FriendsView: View {
     }
 
     var body: some View {
-        
-        
-        NavigationView {
-            
+        NavigationStack {
             VStack {
-                
-                // View Friend Requests Button
+                // Button to View Friend Requests
                 Button(action: {
                     showingFriendRequests = true
                 }) {
@@ -28,21 +23,18 @@ struct FriendsView: View {
                         .foregroundColor(.accentColor)
                 }
                 .sheet(isPresented: $showingFriendRequests) {
-                    NavigationView {
+                    // Present FriendRequestView in its own NavigationStack
+                    NavigationStack {
                         FriendRequestView()
+                            .navigationTitle("Friend Requests")
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    
+                                }
+                            }
                     }
                 }
 
-                .navigationTitle("Friends")
-                .navigationBarItems(
-                    trailing: Button(action: {
-                        showingAddFriend = true
-                    }) {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .foregroundColor(.accentColor)
-                    }
-                )
                 // Friends List or Loading/Error States
                 if viewModel.isLoading {
                     ProgressView()
@@ -69,26 +61,44 @@ struct FriendsView: View {
                     }
                 }
             }
-        
-            
-            
             .onAppear {
                 Task {
                     await viewModel.loadFriends() // Fetch friends on view appearance
                 }
             }
-            
+            .navigationTitle("Friends")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingAddFriend = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showingAddFriend) {
-            NavigationView {
+            // Present AddFriendView in its own NavigationStack
+            NavigationStack {
                 AddFriendView(
                     currentUserId: authViewModel.currentUser?.id ?? "",
                     friends: viewModel.friends.map { $0.id }
                 )
+                .navigationTitle("Add Friends")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        
+                    }
+                }
             }
         }
     }
 }
+
+
+
 
 struct FriendRequestView: View {
     @Environment(\.dismiss) var dismiss

@@ -19,6 +19,7 @@ struct FindMyFoodApp: App {
         WindowGroup {
             NavigationView {
                 ContentView()
+                    .tint(Color(red: 240/255, green: 116/255, blue: 84/255))
             }
             .environmentObject(authViewModel)
             .onAppear {

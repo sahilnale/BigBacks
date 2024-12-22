@@ -241,6 +241,12 @@ class AuthViewModel: ObservableObject {
 
             let uploadTask = try await imageRef.putDataAsync(imageData, metadata: metadata)
             let imageUrl = try await imageRef.downloadURL().absoluteString
+            
+            let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.timeZone = TimeZone(abbreviation: "UTC")
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                
+                let isoTimestampString = isoFormatter.string(from: Date())
 
             // Step 2: Save Post in Firestore
             let db = Firestore.firestore()
@@ -249,7 +255,7 @@ class AuthViewModel: ObservableObject {
                 "id": postId,
                 "userId": userId,
                 "imageUrl": imageUrl,
-                "timestamp": FieldValue.serverTimestamp(),
+                "timestamp": isoTimestampString,
                 "review": review,
                 "location": location,
                 "restaurantName": restaurantName,
