@@ -36,6 +36,7 @@
 
 
 import SwiftUI
+import FirebaseAuth
 
 
 struct Comment: Encodable, Decodable, Identifiable, Hashable {
@@ -146,13 +147,19 @@ struct RestaurantCard: View {
                             likeCount += isLiked ? 1 : -1
                             
                             // Call the backend to persist the state
-                            NetworkManager.shared.toggleLike(postId: post.id, currentLikeCount: likeCount, isLiked: !isLiked) { newLikeCount, newIsLiked in
-                                // Sync state with backend in case of conflict
-                                DispatchQueue.main.async {
-                                    self.likeCount = newLikeCount
-                                    self.isLiked = newIsLiked
-                                }
-                            }
+                            Task {
+                                                       do {
+                                                           let result = try await AuthViewModel.shared.toggleLike(
+                                                               postId: post.id,
+                                                               userId: Auth.auth().currentUser?.uid ?? "",
+                                                               isCurrentlyLiked: !isLiked
+                                                           )
+                                                           self.likeCount = result.newLikeCount
+                                                           self.isLiked = result.isLiked
+                                                       } catch {
+                                                           print("Failed to toggle like: \(error)")
+                                                       }
+                                                   }
                         }) {
                             HStack {
                                 Image(systemName: isLiked ? "heart.fill" : "heart")
@@ -169,11 +176,7 @@ struct RestaurantCard: View {
                     
                     
                     
-                    Button("Print Comments") {
-                        for comment in post.comments {
-                            print("Comment: \(comment)")
-                        }
-                    }
+    
 
                     
                     

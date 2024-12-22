@@ -100,8 +100,11 @@ struct FriendsView: View {
 
 
 
+import SwiftUI
+
 struct FriendRequestView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var friendRequests: [User] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -139,14 +142,14 @@ struct FriendRequestView: View {
     }
     
     private func loadFriendRequests() async {
-        guard let currentUserId = AuthManager.shared.userId else {
+        guard let currentUserId = authViewModel.currentUser?.id else {
             errorMessage = "Not logged in"
             isLoading = false
             return
         }
         
         do {
-            friendRequests = try await NetworkManager.shared.getFriendRequests(userId: currentUserId)
+            friendRequests = try await authViewModel.getFriendRequests(for: currentUserId)
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
@@ -155,56 +158,45 @@ struct FriendRequestView: View {
     }
     
     private func acceptRequest(from user: User) {
-        guard let currentUserId = AuthManager.shared.userId else {
+        guard let currentUserId = authViewModel.currentUser?.id else {
             errorMessage = "Not logged in"
             return
         }
-        
-        Task {
-            do {
-                try await NetworkManager.shared.acceptFriendRequest(userId: currentUserId, friendId: user.id)
-                // Remove the accepted request from the list
-                friendRequests.removeAll { $0.id == user.id }
-            } catch {
-                errorMessage = error.localizedDescription
+
+        authViewModel.acceptFriendRequest(currentUserId: currentUserId, friendId: user.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    // Remove the accepted request from the list
+                    friendRequests.removeAll { $0.id == user.id }
+                case .failure(let error):
+                    errorMessage = error.localizedDescription
+                }
             }
         }
     }
+
     
     private func rejectRequest(from user: User) {
-        guard let currentUserId = AuthManager.shared.userId, !currentUserId.isEmpty else {
+        guard let currentUserId = authViewModel.currentUser?.id else {
             errorMessage = "Not logged in"
             return
         }
-        
-        guard !user.id.isEmpty else {
-            errorMessage = "Invalid friend ID"
-            return
-        }
-        
-        Task {
-            do {
-                try await NetworkManager.shared.rejectFriendRequest(userId: currentUserId, friendId: user.id)
-                friendRequests.removeAll { $0.id == user.id }
-            } catch let networkError as NetworkError {
-                switch networkError {
-                case .invalidURL:
-                    errorMessage = "Invalid URL"
-                case .invalidResponse:
-                    errorMessage = "Invalid response from server"
-                case .badRequest(let message):
-                    errorMessage = "Bad request: \(message)"
-                default:
-                    errorMessage = "Unknown error occurred"
+
+        authViewModel.rejectFriendRequest(currentUserId: currentUserId, friendId: user.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    // Remove the rejected request from the list
+                    friendRequests.removeAll { $0.id == user.id }
+                case .failure(let error):
+                    errorMessage = error.localizedDescription
                 }
-                print("Error rejecting friend request: \(errorMessage ?? "Unknown error")")
-            } catch {
-                errorMessage = error.localizedDescription
-                print("Unexpected error: \(error.localizedDescription)")
             }
         }
     }
 }
+
 
 struct FriendRequestRow: View {
     let requester: User
@@ -437,14 +429,14 @@ private struct AddFriendButton: View {
     let currentUserId: String
     @State private var isRequestPending: Bool
     @Binding var errorMessage: String?
-    
+
     init(user: User, currentUserId: String, isRequestPending: Bool, errorMessage: Binding<String?>) {
         self.user = user
         self.currentUserId = currentUserId
         self._isRequestPending = State(initialValue: isRequestPending)
         self._errorMessage = errorMessage
     }
-    
+
     var body: some View {
         Button(action: sendFriendRequest) {
             Text(isRequestPending ? "Pending" : "Add")
@@ -456,13 +448,14 @@ private struct AddFriendButton: View {
         }
         .disabled(isRequestPending)
     }
-    
+
     private func sendFriendRequest() {
         guard !isRequestPending else { return }
         
         Task {
             do {
-                try await NetworkManager.shared.sendFriendRequest(from: currentUserId, to: user.id)
+                // Call `sendFriendRequest` from `AuthViewModel`
+                try await AuthViewModel.shared.sendFriendRequest(from: currentUserId, to: user.id)
                 isRequestPending = true // Update state to show "Pending"
             } catch {
                 errorMessage = error.localizedDescription
