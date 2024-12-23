@@ -101,11 +101,19 @@ class AuthViewModel: ObservableObject {
     func signUp(name: String, username: String, email: String, password: String, completion: @escaping (Bool) -> Void) {
         isLoading = true
         Task {
+            let db = Firestore.firestore()
             do {
+                // Check if the username already exists
+                let querySnapshot = try await db.collection("users").whereField("username", isEqualTo: username).getDocuments()
+                if !querySnapshot.documents.isEmpty {
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Username already taken."])
+                }
+
+                // Create the user in Firebase Auth
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
                 let userId = result.user.uid
-                
-                let db = Firestore.firestore()
+
+                // Create the user document in Firestore
                 let user = User(
                     id: userId,
                     name: name,
@@ -118,7 +126,7 @@ class AuthViewModel: ObservableObject {
                     profilePicture: nil,
                     loggedIn: true
                 )
-                
+
                 try await db.collection("users").document(userId).setData([
                     "id": userId,
                     "name": name,
@@ -131,7 +139,7 @@ class AuthViewModel: ObservableObject {
                     "profilePicture": "",
                     "loggedIn": true
                 ])
-                
+
                 await MainActor.run {
                     self.currentUser = user
                     self.isLoading = false
@@ -139,12 +147,15 @@ class AuthViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
+                    self.error = error.localizedDescription
+                    self.showError = true
                     self.isLoading = false
                     completion(false)
                 }
             }
         }
     }
+
 
 
     
@@ -334,39 +345,44 @@ class AuthViewModel: ObservableObject {
     
     func searchUsers(by usernamePrefix: String) async throws -> [User] {
         let db = Firestore.firestore()
-        let usersRef = db.collection("users")
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User is not logged in."])
+        }
+
         var users: [User] = []
-        
-        // Convert the search prefix to lowercase
         let lowercasedPrefix = usernamePrefix.lowercased()
-        let endString = lowercasedPrefix + "\u{f8ff}" // Add a high Unicode character to create the upper bound
-        
+        let endString = lowercasedPrefix + "\u{f8ff}"
+
         do {
-            // Query using the lowercased prefix
-            let querySnapshot = try await usersRef
+            let querySnapshot = try await db.collection("users")
                 .whereField("username", isGreaterThanOrEqualTo: lowercasedPrefix)
                 .whereField("username", isLessThanOrEqualTo: endString)
                 .getDocuments()
-            
+
             for document in querySnapshot.documents {
                 let data = document.data()
-                guard let id = document.documentID as? String,
-                      let name = data["name"] as? String,
+                let userId = document.documentID
+
+                // Exclude the current user
+                if userId == currentUserId {
+                    continue
+                }
+
+                guard let name = data["name"] as? String,
                       let username = data["username"] as? String,
                       let email = data["email"] as? String else {
                     continue
                 }
-                
-                // Optional fields
+
                 let friends = data["friends"] as? [String] ?? []
                 let friendRequests = data["friendRequests"] as? [String] ?? []
                 let pendingRequests = data["pendingRequests"] as? [String] ?? []
                 let posts = data["posts"] as? [String] ?? []
                 let profilePicture = data["profilePicture"] as? String
                 let loggedIn = data["loggedIn"] as? Bool ?? false
-                
+
                 let user = User(
-                    id: id,
+                    id: userId,
                     name: name,
                     username: username,
                     email: email,
@@ -382,7 +398,6 @@ class AuthViewModel: ObservableObject {
         } catch {
             throw NetworkError.serverError("Failed to search users: \(error.localizedDescription)")
         }
-        
         return users
     }
     
