@@ -649,12 +649,32 @@ class AuthViewModel: ObservableObject {
         return feed
     }
 
-    private func fetchPostDetails(postId: String) async throws -> Post {
+    func fetchPostDetails(postId: String) async throws -> Post {
         let db = Firestore.firestore()
         let postDoc = try await db.collection("posts").document(postId).getDocument()
 
         guard let postData = postDoc.data() else {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Post not found."])
+        }
+
+        let commentsData = postData["comments"] as? [[String: Any]] ?? []
+        let comments: [Comment] = commentsData.compactMap { data in
+            guard let id = data["id"] as? String,
+                  let commentId = data["commentId"] as? String,
+                  let userId = data["userId"] as? String,
+                  let profilePhotoUrl = data["profilePhotoUrl"] as? String,
+                  let text = data["text"] as? String,
+                  let timestamp = data["timestamp"] as? Timestamp else {
+                return nil
+            }
+            return Comment(
+                id: id,
+                commentId: commentId,
+                userId: userId,
+                profilePhotoUrl: profilePhotoUrl,
+                text: text,
+                timestamp: timestamp.dateValue()
+            )
         }
 
         return Post(
@@ -668,9 +688,11 @@ class AuthViewModel: ObservableObject {
             likes: postData["likes"] as? Int ?? 0,
             likedBy: postData["likedBy"] as? [String] ?? [],
             starRating: postData["starRating"] as? Int ?? 0,
-            comments: postData["comments"] as? [Comment] ?? []
+            comments: comments
         )
     }
+
+
 
     private func fetchUserDetails(userId: String) async throws -> User {
         let db = Firestore.firestore()
@@ -696,55 +718,73 @@ class AuthViewModel: ObservableObject {
     
     
     func toggleLike(postId: String, userId: String, isCurrentlyLiked: Bool) async throws -> (newLikeCount: Int, isLiked: Bool) {
+        let db = Firestore.firestore()
+        let postRef = db.collection("posts").document(postId)
         
-            let db = Firestore.firestore()
-            let postRef = db.collection("posts").document(postId)
-            
-            return try await withCheckedThrowingContinuation { continuation in
-                db.runTransaction({ transaction, _ in
-                    let postSnapshot: DocumentSnapshot
-                    do {
-                        postSnapshot = try transaction.getDocument(postRef)
-                    } catch {
-                        continuation.resume(throwing: error)
-                        return nil
-                    }
-                    
-                    guard let postData = postSnapshot.data(),
-                          let currentLikes = postData["likes"] as? Int,
-                          var likedBy = postData["likedBy"] as? [String] else {
-                        continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid post data."]))
-                        return nil
-                    }
-                    
-                    if isCurrentlyLiked {
-                        // User is unliking the post
-                        likedBy.removeAll { $0 == userId }
-                        transaction.updateData([
-                            "likes": currentLikes - 1,
-                            "likedBy": likedBy
-                        ], forDocument: postRef)
-                        continuation.resume(returning: (newLikeCount: currentLikes - 1, isLiked: false))
-                    } else {
-                        // User is liking the post
-                        likedBy.append(userId)
-                        transaction.updateData([
-                            "likes": currentLikes + 1,
-                            "likedBy": likedBy
-                        ], forDocument: postRef)
-                        continuation.resume(returning: (newLikeCount: currentLikes + 1, isLiked: true))
-                    }
+        return try await withCheckedThrowingContinuation { continuation in
+            db.runTransaction({ transaction, _ in
+                let postSnapshot: DocumentSnapshot
+                do {
+                    postSnapshot = try transaction.getDocument(postRef)
+                } catch {
+                    continuation.resume(throwing: error)
                     return nil
-                }, completion: { _, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    }
-                })
-            }
+                }
+                
+                guard let postData = postSnapshot.data(),
+                      let currentLikes = postData["likes"] as? Int,
+                      var likedBy = postData["likedBy"] as? [String] else {
+                    continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid post data."]))
+                    return nil
+                }
+                
+                if isCurrentlyLiked {
+                    // User is disliking the post
+                    likedBy.removeAll { $0 == userId }
+                    transaction.updateData([
+                        "likes": currentLikes - 1,
+                        "likedBy": likedBy
+                    ], forDocument: postRef)
+                    continuation.resume(returning: (newLikeCount: currentLikes - 1, isLiked: false))
+                } else {
+                    // User is liking the post
+                    likedBy.append(userId)
+                    transaction.updateData([
+                        "likes": currentLikes + 1,
+                        "likedBy": likedBy
+                    ], forDocument: postRef)
+                    continuation.resume(returning: (newLikeCount: currentLikes + 1, isLiked: true))
+                }
+                return nil
+            }, completion: { _, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                }
+            })
         }
+    }
+
         
         // Fetch updated post details
         
+    func addComment(to postId: String, comment: Comment) async throws -> Comment {
+        let db = Firestore.firestore()
+        let commentData: [String: Any] = [
+            "id": comment.id,
+            "commentId": comment.commentId,
+            "userId": comment.userId,
+            "profilePhotoUrl": comment.profilePhotoUrl,
+            "text": comment.text,
+            "timestamp": Timestamp(date: comment.timestamp)
+        ]
+
+        try await db.collection("posts").document(postId).updateData([
+            "comments": FieldValue.arrayUnion([commentData])
+        ])
+
+        return comment
+    }
+
 
 
 

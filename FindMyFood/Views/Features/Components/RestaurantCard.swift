@@ -142,36 +142,37 @@ struct RestaurantCard: View {
                     
                     VStack {
                         Button(action: {
-                            // Provide immediate feedback
-                            isLiked.toggle()
-                            likeCount += isLiked ? 1 : -1
-                            
-                            // Call the backend to persist the state
+                            // Toggle the like/dislike functionality
                             Task {
-                                                       do {
-                                                           let result = try await AuthViewModel.shared.toggleLike(
-                                                               postId: post.id,
-                                                               userId: Auth.auth().currentUser?.uid ?? "",
-                                                               isCurrentlyLiked: !isLiked
-                                                           )
-                                                           self.likeCount = result.newLikeCount
-                                                           self.isLiked = result.isLiked
-                                                       } catch {
-                                                           print("Failed to toggle like: \(error)")
-                                                       }
-                                                   }
+                                do {
+                                    // Persist the state with the backend
+                                    let result = try await AuthViewModel.shared.toggleLike(
+                                        postId: post.id,
+                                        userId: Auth.auth().currentUser?.uid ?? "",
+                                        isCurrentlyLiked: isLiked
+                                    )
+                                    await MainActor.run {
+                                        self.likeCount = result.newLikeCount
+                                        self.isLiked = result.isLiked
+                                    }
+                                } catch {
+                                    print("Failed to toggle like: \(error)")
+                                }
+                            }
                         }) {
                             HStack {
                                 Image(systemName: isLiked ? "heart.fill" : "heart")
                                     .foregroundColor(isLiked ? .red : .gray)
-                                    .scaleEffect(isLiked ? 1.2 : 1.0) // Add scaling animation
+                                    .scaleEffect(isLiked ? 1.2 : 1.0) // Scaling animation for like action
                                     .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.5), value: isLiked)
                                 
                                 Text("\(likeCount) likes")
                                     .font(.subheadline)
+                                    .foregroundColor(.primary)
                             }
                         }
-                        .buttonStyle(PlainButtonStyle()) // Ensure no additional styles
+                        .disabled(isLiked && !isLiked) // Disable like if already liked
+                        .buttonStyle(PlainButtonStyle())
                     }
                     
                     
@@ -239,24 +240,37 @@ struct RestaurantCard: View {
                         
                         Button(action: {
                             guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                            //PLACEHOLDER INFORMATION UNTIL INTEGRATION IS DONE
-                            let newComment = Comment(
-                                id: UUID().uuidString,
-                                commentId: UUID().uuidString,
-                                userId: "user123",
-                                profilePhotoUrl: "placeholder",
-                                text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
-                                timestamp: Date()
-                            )
-                            
-                            post.comments.append(newComment)
-                            newCommentText = ""
+
+                            Task {
+                                do {
+                                    let comment = Comment(
+                                        id: UUID().uuidString,
+                                        commentId: UUID().uuidString,
+                                        userId: Auth.auth().currentUser?.uid ?? "",
+                                        profilePhotoUrl: AuthViewModel.shared.currentUser?.profilePicture ?? "placeholder",
+                                        text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        timestamp: Date()
+                                    )
+                                    
+                                    let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
+                                    
+                                    await MainActor.run {
+                                        post.comments.append(newComment)
+                                        newCommentText = ""
+                                    }
+
+                                    print("Comment added successfully.")
+                                } catch {
+                                    print("Failed to add comment: \(error)")
+                                }
+                            }
                         }) {
                             Text("Post")
                                 .font(.subheadline)
                                 .foregroundColor(.accentColor)
                                 .padding(.horizontal)
                         }
+
                     }
                     .padding(.horizontal)
                 }
@@ -276,12 +290,14 @@ struct RestaurantCard: View {
         .onAppear {
             Task {
                 do {
-                    let updatedPost = try await NetworkManager.shared.fetchPostDetails(postId: post.id)
-                    self.likeCount = updatedPost.likes
-                    self.isLiked = updatedPost.likedBy.contains(AuthManager.shared.userId ?? "")
+                    let updatedPost = try await AuthViewModel.shared.fetchPostDetails(postId: post.id)
+                    await MainActor.run {
+                        self.likeCount = updatedPost.likes
+                        self.isLiked = updatedPost.likedBy.contains(Auth.auth().currentUser?.uid ?? "")
+                        self.post.comments = updatedPost.comments
+                    }
                 } catch {
-                    // Handle any error that occurred during the fetch
-                    print("Failed to fetch post details: \(error.localizedDescription)")
+                    print("Failed to fetch post details: \(error)")
                 }
             }
         }
