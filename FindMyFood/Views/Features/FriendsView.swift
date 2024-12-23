@@ -8,56 +8,89 @@ struct FriendsView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
-                Button(action: {
-                    showingFriendRequests = true
-                }) {
-                    Text("View Requests")
-                        .font(.headline)
-                }
-                .foregroundColor(.accentColor)
-                .sheet(isPresented: $showingFriendRequests) {
-                    NavigationView {
-                        FriendRequestView()
-                    }
-                }
-                
-                // Display friends in the List view
-                if viewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle())
-                        .padding()
-                } else if let errorMessage = viewModel.errorMessage {
-                    Text("Error: \(errorMessage)")
-                        .foregroundColor(.red)
-                        .padding()
-                } else {
-                    List(viewModel.friends) { friend in
-                        HStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 40))
-                            VStack(alignment: .leading) {
-                                Text(friend.name)
-                                    .font(.headline)
-                                Text("@\(friend.username)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
+            ZStack {
+                VStack(spacing: 10) {
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            showingFriendRequests = true
+                        }) {
+                            Text("View Requests")
+                                .font(.headline)
+                        }
+                        .foregroundColor(.accentColor)
+                        .sheet(isPresented: $showingFriendRequests) {
+                            NavigationView {
+                                FriendRequestView()
+                            }
+                        }
+                        Button(action: {
+                            showingAddFriend = true
+                        }) {
+                            Text("Add Friends").font(.headline)
+                        }.foregroundColor(.accentColor)
+                    }.padding(.top, 40)
+                    
+                    // Display friends in the List view
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .padding()
+                    } else if let errorMessage = viewModel.errorMessage {
+                        Text("Error: \(errorMessage)")
+                            .foregroundColor(.red)
+                            .padding()
+                    } else {
+                        List(viewModel.friends) { friend in
+                            HStack {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.system(size: 40))
+                                VStack(alignment: .leading) {
+                                    Text(friend.name)
+                                        .font(.headline)
+                                    Text("@\(friend.username)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
                             }
                         }
                     }
                 }
-            }
-            .onAppear {
-                // Wrap async function call in a Task to support concurrency
-                Task {
-                    await viewModel.loadFriends(for: currentUserId) // Fetch friends when the view appears
+                .onAppear {
+                    // Wrap async function call in a Task to support concurrency
+                    Task {
+                        await viewModel.loadFriends(for: currentUserId) // Fetch friends when the view appears
+                    }
+                }
+//                .navigationTitle("Friends")
+//                .navigationBarItems(trailing: Button("Add") {
+//                    showingAddFriend = true
+//                })
+                
+                VStack {
+                    HStack {
+                        Image("transparentLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 65, height: 65) // Adjust the size of the image
+                            .padding(.leading, 10) // Add padding to align properly
+                        Text("FindMyFood")
+                            .font(.system(.largeTitle, design: .serif))
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                           // .padding(.leading, 5) // Add padding between image and text
+                        Spacer()
+                    }
+                    .padding(.top, 65)
+                    .padding(.bottom, 20)
+                    .frame(maxWidth: .infinity, maxHeight: 95)
+                    .background(Color.accentColor.opacity(0.8))
+                    .ignoresSafeArea(edges: .top) // Makes the content extend to the top edge
+                    Spacer() // Pushes the main content below
                 }
             }
-            .navigationTitle("Friends")
-            .navigationBarItems(trailing: Button("Add") {
-                showingAddFriend = true
-            })
         }
+       // .navigationBarHidden(true)
+        .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showingAddFriend) {
             NavigationView {
                 AddFriendView(
