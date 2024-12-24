@@ -5,9 +5,7 @@ import Firebase
 import FirebaseAuth
 import FirebaseFirestore
 
-
-
-// Custom annotation class
+// MARK: - Custom Annotation Class
 class ImageAnnotation: NSObject, MKAnnotation {
     var coordinate: CLLocationCoordinate2D
     var title: String?
@@ -17,7 +15,18 @@ class ImageAnnotation: NSObject, MKAnnotation {
     var rating: Int?
     var heartC: Int?
     
-    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, image: UIImage?, author: String?, rating: Int?, heartC: Int?) {
+    // Added a postId to identify this annotation uniquely
+    var postId: String?
+    
+    init(coordinate: CLLocationCoordinate2D,
+         title: String?,
+         subtitle: String?,
+         image: UIImage?,
+         author: String?,
+         rating: Int?,
+         heartC: Int?,
+         postId: String?) {
+        
         self.coordinate = coordinate
         self.title = title
         self.subtitle = subtitle
@@ -25,10 +34,11 @@ class ImageAnnotation: NSObject, MKAnnotation {
         self.author = author
         self.rating = rating
         self.heartC = heartC
+        self.postId = postId
     }
 }
 
-//Popup
+// MARK: - Custom Popup View
 class CustomPopupView: UIView {
     private let titleLabel = UILabel()
     private let imageView = UIImageView()
@@ -41,14 +51,9 @@ class CustomPopupView: UIView {
     private let profileImageView = UIImageView()
     private let spacerView = UIView()
     
-    
     private let starStackView = UIStackView()
     private let heartImageView = UIImageView()
     private var heartCountLabel = UILabel()
-    
-    
-    // Create a horizontal stack view for stars and heart
-    
     
     private var starRating: Int = 0 {
         didSet { updateStars() }
@@ -59,9 +64,6 @@ class CustomPopupView: UIView {
     
     private var starImageViews: [UIImageView] = []
     
- 
-
-    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupView()
@@ -71,20 +73,9 @@ class CustomPopupView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    
     private func setupView() {
-        // Background setup
-        let lightbeige = UIColor(red: 0.95, green: 0.92, blue: 0.88, alpha: 1)
-        let offWhiteSalmon = UIColor(red: 1.0, green: 0.94, blue: 0.9, alpha: 1)
         // 1. Soft Creamy White
         let softCreamyWhite = UIColor(red: 1.0, green: 0.973, blue: 0.953, alpha: 1.0) // Hex: #FFF8F3
-
-        // 1. Charcoal Gray
-        let charcoalGray = UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0) // Hex: #262626
-
-        // 2. Warm Deep Gray
-        let warmDeepGray = UIColor(red: 0.2, green: 0.18, blue: 0.18, alpha: 1.0) // Hex: #332F2F
-
 
         backgroundColor = softCreamyWhite
         layer.cornerRadius = 20
@@ -93,30 +84,28 @@ class CustomPopupView: UIView {
         layer.shadowOffset = CGSize(width: 0, height: 6)
         layer.shadowRadius = 10
         
-        
-        // Apply zoom-in animation (pop-up effect)
-        transform = CGAffineTransform(scaleX: 0.8, y: 0.8) // Start smaller
+        // Popup animation
+        transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
         UIView.animate(withDuration: 0.4,
                        delay: 0,
                        usingSpringWithDamping: 0.6,
                        initialSpringVelocity: 0.8,
                        options: .curveEaseOut,
                        animations: {
-                           self.transform = .identity // Return to original size
-                       },
-                       completion: nil)
+            self.transform = .identity
+        }, completion: nil)
         
         // Title Label
-        titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 22) ?? UIFont.systemFont(ofSize: 22, weight: .bold)
+        titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 22)
+            ?? UIFont.systemFont(ofSize: 22, weight: .bold)
         titleLabel.textColor = UIColor(Color.customOrange)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Image View
         imageView.contentMode = .scaleAspectFill
-        imageView.clipsToBounds = true // Removed corner radius
+        imageView.clipsToBounds = true
         imageView.translatesAutoresizingMaskIntoConstraints = false
-
         
         // Reviewer Name Label
         reviewerNameLabel.font = UIFont.systemFont(ofSize: 18, weight: .medium)
@@ -131,32 +120,44 @@ class CustomPopupView: UIView {
         starStackView.translatesAutoresizingMaskIntoConstraints = false
         
         for _ in 0..<5 {
-            let starImageView = UIImageView(image: UIImage(systemName: "star.circle.fill")?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal))
+            let starImageView = UIImageView(
+                image: UIImage(systemName: "star.circle.fill")?
+                    .withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+            )
             starImageView.contentMode = .scaleAspectFit
             starImageView.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Subtle scale animation
+            UIView.animate(
+                withDuration: 0.8,
+                delay: Double.random(in: 0...0.5),
+                options: [.autoreverse, .repeat],
+                animations: {
+                    starImageView.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
+                },
+                completion: nil
+            )
+            
             starStackView.addArrangedSubview(starImageView)
             starImageViews.append(starImageView)
-            
-            // Add subtle scale animation for the stars
-            UIView.animate(withDuration: 0.8, delay: Double.random(in: 0...0.5), options: [.autoreverse, .repeat], animations: {
-                starImageView.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
-            }, completion: nil)
         }
         
         // Heart Icon and Count
-        heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.systemRed, renderingMode: .alwaysOriginal)
+        heartImageView.image = UIImage(systemName: "heart.fill")?
+            .withTintColor(.systemRed, renderingMode: .alwaysOriginal)
         heartImageView.contentMode = .scaleAspectFit
         heartImageView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Initialize heartCountLabel (assuming it's a UILabel)
         heartCountLabel = UILabel()
         heartCountLabel.font = UIFont.systemFont(ofSize: 16)
         heartCountLabel.textColor = .black
-        heartCountLabel.text = "0" // Set initial like count (can be dynamically updated)
+        heartCountLabel.text = "0"
         heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Stars and Heart Horizontal Stack View
-        let starsAndHeartStackView = UIStackView(arrangedSubviews: [starStackView, heartImageView, heartCountLabel])
+        // Stars + Heart stack
+        let starsAndHeartStackView = UIStackView(
+            arrangedSubviews: [starStackView, heartImageView, heartCountLabel]
+        )
         starsAndHeartStackView.axis = .horizontal
         starsAndHeartStackView.spacing = 8
         starsAndHeartStackView.alignment = .center
@@ -165,7 +166,6 @@ class CustomPopupView: UIView {
         // Comment Scroll View and Label
         commentScrollView.showsVerticalScrollIndicator = false
         commentScrollView.translatesAutoresizingMaskIntoConstraints = false
-        
         commentLabel.font = UIFont.systemFont(ofSize: 16, weight: .light)
         commentLabel.textColor = UIColor.gray
         commentLabel.numberOfLines = 0
@@ -179,7 +179,7 @@ class CustomPopupView: UIView {
         addSubview(starsAndHeartStackView)
         addSubview(commentScrollView)
         
-        // Apply Constraints
+        // Constraints
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 20),
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
@@ -188,17 +188,28 @@ class CustomPopupView: UIView {
             imageView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             imageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
-            imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 1.0), // Vertical image aspect
-            imageView.bottomAnchor.constraint(equalTo: reviewerNameLabel.topAnchor, constant: -8), // Small space between image and reviewer name
+            imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 1.0),
             
-            reviewerNameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 12),
+            reviewerNameLabel.topAnchor.constraint(
+                equalTo: imageView.bottomAnchor,
+                constant: 12
+            ),
             reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
-            reviewerNameLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            reviewerNameLabel.trailingAnchor.constraint(
+                equalTo: trailingAnchor,
+                constant: -20
+            ),
             
-            starsAndHeartStackView.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 12),
+            starsAndHeartStackView.topAnchor.constraint(
+                equalTo: reviewerNameLabel.bottomAnchor,
+                constant: 12
+            ),
             starsAndHeartStackView.centerXAnchor.constraint(equalTo: centerXAnchor),
             
-            commentScrollView.topAnchor.constraint(equalTo: starsAndHeartStackView.bottomAnchor, constant: 16),
+            commentScrollView.topAnchor.constraint(
+                equalTo: starsAndHeartStackView.bottomAnchor,
+                constant: 16
+            ),
             commentScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
             commentScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
             commentScrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -20),
@@ -210,47 +221,45 @@ class CustomPopupView: UIView {
             commentLabel.widthAnchor.constraint(equalTo: commentScrollView.widthAnchor)
         ])
     }
-
-    
-
-
-
-
     
     private func updateStars() {
-            let goldenYellow = UIColor(red: 255/255, green: 223/255, blue: 0/255, alpha: 1) // Custom golden yellow color
-        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
-            let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
-            
-            for (index, starImageView) in starImageViews.enumerated() {
-                starImageView.image = index < starRating ? filledStarImage : emptyStarImage
-            }
-        }
-    
-
-
-    func setDetails(title: String?, image: UIImage?, reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
+        let goldenYellow = UIColor(
+            red: 255/255,
+            green: 223/255,
+            blue: 0/255,
+            alpha: 1
+        )
+        let filledStarImage = UIImage(systemName: "star.fill")?
+            .withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
+        let emptyStarImage = UIImage(systemName: "star")?
+            .withTintColor(.lightGray, renderingMode: .alwaysOriginal)
         
+        for (index, starImageView) in starImageViews.enumerated() {
+            starImageView.image = index < starRating ? filledStarImage : emptyStarImage
+        }
+    }
+    
+    func setDetails(title: String?,
+                    image: UIImage?,
+                    reviewerName: String?,
+                    rating: Int?,
+                    comment: String?,
+                    star: Int?,
+                    heart: Int?) {
         
         titleLabel.text = title
         imageView.image = image
-
-        reviewerNameLabel.text = "Reviewer: \(reviewerName)"
-        ratingLabel.text = "Rating: \(rating)"  // Set this only if used
-        commentLabel.text = comment
-
-        reviewerNameLabel.text = reviewerName
         
+        reviewerNameLabel.text = reviewerName
+        ratingLabel.text = "Rating: \(rating ?? 0)"
         commentLabel.text = comment
         
         starRating = star ?? 0
         heartCount = heart ?? 0
-
     }
 }
 
-
-// Custom annotation view
+// MARK: - Single Annotation View (No System Pin)
 class ImageAnnotationView: MKAnnotationView {
     private var imageView: UIImageView!
     
@@ -258,20 +267,20 @@ class ImageAnnotationView: MKAnnotationView {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         
         self.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
-        self.imageView = UIImageView(frame: CGRect(x: 0, y: 0, width: 50, height: 50))
-        self.imageView.contentMode = .scaleAspectFill
-        self.imageView.layer.cornerRadius = 5.0
-        self.imageView.layer.masksToBounds = true
-        self.addSubview(self.imageView)
+        
+        imageView = UIImageView(frame: self.bounds)
+        imageView.contentMode = .scaleAspectFill
+        imageView.layer.cornerRadius = 5.0
+        imageView.layer.masksToBounds = true
+        addSubview(imageView)
+        
+        // This allows MapKit to cluster this annotation with others that have the same identifier
+        clusteringIdentifier = "ImageCluster"
     }
     
     override var image: UIImage? {
-        get {
-            return self.imageView.image
-        }
-        set {
-            self.imageView.image = newValue
-        }
+        get { imageView.image }
+        set { imageView.image = newValue }
     }
     
     required init?(coder: NSCoder) {
@@ -279,9 +288,70 @@ class ImageAnnotationView: MKAnnotationView {
     }
 }
 
-// Map View Model
+// MARK: - Cluster Annotation View (Shows One Random Image + Count Label)
+class ClusterImageAnnotationView: MKAnnotationView {
+    private let imageView = UIImageView()
+    private let countLabel = UILabel()
+    
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        
+        // We will size to 50×50
+        self.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
+        
+        // Image setup
+        imageView.frame = self.bounds
+        imageView.contentMode = .scaleAspectFill
+        imageView.layer.cornerRadius = 5.0
+        imageView.layer.masksToBounds = true
+        addSubview(imageView)
+        
+        // Count label
+        countLabel.textColor = .white
+        countLabel.font = UIFont.boldSystemFont(ofSize: 14)
+        countLabel.textAlignment = .center
+        countLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        countLabel.layer.cornerRadius = 10
+        countLabel.clipsToBounds = true
+        addSubview(countLabel)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    // Position subviews
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        imageView.frame = bounds
+        
+        // Place the count label in the top-left corner (or whichever corner you prefer)
+        let labelSize = CGSize(width: 24, height: 24)
+        let inset: CGFloat = 2
+        countLabel.frame = CGRect(
+            x: inset,
+            y: inset,
+            width: labelSize.width,
+            height: labelSize.height
+        )
+    }
+    
+    // Configure the cluster's image & count
+    func configure(with cluster: MKClusterAnnotation) {
+        // Pick a random annotation from the cluster
+        if let randomAnn = cluster.memberAnnotations.randomElement() as? ImageAnnotation {
+            imageView.image = randomAnn.image
+        }
+        
+        // Show the number of annotations inside the cluster
+        countLabel.text = "\(cluster.memberAnnotations.count)"
+    }
+}
+
+// MARK: - Map View Model (UIViewController)
 class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
     private let locationManager = CLLocationManager()
+    
     private let map: MKMapView = {
         let map = MKMapView()
         map.showsUserLocation = true
@@ -291,31 +361,29 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     private var currentPopupView: CustomPopupView?
     
-    
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        
-        
-        // Set up the map view
+        // Set up the map
         view.addSubview(map)
         
-        // Configure the location manager
+        // Location Manager config
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
         
-        // Configure map view delegate
+        // MapView delegate
         map.delegate = self
         
-        
-        // Add tap gesture recognizer to dismiss the popup
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
+        // Tap gesture to dismiss popup
+        let tapGesture = UITapGestureRecognizer(
+            target: self,
+            action: #selector(handleMapTap(_:))
+        )
         map.addGestureRecognizer(tapGesture)
         
-        // Add observer for adding annotations
+        // Notification observer for adding user annotation
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleAddUserAnnotationNotification(_:)),
@@ -323,10 +391,12 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             object: nil
         )
         
-        // Add image annotation for San Francisco
-        Task {
-            await loadImageAnnotation()
-        }
+        // -- IMPORTANT --
+        // We COMMENT OUT the direct load from viewDidLoad to avoid duplicates:
+        // Task {
+        //     await loadImageAnnotation()
+        // }
+        // Instead, we do it once in viewDidAppear below
     }
     
     func removeAllAnnotations() {
@@ -343,20 +413,19 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     }
     
     override func viewDidAppear(_ animated: Bool) {
-            super.viewDidAppear(animated)
-            
-            // Remove all existing annotations
-            removeAllAnnotations()
-            
-            // Reload image annotations asynchronously
-            Task {
-                await loadImageAnnotation()
-            }
+        super.viewDidAppear(animated)
+        
+        // Optionally remove all existing annotations if you want a fresh reload each time:
+        removeAllAnnotations()
+        
+        // Load image annotations asynchronously
+        Task {
+            await loadImageAnnotation()
         }
+    }
     
     func recenterMap() {
         guard let location = locationManager.location else { return }
-        
         let region = MKCoordinateRegion(
             center: location.coordinate,
             latitudinalMeters: 1000,
@@ -365,158 +434,132 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         map.setRegion(region, animated: true)
     }
     
-    
     @objc func handleAddUserAnnotationNotification(_ notification: Notification) {
-        print("Adding annotation based on notification")
+        print("Adding annotation based on notification...")
         
         Task {
-            guard let userInfo = notification.userInfo,
-                  
+            guard
+                let userInfo = notification.userInfo,
                 let author = userInfo["userId"] as? String,
-                  
-                    
-                  let imageIdentifier = userInfo["imageData"] as? String,
-                  let review = userInfo["review"] as? String,
-                  let coordinate = userInfo["location"] as? String,
-                  let title = userInfo["restaurantName"] as? String,
-                  let likes = userInfo["likes"] as? Int,
-                  
-                  
-                  
-                  let rating = userInfo["starRating"] as? Int else {
-                
-//                  let heartC = userInfo["heartC"] as? Int else {
-                print("Guard failed")
+                let imageIdentifier = userInfo["imageData"] as? String,
+                let review = userInfo["review"] as? String,
+                let coordinate = userInfo["location"] as? String,
+                let title = userInfo["restaurantName"] as? String,
+                let likes = userInfo["likes"] as? Int,
+                let rating = userInfo["starRating"] as? Int,
+                let postId = userInfo["postId"] as? String  // We assume we have a postId
+            else {
+                print("Guard failed for notification userInfo.")
                 return
             }
             
             guard let imageUrl = URL(string: imageIdentifier) else {
-                print("Invalid URL for post:")
+                print("Invalid URL for post.")
                 return
             }
             
             // Load the image asynchronously
             let image: UIImage? = await withCheckedContinuation { continuation in
                 URLSession.shared.dataTask(with: imageUrl) { data, _, error in
-                    if let data = data, let fetchedImage = UIImage(data: data) {
+                    if let data = data,
+                       let fetchedImage = UIImage(data: data) {
                         continuation.resume(returning: fetchedImage)
                     } else {
-                        print("Failed to fetch image for post:), error:")
+                        print("Failed to fetch image, error: \(String(describing: error))")
                         continuation.resume(returning: nil)
                     }
                 }.resume()
             }
             
-            guard let image = image else {
-                return
-            }
+            guard let image = image else { return }
             
             // Parse the coordinate
             let components = coordinate.split(separator: ",")
-            guard components.count == 2,
-                  let latitude = Double(components[0].trimmingCharacters(in: .whitespaces)),
-                  let longitude = Double(components[1].trimmingCharacters(in: .whitespaces)) else {
-                print("this shit failed")
+            guard
+                components.count == 2,
+                let latitude = Double(components[0].trimmingCharacters(in: .whitespaces)),
+                let longitude = Double(components[1].trimmingCharacters(in: .whitespaces))
+            else {
+                print("Failed to parse location string.")
                 return
             }
             let coordinateC = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
             
-            // Create annotation
-            
-            
-            // Add annotation to map view
-            
-            print("About to add")
-            addUserAnnotation(coordinate_in: coordinateC, title_in: title, review: review, image_in: image, author_in: author, rating_in: rating, heartC_in: likes)
-            print("Done")
-            
-            
+            // Add user annotation (with duplicates check)
+            addUserAnnotation(
+                coordinate_in: coordinateC,
+                title_in: title,
+                review: review,
+                image_in: image,
+                author_in: author,
+                rating_in: rating,
+                heartC_in: likes,
+                postId: postId
+            )
         }
     }
-
     
-    
-    
-    
-    
-    
+    // We do a duplicates check here using postId
     func addUserAnnotation(
-            coordinate_in: CLLocationCoordinate2D,
-            title_in: String,
-            review: String,
-            image_in: UIImage, // The identifier or URL for the image
-            author_in: String,
-            rating_in: Int,
-            heartC_in: Int
-        ) {
-            let annotation = ImageAnnotation(
-                coordinate: coordinate_in,
-                title: title_in,
-                subtitle: review,
-                image: image_in, // Store the image identifier here
-                author: author_in,
-                rating: rating_in,
-                heartC: heartC_in
-            )
-            print("working")
-            self.map.addAnnotation(annotation)
-            
-            // Optionally, adjust map view region to include the new annotation
-            var region = self.map.region
-            region.center = coordinate_in
-            region.span.latitudeDelta = 0.05
-            region.span.longitudeDelta = 0.05
-            self.map.setRegion(region, animated: true)
-        }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    //Load image annotation
-    func loadImageAnnotation() async {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            print("Failed to get user")
+        coordinate_in: CLLocationCoordinate2D,
+        title_in: String,
+        review: String,
+        image_in: UIImage,
+        author_in: String,
+        rating_in: Int,
+        heartC_in: Int,
+        postId: String
+    ) {
+        // Check if we already have an annotation with this postId
+        if map.annotations.contains(where: { annotation in
+            guard let ann = annotation as? ImageAnnotation else { return false }
+            return ann.postId == postId
+        }) {
+            print("Annotation already added for postId = \(postId). Skipping duplicate.")
             return
         }
-
+        
+        let annotation = ImageAnnotation(
+            coordinate: coordinate_in,
+            title: title_in,
+            subtitle: review,
+            image: image_in,
+            author: author_in,
+            rating: rating_in,
+            heartC: heartC_in,
+            postId: postId
+        )
+        map.addAnnotation(annotation)
+        
+        // Optionally recenter on newly added annotation
+        var region = self.map.region
+        region.center = coordinate_in
+        region.span.latitudeDelta = 0.05
+        region.span.longitudeDelta = 0.05
+        self.map.setRegion(region, animated: true)
+    }
+    
+    // MARK: - Load Image Annotations from Firebase
+    func loadImageAnnotation() async {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("No current user.")
+            return
+        }
+        
         do {
             let feed = try await AuthViewModel.shared.fetchPostDetailsFromFeed(userId: userId)
-
+            
             for (post, user) in feed {
                 guard let imageUrl = URL(string: post.imageUrl) else {
                     print("Invalid URL for post: \(post._id)")
                     continue
                 }
-
+                
                 // Load the image asynchronously
                 let image: UIImage? = await withCheckedContinuation { continuation in
                     URLSession.shared.dataTask(with: imageUrl) { data, _, error in
-                        if let data = data, let fetchedImage = UIImage(data: data) {
+                        if let data = data,
+                           let fetchedImage = UIImage(data: data) {
                             continuation.resume(returning: fetchedImage)
                         } else {
                             print("Failed to fetch image for post: \(post._id), error: \(String(describing: error))")
@@ -524,21 +567,34 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                         }
                     }.resume()
                 }
-
+                
                 guard let image = image else { continue }
-
+                
                 // Parse the location
                 let locationComponents = post.location.split(separator: ",")
-                guard locationComponents.count == 2,
-                      let latitude = Double(locationComponents[0]),
-                      let longitude = Double(locationComponents[1]) else {
+                guard
+                    locationComponents.count == 2,
+                    let latitude = Double(locationComponents[0]),
+                    let longitude = Double(locationComponents[1])
+                else {
                     print("Invalid location format for post: \(post._id)")
                     continue
                 }
-
-                let annotationCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-
-                // Create annotation
+                
+                let annotationCoordinate = CLLocationCoordinate2D(
+                    latitude: latitude,
+                    longitude: longitude
+                )
+                
+                // We check duplicates again. We assume post._id is unique.
+                if map.annotations.contains(where: { annotation in
+                    guard let ann = annotation as? ImageAnnotation else { return false }
+                    return ann.postId == post._id
+                }) {
+                    print("Skipping duplicate for postId = \(post._id).")
+                    continue
+                }
+                
                 let annotation = ImageAnnotation(
                     coordinate: annotationCoordinate,
                     title: post.restaurantName,
@@ -546,10 +602,10 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     image: image,
                     author: user.name,
                     rating: post.starRating,
-                    heartC: post.likes
+                    heartC: post.likes,
+                    postId: post._id
                 )
-
-                // Add annotation to the map
+                
                 DispatchQueue.main.async {
                     self.map.addAnnotation(annotation)
                 }
@@ -559,13 +615,9 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         }
     }
     
-    
-
-
-
-    
-    // CLLocationManagerDelegate methods
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    // MARK: - CLLocationManagerDelegate
+    func locationManager(_ manager: CLLocationManager,
+                         didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         
         let region = MKCoordinateRegion(
@@ -578,85 +630,149 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         locationManager.stopUpdatingLocation()
     }
     
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    func locationManager(_ manager: CLLocationManager,
+                         didFailWithError error: Error) {
         print("Failed to get location: \(error.localizedDescription)")
     }
     
-    // MKMapViewDelegate method to provide custom annotation views
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+    // MARK: - MKMapViewDelegate
+    func mapView(_ mapView: MKMapView,
+                 viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        
+        // Don’t customize the user location’s blue dot
         if annotation is MKUserLocation {
             return nil
         }
         
+        // If it's a cluster, show our custom cluster annotation view
+        if let cluster = annotation as? MKClusterAnnotation {
+            let identifier = "ClusterImageAnnotation"
+            var clusterView = mapView.dequeueReusableAnnotationView(
+                withIdentifier: identifier
+            ) as? ClusterImageAnnotationView
+            
+            if clusterView == nil {
+                clusterView = ClusterImageAnnotationView(
+                    annotation: cluster,
+                    reuseIdentifier: identifier
+                )
+            } else {
+                clusterView?.annotation = cluster
+            }
+            
+            clusterView?.configure(with: cluster)
+            return clusterView
+        }
+        
+        // Otherwise, it’s our single ImageAnnotation
         if let imageAnnotation = annotation as? ImageAnnotation {
             let identifier = "ImageAnnotation"
-            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? ImageAnnotationView
+            var annotationView = mapView.dequeueReusableAnnotationView(
+                withIdentifier: identifier
+            ) as? ImageAnnotationView
+            
             if annotationView == nil {
-                annotationView = ImageAnnotationView(annotation: imageAnnotation, reuseIdentifier: identifier)
+                annotationView = ImageAnnotationView(
+                    annotation: imageAnnotation,
+                    reuseIdentifier: identifier
+                )
             }
             annotationView?.annotation = imageAnnotation
+            // Set the image for the annotation
             annotationView?.image = imageAnnotation.image
-            
             return annotationView
         }
         
         return nil
     }
     
-    
-    
-    // Show popup when annotation is selected
+    // Show popup or handle cluster taps
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-        guard let annotation = view.annotation as? ImageAnnotation else { return }
+        guard let selectedAnnotation = view.annotation else { return }
+        
+        // If it's a cluster, we might want to zoom in to reveal the individual images
+        if let cluster = selectedAnnotation as? MKClusterAnnotation {
+            let allCoordinates = cluster.memberAnnotations.map { $0.coordinate }
+            // Compute bounding rectangle
+            var minLat = allCoordinates.map(\.latitude).min() ?? 0
+            var maxLat = allCoordinates.map(\.latitude).max() ?? 0
+            var minLon = allCoordinates.map(\.longitude).min() ?? 0
+            var maxLon = allCoordinates.map(\.longitude).max() ?? 0
+            
+            let latBuffer = 0.01
+            let lonBuffer = 0.01
+            minLat -= latBuffer
+            maxLat += latBuffer
+            minLon -= lonBuffer
+            maxLon += lonBuffer
+            
+            let center = CLLocationCoordinate2D(
+                latitude: (minLat + maxLat) / 2.0,
+                longitude: (minLon + maxLon) / 2.0
+            )
+            let span = MKCoordinateSpan(
+                latitudeDelta: (maxLat - minLat),
+                longitudeDelta: (maxLon - minLon)
+            )
+            let region = MKCoordinateRegion(center: center, span: span)
+            mapView.setRegion(region, animated: true)
+            
+            // Deselect so user can tap individual images
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                mapView.deselectAnnotation(cluster, animated: false)
+            }
+            return
+        }
+        
+        // Otherwise, handle the single ImageAnnotation for the pop-up
+        guard let annotation = selectedAnnotation as? ImageAnnotation else {
+            return
+        }
         
         // Remove any existing popup
         currentPopupView?.removeFromSuperview()
         
         // Create a new popup view
         let popupView = CustomPopupView()
-        popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 300, width: 350, height: 600)
+        popupView.frame = CGRect(
+            x: map.bounds.midX - 170,
+            y: map.bounds.midY - 300,
+            width: 350,
+            height: 600
+        )
         
-        // Adjust the size and position
         popupView.layer.cornerRadius = 10
         popupView.layer.masksToBounds = true
         
-        // Populate the popup with annotation details
+        // Populate popup
         popupView.setDetails(
-                    title: annotation.title ?? "Restaurant Name",
-                    image: annotation.image,
-
-
-                    reviewerName: annotation.author,
-                    rating: annotation.rating, // Replace with a real rating if available
-                    comment: annotation.subtitle,
-                    star: annotation.rating,
-                    heart: annotation.heartC
-                    
-
-                )
+            title: annotation.title ?? "Restaurant Name",
+            image: annotation.image,
+            reviewerName: annotation.author,
+            rating: annotation.rating,
+            comment: annotation.subtitle,
+            star: annotation.rating,
+            heart: annotation.heartC
+        )
         
-        // Add the popup to the map
         map.addSubview(popupView)
-        
-        // Set the current popup view for dismissal
         currentPopupView = popupView
     }
     
-    // Handle tap on the map to dismiss popup
-        @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
-            let touchPoint = recognizer.location(in: map)
-            
-            // Check if the touch is outside the current popup view
-            if let popupView = currentPopupView, !popupView.frame.contains(touchPoint) {
-                // Remove the popup
-                popupView.removeFromSuperview()
-                currentPopupView = nil
-            }
+    // Tap on map to dismiss popup
+    @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
+        let touchPoint = recognizer.location(in: map)
+        
+        // Check if the touch is outside the current popup view
+        if let popupView = currentPopupView,
+           !popupView.frame.contains(touchPoint) {
+            popupView.removeFromSuperview()
+            currentPopupView = nil
         }
+    }
 }
 
-
-// Utility extension for MKMapView to get annotations in a given map rectangle
+// MARK: - MKMapView Utility
 extension MKMapView {
     func annotationsWithinRect(in rect: MKMapRect) -> [MKAnnotation] {
         var annotationsInRect: [MKAnnotation] = []
@@ -671,24 +787,20 @@ extension MKMapView {
     }
 }
 
+// MARK: - Notifications
 extension Notification.Name {
     static let addUserAnnotationNotification = Notification.Name("postAdded")
 }
 
-
-// SwiftUI wrapper for the MapViewModel
+// MARK: - SwiftUI Wrapper
 struct MapView: UIViewControllerRepresentable {
     let viewModel: MapViewModel
-
+    
     func makeUIViewController(context: Context) -> MapViewModel {
         return viewModel
     }
-
+    
     func updateUIViewController(_ uiViewController: MapViewModel, context: Context) {
-        // Handle any updates to the view controller here
+        // Handle any updates if needed
     }
 }
-
-//#Preview {
-//    MapViewModel()
-//}
