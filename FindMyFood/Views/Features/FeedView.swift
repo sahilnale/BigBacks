@@ -33,7 +33,7 @@ struct FeedView: View {
                     .listStyle(PlainListStyle())
                 }
             }
-           // .padding(.top, 10)
+            .padding(.top, 10)
             .padding(.horizontal)
             .background(Color(UIColor.systemBackground)) // Use system background color
             .onAppear {
@@ -46,7 +46,7 @@ struct FeedView: View {
 //                    .padding(.top, 60)
 //                    .padding(.bottom, 20)
 //                    .frame(maxWidth: .infinity, maxHeight: 90)
-//                    .background(Color.accentColor.opacity(0.8))
+//                    .background(Color.customOrange.opacity(0.8))
 //                    .foregroundColor(.white)
 //                Spacer() // Pushes the main content below
 //            }
@@ -69,7 +69,7 @@ struct FeedView: View {
                 .padding(.top, 65)
                 .padding(.bottom, 20)
                 .frame(maxWidth: .infinity, maxHeight: 95)
-                .background(Color.accentColor.opacity(0.8))
+                .background(Color.customOrange.opacity(0.8))
                 .ignoresSafeArea(edges: .top) // Makes the content extend to the top edge
                 Spacer() // Pushes the main content below
             }

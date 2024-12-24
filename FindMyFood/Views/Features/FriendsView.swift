@@ -10,25 +10,25 @@ struct FriendsView: View {
         NavigationView {
             ZStack {
                 VStack(spacing: 10) {
-                    HStack(spacing: 20) {
+                    HStack(spacing: 25) {
                         Button(action: {
                             showingFriendRequests = true
                         }) {
                             Text("View Requests")
                                 .font(.headline)
                         }
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.customOrange)
                         .sheet(isPresented: $showingFriendRequests) {
-                            NavigationView {
+                           // NavigationView {
                                 FriendRequestView()
-                            }
+                           // }
                         }
                         Button(action: {
                             showingAddFriend = true
                         }) {
                             Text("Add Friends").font(.headline)
-                        }.foregroundColor(.accentColor)
-                    }.padding(.top, 40)
+                        }.foregroundColor(.customOrange)
+                    }.padding(.top, 50)
                     
                     // Display friends in the List view
                     if viewModel.isLoading {
@@ -83,21 +83,21 @@ struct FriendsView: View {
                     .padding(.top, 65)
                     .padding(.bottom, 20)
                     .frame(maxWidth: .infinity, maxHeight: 95)
-                    .background(Color.accentColor.opacity(0.8))
+                    .background(Color.customOrange.opacity(0.8))
                     .ignoresSafeArea(edges: .top) // Makes the content extend to the top edge
                     Spacer() // Pushes the main content below
                 }
             }
         }
        // .navigationBarHidden(true)
-        .navigationBarBackButtonHidden(true)
+       // .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showingAddFriend) {
-            NavigationView {
+            //NavigationView {
                 AddFriendView(
                     currentUserId: currentUserId,
                     friends: viewModel.friends.map { $0.id } // Extract friend IDs
                 )
-            }
+            //}
         }
     }
 }
@@ -128,8 +128,8 @@ struct FriendRequestView: View {
                 }
             }
         }
-        .navigationTitle("Friend Requests")
-        .navigationBarItems(trailing: Button("Done") { dismiss() })
+//        .navigationTitle("Friend Requests")
+//        .navigationBarItems(trailing: Button("Done") { dismiss() })
         .alert("Error", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
         } message: {
@@ -275,8 +275,8 @@ struct AddFriendView: View {
         } message: {
             Text(errorMessage ?? "")
         }
-        .navigationTitle("Add Friends")
-        .navigationBarItems(trailing: Button("Done") { dismiss() })
+//        .navigationTitle("Add Friends")
+//        .navigationBarItems(trailing: Button("Done") { dismiss() })
     }
     
     private func performSearch(_ query: String) {
@@ -417,7 +417,7 @@ private struct UserRowView: View {
             if isAlreadyRequestedBy {
                 Text("Request waiting")
                     .font(.subheadline)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.customOrange)
             }
             else if !isAlreadyFriend {
                 AddFriendButton(

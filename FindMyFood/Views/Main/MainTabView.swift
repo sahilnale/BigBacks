@@ -9,7 +9,7 @@ struct MainTabView: View {
     @State private var selectedTab: Int = 0
     
     var body: some View {
-        NavigationView {
+       // NavigationView {
             
             TabView(selection: $selectedTab) {
                 ZStack {
@@ -42,9 +42,9 @@ struct MainTabView: View {
                         Label("Profile", systemImage: "person.crop.circle")
                     }.tag(3)
             }
-            .accentColor(.accentColor)
-        }
-        .navigationBarBackButtonHidden(true)
+            .accentColor(.customOrange)
+       // }
+       // .navigationBarBackButtonHidden(true)
     }
 }
 

@@ -25,7 +25,7 @@ struct ProfileView: View {
                              .scaledToFill()
                              .frame(width: 100, height: 100)
                              .clipShape(Circle())
-                             .foregroundColor(.accentColor)
+                             .foregroundColor(.customOrange)
                      }
                      .padding(.top)
                     
@@ -49,7 +49,7 @@ struct ProfileView: View {
 //                            .scaledToFit()
 //                            .frame(width: 100, height: 100)
 //                            .clipShape(Circle())
-//                            .foregroundColor(Color.accentColor)
+//                            .foregroundColor(Color.customOrange)
 //                            .padding(.bottom, 8)
                         
                         
@@ -274,7 +274,7 @@ struct LogoutButton: View {
                 .font(.headline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity, minHeight: 40)
-                .background(Color.accentColor)
+                .background(Color.customOrange)
                 .cornerRadius(10)
                 .padding()
         }
@@ -372,7 +372,7 @@ struct PostDetailView: View {
                        showAlert = true
                    }) {
                        Text("Delete Post")
-                           .foregroundColor(.accentColor)
+                           .foregroundColor(.customOrange)
                    }
                    Spacer()
                }
