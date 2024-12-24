@@ -88,7 +88,7 @@ struct CreatePostView: View {
                     showRestaurantPicker = true
                 }) {
                     Text("Change Location")
-                        .foregroundColor(.blue)
+                        .foregroundColor(.accentColor)
                         .font(.system(size: 16, weight: .semibold))
                         .frame(alignment: .center)
                 }

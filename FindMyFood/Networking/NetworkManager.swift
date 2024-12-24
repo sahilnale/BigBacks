@@ -774,9 +774,6 @@ class NetworkManager {
     
 }
 
-extension NSNotification.Name {
-    static let postAdded = NSNotification.Name("postAdded")
-}
 
 // MARK: - Models
 struct User: Codable, Identifiable {

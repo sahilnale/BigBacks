@@ -208,7 +208,7 @@ struct FriendRequestRow: View {
         HStack {
             Image(systemName: "person.circle.fill")
                 .font(.system(size: 40))
-                .foregroundColor(.blue)
+                .foregroundColor(.accentColor)
             
             VStack(alignment: .leading) {
                 Text(requester.name)
@@ -394,7 +394,7 @@ private struct UserRowView: View {
         HStack {
             Image(systemName: "person.circle.fill")
                 .font(.system(size: 40))
-                .foregroundColor(.blue)
+                .foregroundColor(.accentColor)
             
             VStack(alignment: .leading) {
                 Text(user.name)
@@ -441,7 +441,7 @@ private struct AddFriendButton: View {
     var body: some View {
         Button(action: sendFriendRequest) {
             Text(isRequestPending ? "Pending" : "Add")
-                .foregroundColor(isRequestPending ? .gray : .blue)
+                .foregroundColor(isRequestPending ? .gray : .accentColor)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(isRequestPending ? Color(.systemGray5) : Color(.systemBlue).opacity(0.1))

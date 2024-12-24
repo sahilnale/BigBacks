@@ -66,7 +66,7 @@ class ImageUploader {
                     isImagePickerPresented = true
                 }
                 .padding()
-                .background(Color.blue)
+                .background(Color.accentColor)
                 .foregroundColor(.white)
                 .cornerRadius(8)
 
