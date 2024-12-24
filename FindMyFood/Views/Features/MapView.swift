@@ -310,6 +310,10 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         // Configure map view delegate
         map.delegate = self
         
+        map.register(ImageAnnotationView.self, forAnnotationViewWithReuseIdentifier: "ImageAnnotationView")
+
+        map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier)
+        
         
         // Add tap gesture recognizer to dismiss the popup
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
@@ -588,17 +592,36 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             return nil
         }
         
-        if let imageAnnotation = annotation as? ImageAnnotation {
-            let identifier = "ImageAnnotation"
-            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? ImageAnnotationView
-            if annotationView == nil {
-                annotationView = ImageAnnotationView(annotation: imageAnnotation, reuseIdentifier: identifier)
+        if let cluster = annotation as? MKClusterAnnotation {
+                // Handle cluster annotations
+                print("cluster")
+                let clusterView = mapView.dequeueReusableAnnotationView(withIdentifier: MKMapViewDefaultClusterAnnotationViewReuseIdentifier, for: annotation) as! MKMarkerAnnotationView
+                clusterView.markerTintColor = .blue
+                clusterView.glyphText = "\(cluster.memberAnnotations.count)"
+                clusterView.canShowCallout = true
+                return clusterView
             }
-            annotationView?.annotation = imageAnnotation
-            annotationView?.image = imageAnnotation.image
+        
+        if let imageAnnotation = annotation as? ImageAnnotation {
             
-            return annotationView
-        }
+                let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: "ImageAnnotationView", for: annotation) as! ImageAnnotationView
+                annotationView.annotation = imageAnnotation
+                annotationView.image = imageAnnotation.image
+//                annotationView.canShowCallout = true // Enable callouts for labels
+                return annotationView
+            }
+        
+//        if let imageAnnotation = annotation as? ImageAnnotation {
+//            let identifier = "ImageAnnotation"
+//            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? ImageAnnotationView
+//            if annotationView == nil {
+//                annotationView = ImageAnnotationView(annotation: imageAnnotation, reuseIdentifier: identifier)
+//            }
+//            annotationView?.annotation = imageAnnotation
+//            annotationView?.image = imageAnnotation.image
+//            
+//            return annotationView
+//        }
         
         return nil
     }
