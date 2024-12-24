@@ -34,10 +34,8 @@
 //}
 //
 
-
 import SwiftUI
 import FirebaseAuth
-
 
 struct Comment: Encodable, Decodable, Identifiable, Hashable {
     let id: String
@@ -106,46 +104,11 @@ struct RestaurantCard: View {
                             .foregroundColor(Color.primary)
                     }
                     
-                    //                    Button(action: {
-                    //                        isLiked.toggle()
-                    //                        likeCount += isLiked ? 1 : -1
-                    //                    }) {
-                    //                        HStack(spacing: 4) {
-                    //                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                    //                                .foregroundColor(isLiked ? .customOrange : .gray)
-                    //                            Text("\(likeCount)")
-                    //                                .foregroundColor(Color.primary)
-                    //                                .font(.subheadline)
-                    //                        }
-                    //                    }
-                    //                    .buttonStyle(PlainButtonStyle())
-                    
-                    //Ridhima's version
-                    
-                    //                    Button(action: {
-                    //                        NetworkManager.shared.toggleLike(postId: post.id, currentLikeCount: likeCount, isLiked: isLiked) { newLikeCount, newIsLiked in
-                    //                            // Update the UI with the new like count and like status
-                    //                            likeCount = newLikeCount
-                    //                            isLiked = newIsLiked
-                    //                        }
-                    //                    }) {
-                    //                        HStack(spacing: 4) {
-                    //                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                    //                                .foregroundColor(isLiked ? .customOrange : .gray)
-                    //                            Text("\(likeCount)")
-                    //                                .foregroundColor(Color.primary)
-                    //                                .font(.subheadline)
-                    //                        }
-                    //                    }
-                    //                    .buttonStyle(PlainButtonStyle())
-                    
-                    
                     VStack {
                         Button(action: {
                             // Toggle the like/dislike functionality
                             Task {
                                 do {
-                                    // Persist the state with the backend
                                     let result = try await AuthViewModel.shared.toggleLike(
                                         postId: post.id,
                                         userId: Auth.auth().currentUser?.uid ?? "",
@@ -171,16 +134,8 @@ struct RestaurantCard: View {
                                     .foregroundColor(.primary)
                             }
                         }
-                        .disabled(isLiked && !isLiked) // Disable like if already liked
                         .buttonStyle(PlainButtonStyle())
                     }
-                    
-                    
-                    
-    
-
-                    
-                    
                 }
             }
             .padding(.horizontal)
@@ -191,14 +146,14 @@ struct RestaurantCard: View {
                     showComments.toggle()
                 }
             }) {
-                HStack {
-                    Text("Comments (\(post.comments.count))")
+                if !showComments {
+                    Text("Show comments (\(post.comments.count))")
                         .font(.subheadline)
                         .foregroundColor(.customOrange)
+                        .padding(.bottom, 8) // Add padding below the button
                 }
             }
             .padding(.leading)
-            .padding(.bottom)
             
             if showComments {
                 VStack(alignment: .leading, spacing: 8) {
@@ -214,7 +169,7 @@ struct RestaurantCard: View {
                             } placeholder: {
                                 Circle()
                                     .fill(Color.gray)
-                                    .frame(width: 25, height: 25) //Placeholder for missing profile photo
+                                    .frame(width: 25, height: 25) // Placeholder for missing profile photo
                                     .padding(.leading)
                             }
                             
@@ -281,12 +236,6 @@ struct RestaurantCard: View {
         .cornerRadius(10)
         .shadow(color: Color.primary.opacity(0.1), radius: 5)
         .padding(.horizontal)
-        //       .onAppear {
-        //            likeCount = post.likes
-        //            isLiked = post.likedBy.contains(AuthManager.shared.userId ?? "")
-        
-        //        }
-        
         .onAppear {
             Task {
                 do {
@@ -318,6 +267,3 @@ func timeAgo(from date: Date) -> String {
     
     return "Just now"
 }
-
-
-
