@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FC2411772D17DC25009BE065 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FC2411762D17DC25009BE065 /* FirebaseAuth */; };
+		FC2411792D17DC25009BE065 /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = FC2411782D17DC25009BE065 /* FirebaseAuthCombine-Community */; };
+		FC24117B2D17DC25009BE065 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FC24117A2D17DC25009BE065 /* FirebaseCore */; };
 		FC3F5D1F2CF3D856003BA940 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FC3F5D1E2CF3D856003BA940 /* FirebaseFirestore */; };
 		FC3F5D212CF3D856003BA940 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = FC3F5D202CF3D856003BA940 /* FirebaseFirestoreCombine-Community */; };
 		FC3F5D232CF3D856003BA940 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = FC3F5D222CF3D856003BA940 /* FirebaseStorage */; };
@@ -75,7 +78,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				FC3F5D1F2CF3D856003BA940 /* FirebaseFirestore in Frameworks */,
+				FC2411792D17DC25009BE065 /* FirebaseAuthCombine-Community in Frameworks */,
+				FC2411772D17DC25009BE065 /* FirebaseAuth in Frameworks */,
 				FC3F5D212CF3D856003BA940 /* FirebaseFirestoreCombine-Community in Frameworks */,
+				FC24117B2D17DC25009BE065 /* FirebaseCore in Frameworks */,
 				FC3F5D252CF3D856003BA940 /* FirebaseStorageCombine-Community in Frameworks */,
 				FC3F5D232CF3D856003BA940 /* FirebaseStorage in Frameworks */,
 			);
@@ -143,6 +149,9 @@
 				FC3F5D202CF3D856003BA940 /* FirebaseFirestoreCombine-Community */,
 				FC3F5D222CF3D856003BA940 /* FirebaseStorage */,
 				FC3F5D242CF3D856003BA940 /* FirebaseStorageCombine-Community */,
+				FC2411762D17DC25009BE065 /* FirebaseAuth */,
+				FC2411782D17DC25009BE065 /* FirebaseAuthCombine-Community */,
+				FC24117A2D17DC25009BE065 /* FirebaseCore */,
 			);
 			productName = FindMyFood;
 			productReference = BAC9741A2CD9AC6300DD929B /* FindMyFood.app */;
@@ -618,6 +627,21 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		FC2411762D17DC25009BE065 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		FC2411782D17DC25009BE065 /* FirebaseAuthCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseAuthCombine-Community";
+		};
+		FC24117A2D17DC25009BE065 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
 		FC3F5D1E2CF3D856003BA940 /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

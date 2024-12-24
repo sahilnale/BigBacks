@@ -25,6 +25,9 @@ struct CreatePostView: View {
     @State private var isLocationManuallySet = false // New state to track manual location updates
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
+    @EnvironmentObject var authViewModel: AuthViewModel // Use A
+    
+    var onPostComplete: (() -> Void)? // Completion callback
 
     var body: some View {
         NavigationStack {
@@ -147,6 +150,7 @@ struct CreatePostView: View {
                     Button(action: {
                         Task {
                             await postReview()
+                            onPostComplete?()
                         }
                     }) {
                         Text("Post")
@@ -213,67 +217,65 @@ struct CreatePostView: View {
     }
 
     private func postReview() async {
-        guard let image = selectedImage else {
-            print("No image selected.")
-            return
-        }
-
-        isUploading = true
-        do {
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-                print("Failed to compress image.")
-                isUploading = false
+            guard let image = selectedImage else {
+                print("No image selected.")
                 return
             }
 
-            guard let userId = AuthManager.shared.userId else {
-                print("User ID is not available.")
-                isUploading = false
-                return
+            isUploading = true
+            do {
+                guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+                    print("Failed to compress image.")
+                    isUploading = false
+                    return
+                }
+
+                if restaurantName.isEmpty || restaurantName == "Location not found" {
+                    restaurantName = locationDisplay
+                }
+
+                let coordinates = selectedLocationCoordinates ?? imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+                let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
+
+                let reviewContent = reviewText.isEmpty ? postText : reviewText
+
+                // Use AuthViewModel's addPost
+                let newPost = try await authViewModel.addPost(
+                    imageData: imageData,
+                    review: reviewContent,
+                    location: locationString,
+                    restaurantName: restaurantName,
+                    starRating: rating
+                )
+
+                NotificationCenter.default.post(
+                    name: .postAdded,
+                    object: nil,
+                    userInfo: [
+                        "userId": newPost.userId,
+                        "imageData": newPost.imageUrl,
+                        "review": newPost.review,
+                        "location": newPost.location,
+                        "restaurantName": newPost.restaurantName,
+                        "starRating": newPost.starRating
+                    ]
+                )
+
+                print("Post created successfully: \(newPost)")
+                resetPostState()
+                DispatchQueue.main.async {
+                    print("Attempting to dismiss and change tab")
+                    dismiss()
+                    selectedTab = 1
+                    print("Navigation attempted: selectedTab =", selectedTab)
+                }
+            } catch {
+                print("Failed to create post: \(error.localizedDescription)")
             }
 
-            if restaurantName.isEmpty || restaurantName == "Location not found" {
-                restaurantName = locationDisplay
-            }
-
-            let coordinates = selectedLocationCoordinates ?? imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
-            let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
-
-            let reviewContent = reviewText.isEmpty ? postText : reviewText
-            let newPost = try await NetworkManager.shared.addPost(
-                userId: userId,
-                imageData: imageData,
-                review: reviewContent,
-                location: locationString,
-                restaurantName: restaurantName,
-                starRating: rating
-            )
-            
-            NotificationCenter.default.post(
-                name: .postAdded,
-                object: nil,
-                userInfo: [
-                    "userId": userId,
-                    "imageData": imageData,
-                    "review": reviewContent,
-                    "location": locationString,
-                    "restaurantName": restaurantName,
-                    "starRating": rating
-                ]
-            )
-
-            print("Post created successfully: \(newPost)")
-            resetPostState()
-            DispatchQueue.main.async {
-                dismiss()
-                selectedTab = 1
-            }
-        } catch {
-            print("Failed to create post: \(error.localizedDescription)")
+            isUploading = false
         }
 
-        isUploading = false
-    }
 
     private func resetPostState() {
         selectedImage = nil

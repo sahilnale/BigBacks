@@ -174,7 +174,7 @@ struct SignUpView: View {
         .alert("Error", isPresented: $authViewModel.showError) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text(authViewModel.error?.errorDescription ?? "An unknown error occurred")
+            Text(authViewModel.error ?? "An unknown error occurred")
         }
     }
 }

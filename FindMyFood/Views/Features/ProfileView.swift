@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @StateObject private var viewModel = ProfileViewModel()
+    @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
+    
+    
     
     @State private var isPickerPresented = false // State to control picker presentation
     @State private var selectedImage: UIImage? // Store the selected image
@@ -13,6 +15,8 @@ struct ProfileView: View {
         GridItem(.flexible()),
         GridItem(.flexible())
     ]
+    
+    
     
     var body: some View {
         NavigationView {
@@ -42,6 +46,8 @@ struct ProfileView: View {
                                 .foregroundColor(.gray)
                         }
                         .padding(.top)
+                        
+                        
                         
                         // Profile Image
 //                        Image(systemName: "person.circle.fill")
@@ -281,7 +287,6 @@ struct LogoutButton: View {
     }
 }
 
-// MARK: - Post Detail View
 struct PostDetailView: View {
     var post: Post // Pass the entire `Post` object
     @Environment(\.dismiss) var dismiss
@@ -289,15 +294,13 @@ struct PostDetailView: View {
     @State private var showAlert = false
     @State private var errorMessage: String?
 
-    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Post Image
                 AsyncImage(url: URL(string: post.imageUrl)) { phase in
                     switch phase {
                     case .empty:
-                        ProgressView() // Show loading spinner
+                        ProgressView()
                             .frame(maxWidth: .infinity, minHeight: 200)
                             .background(Color.gray.opacity(0.3))
                     case .success(let image):
@@ -315,43 +318,37 @@ struct PostDetailView: View {
                     }
                 }
 
-                // Restaurant Name
                 Text(post.restaurantName)
                     .font(.title)
                     .fontWeight(.bold)
                 
-                // Location
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
                     Text(post.location)
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
-                
-                // Star Rating
+
                 HStack {
                     ForEach(0..<5) { star in
                         Image(systemName: star < post.starRating ? "star.fill" : "star")
                             .foregroundColor(star < post.starRating ? .yellow : .gray)
                     }
                 }
-                
-                // Review
+
                 Text("Review")
                     .font(.headline)
                 Text(post.review)
                     .font(.body)
                     .foregroundColor(.secondary)
 
-                // Likes
                 HStack {
                     Image(systemName: "heart.fill")
                         .foregroundColor(.red)
                     Text("\(post.likes) likes")
                         .font(.subheadline)
                 }
-                
-                // Comments
+
                 if !post.comments.isEmpty {
                     Text("Comments")
                         .font(.headline)
@@ -366,53 +363,47 @@ struct PostDetailView: View {
                         .font(.body)
                         .foregroundColor(.gray)
                 }
-                HStack {
-                   Spacer()
-                   Button(action: {
-                       showAlert = true
-                   }) {
-                       Text("Delete Post")
-                           .foregroundColor(.customOrange)
-                   }
-                   Spacer()
-               }
-               .padding()
-           }
-           .padding()
-       }
-       .navigationTitle("Post Details")
-       .navigationBarTitleDisplayMode(.inline)
-       .alert("Delete Post", isPresented: $showAlert) {
-           Button("Cancel", role: .cancel) {}
-           Button("Delete", role: .destructive) {
-               Task {
-                   await deletePost()
-               }
-           }
-       } message: {
-           Text("Are you sure you want to delete this post? This action cannot be undone.")
-       }
-   }
 
-    
-private func deletePost() async {
-        print("Starting deletePost function")
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        showAlert = true
+                    }) {
+                        Text("Delete Post")
+                            .foregroundColor(.customOrange)
+                    }
+                    Spacer()
+                }
+                .padding()
+            }
+            .padding()
+        }
+        .navigationTitle("Post Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Delete Post", isPresented: $showAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deletePost()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete this post? This action cannot be undone.")
+        }
+    }
+
+    private func deletePost() async {
         isDeleting = true
         do {
-            print("Attempting to delete post with ID: \(post.id)")
-            try await NetworkManager.shared.deletePost(postId: post.id)
-            print("Post deletion successful")
-            DispatchQueue.main.async {
-                print("Attempting to dismiss the view")
-                dismiss()
-            }
+            try await AuthViewModel.shared.deletePost(postId: post.id)
+            dismiss()
         } catch {
-            print("Error deleting post: \(error)")
             errorMessage = error.localizedDescription
         }
         isDeleting = false
     }
 }
+
 
 
 

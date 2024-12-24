@@ -1,10 +1,3 @@
-//
-//  FriendsViewModel.swift
-//  FindMyFood
-//
-//  Created by Ridhima Morampudi on 11/26/24.
-//
-
 import SwiftUI
 
 class FriendsViewModel: ObservableObject {
@@ -12,24 +5,32 @@ class FriendsViewModel: ObservableObject {
     @Published var isLoading: Bool = false // To show loading state
     @Published var errorMessage: String? // To handle errors
 
-    func loadFriends(for userId: String) async {
-        guard let userId = AuthManager.shared.userId else {
-            errorMessage = "User is not logged in."
+    private let authViewModel: AuthViewModel
+
+    // Dependency injection for `AuthViewModel`
+    init(authViewModel: AuthViewModel) {
+        self.authViewModel = authViewModel
+    }
+
+    func loadFriends() async {
+        guard let currentUser = await authViewModel.currentUser else {
+            DispatchQueue.main.async {
+                self.errorMessage = "User is not logged in."
+            }
             return
         }
 
         isLoading = true
 
         do {
-            // Fetch the current user to access their friends (friend IDs)
-            let user = try await NetworkManager.shared.getCurrentUser(userId: userId)
-
-            // Fetch data for each friend
             var fetchedFriends: [User] = []
-            for friendId in user.friends {
+            
+            // Iterate through friends' IDs and fetch their data
+            for friendId in currentUser.friends {
                 do {
-                    let friend = try await NetworkManager.shared.getUserById(userId: friendId)
-                    fetchedFriends.append(friend)
+                    if let friend = try await authViewModel.getUserById(friendId: friendId) {
+                        fetchedFriends.append(friend)
+                    }
                 } catch {
                     DispatchQueue.main.async {
                         self.errorMessage = "Failed to load friend with ID \(friendId): \(error.localizedDescription)"
@@ -44,11 +45,9 @@ class FriendsViewModel: ObservableObject {
             }
         } catch {
             DispatchQueue.main.async {
-                self.errorMessage = "Failed to load user: \(error.localizedDescription)"
+                self.errorMessage = "Failed to load friends: \(error.localizedDescription)"
                 self.isLoading = false
             }
         }
     }
-}//end
-
-
+}
