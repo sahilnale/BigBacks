@@ -33,46 +33,29 @@ struct FeedView: View {
                         .listStyle(PlainListStyle())
                     }
                 }
-            }
-            .padding(.top, 10)
-            .padding(.horizontal)
-            .background(Color(UIColor.systemBackground)) // Use system background color
-            .onAppear {
-                loadFeed()
-            }
-//            VStack {
-//                Text("Feed")
-//                    .font(.system(.largeTitle, design: .serif))
-//                    .fontWeight(.bold)
-//                    .padding(.top, 60)
-//                    .padding(.bottom, 20)
-//                    .frame(maxWidth: .infinity, maxHeight: 90)
-//                    .background(Color.customOrange.opacity(0.8))
-//                    .foregroundColor(.white)
-//                Spacer() // Pushes the main content below
-//            }
-//            .ignoresSafeArea(edges: .top) // Makes the text extend to the top edge
-                
-            VStack {
-                HStack {
-                    Image("transparentLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 65, height: 65) // Adjust the size of the image
-                        .padding(.leading, 10) // Add padding to align properly
-                    Text("FindMyFood")
-                        .font(.system(.largeTitle, design: .serif))
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                       // .padding(.leading, 5) // Add padding between image and text
-                    Spacer()
-                }
-                .padding(.top, 65)
-                .padding(.bottom, 20)
-                .frame(maxWidth: .infinity, maxHeight: 95)
-                .background(Color.customOrange.opacity(0.8))
-                .ignoresSafeArea(edges: .top) // Makes the content extend to the top edge
-                Spacer() // Pushes the main content below
+                .padding(.horizontal)
+                .background(Color(UIColor.systemBackground)) // Use system background color
+                .onAppear(perform: loadFeed) // Call loadFeed directly without Task
+
+                VStack {
+                    HStack {
+                        Image("transparentLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 60, height: 60) // Adjust the size of the image
+                            .padding(.leading, 10) // Add padding to align properly
+                        Text("FindMyFood")
+                            .font(.system(.largeTitle, design: .serif))
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding(.top, 60)
+                    .padding(.bottom, 20)
+                    .frame(maxWidth: .infinity, maxHeight: 90)
+                    .background(Color.accentColor.opacity(0.8))
+                    .ignoresSafeArea(edges: .top) // Makes the content extend to the top edge
+                    Spacer() // Pushes the main content below
                 }
             }
         }

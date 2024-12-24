@@ -12,85 +12,53 @@ struct FriendsView: View {
     }
 
     var body: some View {
-        NavigationView {
-            ZStack {
-                VStack(spacing: 10) {
-                    HStack(spacing: 25) {
-                        Button(action: {
-                            showingFriendRequests = true
-                        }) {
-                            Text("View Requests")
-                                .font(.headline)
-                        }
-                        .foregroundColor(.customOrange)
-                        .sheet(isPresented: $showingFriendRequests) {
-                           // NavigationView {
-                                FriendRequestView()
-                           // }
-                        }
-                        Button(action: {
-                            showingAddFriend = true
-                        }) {
-                            Text("Add Friends").font(.headline)
-                        }.foregroundColor(.customOrange)
-                    }.padding(.top, 50)
-                    
-                    // Display friends in the List view
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle())
-                            .padding()
-                    } else if let errorMessage = viewModel.errorMessage {
-                        Text("Error: \(errorMessage)")
-                            .foregroundColor(.red)
-                            .padding()
-                    } else {
-                        List(viewModel.friends) { friend in
-                            HStack {
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 40))
-                                VStack(alignment: .leading) {
-                                    Text(friend.name)
-                                        .font(.headline)
-                                    Text("@\(friend.username)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
+        NavigationStack {
+            VStack {
+                // Button to View Friend Requests
+                Button(action: {
+                    showingFriendRequests = true
+                }) {
+                    Text("View Requests")
+                        .font(.headline)
+                        .foregroundColor(.accentColor)
+                }
+                .sheet(isPresented: $showingFriendRequests) {
+                    // Present FriendRequestView in its own NavigationStack
+                    NavigationStack {
+                        FriendRequestView()
+                            .navigationTitle("Friend Requests")
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    
                                 }
+                            }
+                    }
+                }
+
+                // Friends List or Loading/Error States
+                if viewModel.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .padding()
+                } else if let errorMessage = viewModel.errorMessage {
+                    Text("Error: \(errorMessage)")
+                        .foregroundColor(.red)
+                        .padding()
+                } else {
+                    List(viewModel.friends) { friend in
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.accentColor)
+                            VStack(alignment: .leading) {
+                                Text(friend.name)
+                                    .font(.headline)
+                                Text("@\(friend.username)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
                             }
                         }
                     }
-                }
-                .onAppear {
-                    // Wrap async function call in a Task to support concurrency
-                    Task {
-                        await viewModel.loadFriends(for: currentUserId) // Fetch friends when the view appears
-                    }
-                }
-//                .navigationTitle("Friends")
-//                .navigationBarItems(trailing: Button("Add") {
-//                    showingAddFriend = true
-//                })
-                
-                VStack {
-                    HStack {
-                        Image("transparentLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 65, height: 65) // Adjust the size of the image
-                            .padding(.leading, 10) // Add padding to align properly
-                        Text("FindMyFood")
-                            .font(.system(.largeTitle, design: .serif))
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                           // .padding(.leading, 5) // Add padding between image and text
-                        Spacer()
-                    }
-                    .padding(.top, 65)
-                    .padding(.bottom, 20)
-                    .frame(maxWidth: .infinity, maxHeight: 95)
-                    .background(Color.customOrange.opacity(0.8))
-                    .ignoresSafeArea(edges: .top) // Makes the content extend to the top edge
-                    Spacer() // Pushes the main content below
                 }
             }
             .onAppear {
@@ -99,16 +67,33 @@ struct FriendsView: View {
                     // Fetch friends on view appearance
                 }
             }
-        } //CHECK THIS JUST IN CASE
-       // .navigationBarHidden(true)
-       // .navigationBarBackButtonHidden(true)
+            .navigationTitle("Friends")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingAddFriend = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showingAddFriend) {
-            //NavigationView {
+            // Present AddFriendView in its own NavigationStack
+            NavigationStack {
                 AddFriendView(
                     currentUserId: authViewModel.currentUser?.id ?? "",
                     friends: viewModel.friends.map { $0.id }
                 )
-            //}
+                .navigationTitle("Add Friends")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        
+                    }
+                }
+            }
         }
     }
 }
@@ -145,8 +130,8 @@ struct FriendRequestView: View {
                 }
             }
         }
-//        .navigationTitle("Friend Requests")
-//        .navigationBarItems(trailing: Button("Done") { dismiss() })
+        .navigationTitle("Friend Requests")
+        .navigationBarItems(trailing: Button("Done") { dismiss() })
         .alert("Error", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
         } message: {
@@ -284,8 +269,8 @@ struct AddFriendView: View {
         } message: {
             Text(errorMessage ?? "")
         }
-//        .navigationTitle("Add Friends")
-//        .navigationBarItems(trailing: Button("Done") { dismiss() })
+        .navigationTitle("Add Friends")
+        .navigationBarItems(trailing: Button("Done") { dismiss() })
     }
     
     private func performSearch(_ query: String) {
@@ -424,7 +409,7 @@ private struct UserRowView: View {
             if isAlreadyRequestedBy {
                 Text("Request waiting")
                     .font(.subheadline)
-                    .foregroundColor(.customOrange)
+                    .foregroundColor(.accentColor)
             }
             else if !isAlreadyFriend {
                 AddFriendButton(
