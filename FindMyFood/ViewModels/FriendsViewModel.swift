@@ -1,26 +1,29 @@
 import SwiftUI
 
 class FriendsViewModel: ObservableObject {
-    @Published var friends: [User] = [] // To store the friends list
-    @Published var isLoading: Bool = false // To show loading state
-    @Published var errorMessage: String? // To handle errors
+    @Published var friends: [User] = []
+    @Published var friendRequests: [User] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    @Published var hasNewRequests: Bool = false
 
     private let authViewModel: AuthViewModel
 
-    // Dependency injection for `AuthViewModel`
     init(authViewModel: AuthViewModel) {
         self.authViewModel = authViewModel
     }
 
     func loadFriends() async {
-        isLoading = true
-        errorMessage = nil
+        DispatchQueue.main.async {
+            self.isLoading = true
+            self.errorMessage = nil
+        }
 
         do {
-            // Use the new `getFriends` function from `AuthViewModel`
             let fetchedFriends = try await authViewModel.getFriends()
             DispatchQueue.main.async {
                 self.friends = fetchedFriends
+                print("Friends Loaded: \(self.friends.count)") // Debugging
                 self.isLoading = false
             }
         } catch {
@@ -31,62 +34,35 @@ class FriendsViewModel: ObservableObject {
         }
     }
 
-    func acceptFriendRequest(from friend: User) async {
-        guard let currentUser = await authViewModel.currentUser else {
-            self.errorMessage = "User is not logged in."
-            return
+    func loadFriendRequests() async {
+        DispatchQueue.main.async {
+            self.isLoading = true
+            self.errorMessage = nil
         }
 
         do {
-            // Call the main actor-isolated `acceptFriendRequest` method using `await`
-            try await withCheckedThrowingContinuation { continuation in
-                Task { @MainActor in
-                    authViewModel.acceptFriendRequest(currentUserId: currentUser.id, friendId: friend.id) { result in
-                        switch result {
-                        case .success:
-                            continuation.resume()
-                        case .failure(let error):
-                            continuation.resume(throwing: error)
-                        }
-                    }
-                }
+            guard let currentUserId = await authViewModel.currentUser?.id else {
+                throw NSError(domain: "No user logged in", code: 1)
             }
 
-            // Reload the friends list from the database
-            await loadFriends()
+            let fetchedRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            DispatchQueue.main.async {
+                self.friendRequests = fetchedRequests
+                self.hasNewRequests = !fetchedRequests.isEmpty
+                print("Friend Requests Updated: \(self.friendRequests.count)") // Debugging
+                self.isLoading = false
+            }
         } catch {
-            self.errorMessage = "Failed to accept friend request: \(error.localizedDescription)"
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to load friend requests: \(error.localizedDescription)"
+                self.isLoading = false
+            }
         }
     }
 
-    
-    func rejectFriendRequest(from friend: User) async {
-        guard let currentUser = await authViewModel.currentUser else {
-            self.errorMessage = "User is not logged in."
-            return
-        }
-
-        do {
-            // Call the main actor-isolated `rejectFriendRequest` method using `await`
-            try await withCheckedThrowingContinuation { continuation in
-                Task { @MainActor in
-                    authViewModel.rejectFriendRequest(currentUserId: currentUser.id, friendId: friend.id) { result in
-                        switch result {
-                        case .success:
-                            continuation.resume()
-                        case .failure(let error):
-                            continuation.resume(throwing: error)
-                        }
-                    }
-                }
-            }
-
-            // Reload the friends list from the database
-            await loadFriends()
-        } catch {
-            self.errorMessage = "Failed to reject friend request: \(error.localizedDescription)"
+    func markRequestsAsViewed() {
+        DispatchQueue.main.async {
+            self.hasNewRequests = false
         }
     }
-
-
 }

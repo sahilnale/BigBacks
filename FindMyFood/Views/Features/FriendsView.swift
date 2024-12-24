@@ -17,21 +17,26 @@ struct FriendsView: View {
                 // Button to View Friend Requests
                 Button(action: {
                     showingFriendRequests = true
+                    viewModel.markRequestsAsViewed()
                 }) {
-                    Text("View Requests")
-                        .font(.headline)
-                        .foregroundColor(.accentColor)
+                    HStack {
+                        Text("View Requests (\(viewModel.friendRequests.count))")
+                            .font(.headline)
+                            .foregroundColor(.accentColor)
+
+                        // Indicator for new requests
+                        if viewModel.hasNewRequests {
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 10, height: 10)
+                        }
+                    }
                 }
                 .sheet(isPresented: $showingFriendRequests) {
-                    // Present FriendRequestView in its own NavigationStack
                     NavigationStack {
                         FriendRequestView()
+                            .environmentObject(authViewModel)
                             .navigationTitle("Friend Requests")
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    
-                                }
-                            }
                     }
                 }
 
@@ -64,7 +69,7 @@ struct FriendsView: View {
             .onAppear {
                 Task {
                     await viewModel.loadFriends()
-                    // Fetch friends on view appearance
+                    await viewModel.loadFriendRequests()
                 }
             }
             .navigationTitle("Friends")
@@ -81,18 +86,13 @@ struct FriendsView: View {
             }
         }
         .sheet(isPresented: $showingAddFriend) {
-            // Present AddFriendView in its own NavigationStack
             NavigationStack {
                 AddFriendView(
                     currentUserId: authViewModel.currentUser?.id ?? "",
                     friends: viewModel.friends.map { $0.id }
                 )
                 .navigationTitle("Add Friends")
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        
-                    }
-                }
+                .environmentObject(authViewModel)
             }
         }
     }
@@ -100,6 +100,8 @@ struct FriendsView: View {
 
 
 
+
+//Friend Requests page below now
 
 import SwiftUI
 
@@ -151,12 +153,14 @@ struct FriendRequestView: View {
         
         do {
             friendRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            print("Friend Requests Fetched: \(friendRequests)") // Debugging output
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
         }
     }
+
     
     private func acceptRequest(from user: User) {
         guard let currentUserId = authViewModel.currentUser?.id else {
