@@ -63,7 +63,7 @@ struct CreatePostView: View {
                 HStack {
                     ForEach(1...5, id: \.self) { index in
                         Image(systemName: index <= rating ? "star.fill" : "star")
-                            .foregroundColor(index <= rating ? .accentColor : .gray)
+                            .foregroundColor(index <= rating ? .customOrange : .gray)
                             .font(.system(size: 20))
                             .onTapGesture {
                                 rating = index
@@ -74,7 +74,7 @@ struct CreatePostView: View {
                 // Location Display
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.customOrange)
                         .font(.system(size: 16, weight: .semibold))
                     
                     Text(locationDisplay)
@@ -117,11 +117,11 @@ struct CreatePostView: View {
                     
                     TextEditor(text: $postText)
                         .padding(8)
-                        .background(Color.accentColor.opacity(0.1))
+                        .background(Color.customOrange.opacity(0.1))
                         .cornerRadius(10)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.accentColor, lineWidth: 1)
+                                .stroke(Color.customOrange, lineWidth: 1)
                         )
                         .frame(maxWidth: UIScreen.main.bounds.width - 32, maxHeight: 200)
                         .scrollContentBackground(.hidden)
@@ -143,7 +143,7 @@ struct CreatePostView: View {
                             Image(systemName: "chevron.backward")
                             Text("Back")
                         }
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.customOrange)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -155,7 +155,7 @@ struct CreatePostView: View {
                     }) {
                         Text("Post")
                             .font(.headline)
-                            .foregroundColor(postText.isEmpty || selectedImage == nil || isUploading ? .gray : .accentColor)
+                            .foregroundColor(postText.isEmpty || selectedImage == nil || isUploading ? .gray : .customOrange)
                     }
                     .disabled(postText.isEmpty || selectedImage == nil || isUploading)
                 }

@@ -29,7 +29,7 @@ struct ProfileView: View {
                              .scaledToFill()
                              .frame(width: 100, height: 100)
                              .clipShape(Circle())
-                             .foregroundColor(.accentColor)
+                             .foregroundColor(.customOrange)
                      }
                      .padding(.top)
                     
@@ -55,7 +55,7 @@ struct ProfileView: View {
 //                            .scaledToFit()
 //                            .frame(width: 100, height: 100)
 //                            .clipShape(Circle())
-//                            .foregroundColor(Color.accentColor)
+//                            .foregroundColor(Color.customOrange)
 //                            .padding(.bottom, 8)
                         
                         
@@ -190,14 +190,53 @@ struct ProfileHeaderView: View {
 }
 
 // MARK: - Post Grid View
+//struct PostGridView: View {
+//    let posts: [Post]
+//    let columns: [GridItem]
+//    
+//    var body: some View {
+//        LazyVGrid(columns: columns, spacing: 8) {
+//            ForEach(posts.reversed(), id: \._id) { post in
+//                NavigationLink(destination: PostDetailView(post: post)) {
+//                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
+//                        switch phase {
+//                        case .empty:
+//                            ProgressView() // Show a loading indicator while the image loads
+//                                .frame(width: 100, height: 100)
+//                                .background(Color.gray.opacity(0.3))
+//                                .clipShape(RoundedRectangle(cornerRadius: 8))
+//                        case .success(let image):
+//                            image
+//                                .resizable()
+//                                .scaledToFill()
+//                                .frame(width: 100, height: 100)
+//                                .clipShape(RoundedRectangle(cornerRadius: 8))
+//                                .clipped()
+//                        case .failure:
+//                            Color.red // Display a red box if the image fails to load
+//                                .frame(width: 100, height: 100)
+//                                .clipShape(RoundedRectangle(cornerRadius: 8))
+//                        @unknown default:
+//                            EmptyView()
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
+
 struct PostGridView: View {
     let posts: [Post]
     let columns: [GridItem]
-    
+    @State private var selectedPost: Post? // State to track selected post for the sheet
+
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(posts.reversed(), id: \._id) { post in
-                NavigationLink(destination: PostDetailView(post: post)) {
+                Button(action: {
+                    selectedPost = post // Set the selected post
+                }) {
                     AsyncImage(url: URL(string: post.imageUrl)) { phase in
                         switch phase {
                         case .empty:
@@ -223,6 +262,9 @@ struct PostGridView: View {
                 }
             }
         }
+        .sheet(item: $selectedPost) { post in
+            PostDetailView(post: post) // Present PostDetailView as a sheet
+        }
     }
 }
 
@@ -238,7 +280,7 @@ struct LogoutButton: View {
                 .font(.headline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity, minHeight: 40)
-                .background(Color.accentColor)
+                .background(Color.customOrange)
                 .cornerRadius(10)
                 .padding()
         }
@@ -328,7 +370,7 @@ struct PostDetailView: View {
                         showAlert = true
                     }) {
                         Text("Delete Post")
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.customOrange)
                     }
                     Spacer()
                 }

@@ -64,22 +64,22 @@ struct RestaurantCard: View {
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 300, height: 200)
+                    .frame(width: 307, height: 200)
                     .clipped()
             } placeholder: {
-                Color.gray.frame(width: 300, height: 200)
+                Color.gray.frame(width: 307, height: 200)
             }
             
             Text("@\(userName)")
                 .font(.subheadline.bold())
-                .foregroundColor(.accentColor)
+                .foregroundColor(.customOrange)
                 .padding(.leading)
             
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Image(systemName: "mappin.and.ellipse")
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.customOrange)
                         Text(post.restaurantName)
                             .font(.headline)
                             .foregroundColor(Color.primary)
@@ -112,7 +112,7 @@ struct RestaurantCard: View {
                     //                    }) {
                     //                        HStack(spacing: 4) {
                     //                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                    //                                .foregroundColor(isLiked ? .accentColor : .gray)
+                    //                                .foregroundColor(isLiked ? .customOrange : .gray)
                     //                            Text("\(likeCount)")
                     //                                .foregroundColor(Color.primary)
                     //                                .font(.subheadline)
@@ -131,7 +131,7 @@ struct RestaurantCard: View {
                     //                    }) {
                     //                        HStack(spacing: 4) {
                     //                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                    //                                .foregroundColor(isLiked ? .accentColor : .gray)
+                    //                                .foregroundColor(isLiked ? .customOrange : .gray)
                     //                            Text("\(likeCount)")
                     //                                .foregroundColor(Color.primary)
                     //                                .font(.subheadline)
@@ -194,7 +194,7 @@ struct RestaurantCard: View {
                 HStack {
                     Text("Comments (\(post.comments.count))")
                         .font(.subheadline)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.customOrange)
                 }
             }
             .padding(.leading)
@@ -267,7 +267,7 @@ struct RestaurantCard: View {
                         }) {
                             Text("Post")
                                 .font(.subheadline)
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(.customOrange)
                                 .padding(.horizontal)
                         }
 

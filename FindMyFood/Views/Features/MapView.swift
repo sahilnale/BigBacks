@@ -108,7 +108,7 @@ class CustomPopupView: UIView {
         
         // Title Label
         titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 22) ?? UIFont.systemFont(ofSize: 22, weight: .bold)
-        titleLabel.textColor = UIColor(Color.accentColor)
+        titleLabel.textColor = UIColor(Color.customOrange)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         

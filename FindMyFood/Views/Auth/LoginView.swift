@@ -13,7 +13,7 @@ struct LoginView: View {
             Text("Login")
                 .font(.system(.largeTitle, design: .serif))
                 .fontWeight(.bold)
-                .foregroundColor(Color.accentColor)
+                .foregroundColor(Color.customOrange)
 
             // Input Fields
             VStack(spacing: 16) {
@@ -80,14 +80,14 @@ struct LoginView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(email.isEmpty || password.isEmpty || authViewModel.isLoading ? Color.gray : Color.accentColor)
+            .background(username.isEmpty || password.isEmpty || authViewModel.isLoading ? Color.gray : Color.customOrange)
             .foregroundColor(.white)
             .cornerRadius(10)
             .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 3)
             .disabled(email.isEmpty || password.isEmpty || authViewModel.isLoading)
 
             .font(.headline)
-            .foregroundColor(Color.accentColor)
+            .foregroundColor(Color.customOrange)
 
             // Sign-Up Navigation
             HStack {
@@ -95,7 +95,7 @@ struct LoginView: View {
                     .font(.body)
                 NavigationLink("Sign up here", destination: SignUpView())
                     .font(.headline)
-                    .foregroundColor(Color.accentColor)
+                    .foregroundColor(Color.customOrange)
             }
         }
         .padding()

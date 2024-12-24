@@ -11,6 +11,13 @@ struct MainTabView: View {
     }
 
     var body: some View {
+       // NavigationView {
+            
+//             TabView(selection: $selectedTab) {
+//                 ZStack {
+//                     MainView(selectedTab: $selectedTab)
+//                 }
+      //CHECK THIS JUST IN CASE
         TabView(selection: $selectedTab) {
             // Main Map View
             MainView(selectedTab: $selectedTab)
@@ -40,8 +47,8 @@ struct MainTabView: View {
                 }
                 .tag(3)
         }
-        .accentColor(.accentColor)
-        .navigationBarBackButtonHidden(true)
+        .accentColor(.customOrange)
+       // .navigationBarBackButtonHidden(true)
     }
 }
 

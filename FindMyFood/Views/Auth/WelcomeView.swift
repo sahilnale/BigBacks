@@ -30,7 +30,7 @@ struct WelcomeView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.white)
-                        .foregroundColor(Color.accentColor)
+                        .foregroundColor(Color.customOrange)
                         .cornerRadius(10)
                 }
                 
@@ -49,7 +49,7 @@ struct WelcomeView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.accentColor)
+            .background(Color.customOrange)
             .navigationBarHidden(true)
         }
     }
