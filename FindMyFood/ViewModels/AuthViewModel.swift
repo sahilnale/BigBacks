@@ -784,6 +784,71 @@ class AuthViewModel: ObservableObject {
 
         return comment
     }
+    
+    func getFriends() async throws -> [User] {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User is not logged in."])
+        }
+
+        let db = Firestore.firestore()
+        do {
+            // Fetch the current user's document
+            let userDoc = try await db.collection("users").document(currentUserId).getDocument()
+
+            guard let data = userDoc.data(),
+                  let friendIds = data["friends"] as? [String] else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch user's friends list."])
+            }
+
+            // Fetch friend details for each friend ID
+            var fetchedFriends: [User] = []
+            for friendId in friendIds {
+                do {
+                    let friendDoc = try await db.collection("users").document(friendId).getDocument()
+                    guard let friendData = friendDoc.data() else {
+                        print("Friend document not found for ID: \(friendId)")
+                        continue
+                    }
+
+                    // Decode each friend's data manually
+                    guard let id = friendDoc.documentID as String?,
+                          let name = friendData["name"] as? String,
+                          let username = friendData["username"] as? String,
+                          let email = friendData["email"] as? String else {
+                        print("Failed to decode friend data for ID: \(friendId)")
+                        continue
+                    }
+
+                    let friends = friendData["friends"] as? [String] ?? []
+                    let friendRequests = friendData["friendRequests"] as? [String] ?? []
+                    let pendingRequests = friendData["pendingRequests"] as? [String] ?? []
+                    let profilePicture = friendData["profilePicture"] as? String
+
+                    let friend = User(
+                        id: id,
+                        name: name,
+                        username: username,
+                        email: email,
+                        friends: friends,
+                        friendRequests: friendRequests,
+                        pendingRequests: pendingRequests,
+                        posts: [], // Handle posts separately if needed
+                        profilePicture: profilePicture,
+                        loggedIn: true
+                    )
+                    fetchedFriends.append(friend)
+                } catch {
+                    print("Error fetching friend data for ID \(friendId): \(error.localizedDescription)")
+                }
+            }
+
+            return fetchedFriends
+        } catch {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friends: \(error.localizedDescription)"])
+        }
+    }
+    
+    
 
 
 

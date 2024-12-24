@@ -63,7 +63,8 @@ struct FriendsView: View {
             }
             .onAppear {
                 Task {
-                    await viewModel.loadFriends() // Fetch friends on view appearance
+                    await viewModel.loadFriends()
+                    // Fetch friends on view appearance
                 }
             }
             .navigationTitle("Friends")
