@@ -5,12 +5,17 @@ class FriendsViewModel: ObservableObject {
     @Published var friendRequests: [User] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
-    @Published var hasNewRequests: Bool = false
+    @Published var hasNewRequests: Bool {
+        didSet {
+            UserDefaults.standard.set(hasNewRequests, forKey: "hasNewRequests")
+        }
+    }
 
     private let authViewModel: AuthViewModel
 
     init(authViewModel: AuthViewModel) {
         self.authViewModel = authViewModel
+        self.hasNewRequests = UserDefaults.standard.bool(forKey: "hasNewRequests") // Load from UserDefaults
     }
 
     func loadFriends() async {
