@@ -50,6 +50,7 @@ struct Comment: Encodable, Decodable, Identifiable, Hashable {
 
 struct RestaurantCard: View {
     @State var post: Post
+    @State private var commenterUsernames: [String: String] = [:]
     @State private var isLiked: Bool = false
     @State private var likeCount: Int = 0
     @State private var isExpanded: Bool = false // Tracks if the description is expanded
@@ -214,11 +215,39 @@ struct RestaurantCard: View {
                             } placeholder: {
                                 Circle()
                                     .fill(Color.gray)
-                                    .frame(width: 25, height: 25) //Placeholder for missing profile photo
+                                    .frame(width: 25, height: 25) // Placeholder for missing profile photo
                                     .padding(.leading)
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
+                                // Display the fetched username or show a placeholder
+                                Text("@\(commenterUsernames[comment.userId] ?? "Loading...")")
+                                    .foregroundColor(Color.accentColor)
+                                    .font(.subheadline)
+                                    .onAppear {
+                                        // Fetch the username if not already cached
+                                        if commenterUsernames[comment.userId] == nil {
+                                            Task {
+                                                do {
+                                                    if let commenter = try await AuthViewModel.shared.getUserById(friendId: comment.userId) {
+                                                        await MainActor.run {
+                                                            commenterUsernames[comment.userId] = commenter.username
+                                                        }
+                                                    } else {
+                                                        await MainActor.run {
+                                                            commenterUsernames[comment.userId] = "Unknown user"
+                                                        }
+                                                    }
+                                                } catch {
+                                                    print("Failed to fetch commenter: \(error)")
+                                                    await MainActor.run {
+                                                        commenterUsernames[comment.userId] = "Error"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                
                                 Text(comment.text)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
@@ -233,6 +262,8 @@ struct RestaurantCard: View {
                             }
                         }
                     }
+
+
                     
                     HStack {
                         TextField("Add a comment...", text: $newCommentText)
