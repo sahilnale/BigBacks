@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @StateObject private var viewModel = ProfileViewModel()
+    @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
+    
+    
     
     @State private var isPickerPresented = false // State to control picker presentation
     @State private var selectedImage: UIImage? // Store the selected image
@@ -13,6 +15,8 @@ struct ProfileView: View {
         GridItem(.flexible()),
         GridItem(.flexible())
     ]
+    
+    
     
     var body: some View {
         NavigationView {
@@ -25,7 +29,7 @@ struct ProfileView: View {
                              .scaledToFill()
                              .frame(width: 100, height: 100)
                              .clipShape(Circle())
-                             .foregroundColor(.accentColor)
+                             .foregroundColor(.customOrange)
                      }
                      .padding(.top)
                     
@@ -43,13 +47,15 @@ struct ProfileView: View {
                         }
                         .padding(.top)
                         
+                        
+                        
                         // Profile Image
 //                        Image(systemName: "person.circle.fill")
 //                            .resizable()
 //                            .scaledToFit()
 //                            .frame(width: 100, height: 100)
 //                            .clipShape(Circle())
-//                            .foregroundColor(Color.accentColor)
+//                            .foregroundColor(Color.customOrange)
 //                            .padding(.bottom, 8)
                         
                         
@@ -184,14 +190,53 @@ struct ProfileHeaderView: View {
 }
 
 // MARK: - Post Grid View
+//struct PostGridView: View {
+//    let posts: [Post]
+//    let columns: [GridItem]
+//    
+//    var body: some View {
+//        LazyVGrid(columns: columns, spacing: 8) {
+//            ForEach(posts.reversed(), id: \._id) { post in
+//                NavigationLink(destination: PostDetailView(post: post)) {
+//                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
+//                        switch phase {
+//                        case .empty:
+//                            ProgressView() // Show a loading indicator while the image loads
+//                                .frame(width: 100, height: 100)
+//                                .background(Color.gray.opacity(0.3))
+//                                .clipShape(RoundedRectangle(cornerRadius: 8))
+//                        case .success(let image):
+//                            image
+//                                .resizable()
+//                                .scaledToFill()
+//                                .frame(width: 100, height: 100)
+//                                .clipShape(RoundedRectangle(cornerRadius: 8))
+//                                .clipped()
+//                        case .failure:
+//                            Color.red // Display a red box if the image fails to load
+//                                .frame(width: 100, height: 100)
+//                                .clipShape(RoundedRectangle(cornerRadius: 8))
+//                        @unknown default:
+//                            EmptyView()
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
+
 struct PostGridView: View {
     let posts: [Post]
     let columns: [GridItem]
-    
+    @State private var selectedPost: Post? // State to track selected post for the sheet
+
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(posts.reversed(), id: \._id) { post in
-                NavigationLink(destination: PostDetailView(post: post)) {
+                Button(action: {
+                    selectedPost = post // Set the selected post
+                }) {
                     AsyncImage(url: URL(string: post.imageUrl)) { phase in
                         switch phase {
                         case .empty:
@@ -217,6 +262,9 @@ struct PostGridView: View {
                 }
             }
         }
+        .sheet(item: $selectedPost) { post in
+            PostDetailView(post: post) // Present PostDetailView as a sheet
+        }
     }
 }
 
@@ -232,14 +280,13 @@ struct LogoutButton: View {
                 .font(.headline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity, minHeight: 40)
-                .background(Color.accentColor)
+                .background(Color.customOrange)
                 .cornerRadius(10)
                 .padding()
         }
     }
 }
 
-// MARK: - Post Detail View
 struct PostDetailView: View {
     var post: Post // Pass the entire `Post` object
     @Environment(\.dismiss) var dismiss
@@ -247,15 +294,13 @@ struct PostDetailView: View {
     @State private var showAlert = false
     @State private var errorMessage: String?
 
-    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Post Image
                 AsyncImage(url: URL(string: post.imageUrl)) { phase in
                     switch phase {
                     case .empty:
-                        ProgressView() // Show loading spinner
+                        ProgressView()
                             .frame(maxWidth: .infinity, minHeight: 200)
                             .background(Color.gray.opacity(0.3))
                     case .success(let image):
@@ -273,43 +318,37 @@ struct PostDetailView: View {
                     }
                 }
 
-                // Restaurant Name
                 Text(post.restaurantName)
                     .font(.title)
                     .fontWeight(.bold)
                 
-                // Location
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
                     Text(post.location)
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
-                
-                // Star Rating
+
                 HStack {
                     ForEach(0..<5) { star in
                         Image(systemName: star < post.starRating ? "star.fill" : "star")
                             .foregroundColor(star < post.starRating ? .yellow : .gray)
                     }
                 }
-                
-                // Review
+
                 Text("Review")
                     .font(.headline)
                 Text(post.review)
                     .font(.body)
                     .foregroundColor(.secondary)
 
-                // Likes
                 HStack {
                     Image(systemName: "heart.fill")
                         .foregroundColor(.red)
                     Text("\(post.likes) likes")
                         .font(.subheadline)
                 }
-                
-                // Comments
+
                 if !post.comments.isEmpty {
                     Text("Comments")
                         .font(.headline)
@@ -324,53 +363,47 @@ struct PostDetailView: View {
                         .font(.body)
                         .foregroundColor(.gray)
                 }
-                HStack {
-                   Spacer()
-                   Button(action: {
-                       showAlert = true
-                   }) {
-                       Text("Delete Post")
-                           .foregroundColor(.accentColor)
-                   }
-                   Spacer()
-               }
-               .padding()
-           }
-           .padding()
-       }
-       .navigationTitle("Post Details")
-       .navigationBarTitleDisplayMode(.inline)
-       .alert("Delete Post", isPresented: $showAlert) {
-           Button("Cancel", role: .cancel) {}
-           Button("Delete", role: .destructive) {
-               Task {
-                   await deletePost()
-               }
-           }
-       } message: {
-           Text("Are you sure you want to delete this post? This action cannot be undone.")
-       }
-   }
 
-    
-private func deletePost() async {
-        print("Starting deletePost function")
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        showAlert = true
+                    }) {
+                        Text("Delete Post")
+                            .foregroundColor(.customOrange)
+                    }
+                    Spacer()
+                }
+                .padding()
+            }
+            .padding()
+        }
+        .navigationTitle("Post Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Delete Post", isPresented: $showAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deletePost()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete this post? This action cannot be undone.")
+        }
+    }
+
+    private func deletePost() async {
         isDeleting = true
         do {
-            print("Attempting to delete post with ID: \(post.id)")
-            try await NetworkManager.shared.deletePost(postId: post.id)
-            print("Post deletion successful")
-            DispatchQueue.main.async {
-                print("Attempting to dismiss the view")
-                dismiss()
-            }
+            try await AuthViewModel.shared.deletePost(postId: post.id)
+            dismiss()
         } catch {
-            print("Error deleting post: \(error)")
             errorMessage = error.localizedDescription
         }
         isDeleting = false
     }
 }
+
 
 
 

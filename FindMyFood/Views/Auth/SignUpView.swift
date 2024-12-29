@@ -28,7 +28,7 @@ struct SignUpView: View {
             Text("Sign Up")
                 .font(.system(.largeTitle, design: .serif))
                 .fontWeight(.bold)
-                .foregroundColor(Color.accentColor)
+                .foregroundColor(Color.customOrange)
 
             // Input Fields
             VStack(spacing: 16) {
@@ -150,7 +150,7 @@ struct SignUpView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(isFormValid ? Color.accentColor : Color.gray)
+                        .background(isFormValid ? Color.customOrange : Color.gray)
                         .foregroundColor(.white)
                         .cornerRadius(10)
                         .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 3)
@@ -167,14 +167,14 @@ struct SignUpView: View {
                     .font(.body)
                 NavigationLink("Login here", destination: LoginView())
                     .font(.headline)
-                    .foregroundColor(Color.accentColor)
+                    .foregroundColor(Color.customOrange)
             }
         }
         .padding()
         .alert("Error", isPresented: $authViewModel.showError) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text(authViewModel.error?.errorDescription ?? "An unknown error occurred")
+            Text(authViewModel.error ?? "An unknown error occurred")
         }
     }
 }

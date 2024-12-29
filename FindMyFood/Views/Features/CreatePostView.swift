@@ -25,6 +25,9 @@ struct CreatePostView: View {
     @State private var isLocationManuallySet = false // New state to track manual location updates
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
+    @EnvironmentObject var authViewModel: AuthViewModel // Use A
+    
+    var onPostComplete: (() -> Void)? // Completion callback
 
     var body: some View {
         NavigationStack {
@@ -60,7 +63,7 @@ struct CreatePostView: View {
                 HStack {
                     ForEach(1...5, id: \.self) { index in
                         Image(systemName: index <= rating ? "star.fill" : "star")
-                            .foregroundColor(index <= rating ? .accentColor : .gray)
+                            .foregroundColor(index <= rating ? .customOrange : .gray)
                             .font(.system(size: 20))
                             .onTapGesture {
                                 rating = index
@@ -71,7 +74,7 @@ struct CreatePostView: View {
                 // Location Display
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.customOrange)
                         .font(.system(size: 16, weight: .semibold))
                     
                     Text(locationDisplay)
@@ -114,11 +117,11 @@ struct CreatePostView: View {
                     
                     TextEditor(text: $postText)
                         .padding(8)
-                        .background(Color.accentColor.opacity(0.1))
+                        .background(Color.customOrange.opacity(0.1))
                         .cornerRadius(10)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.accentColor, lineWidth: 1)
+                                .stroke(Color.customOrange, lineWidth: 1)
                         )
                         .frame(maxWidth: UIScreen.main.bounds.width - 32, maxHeight: 200)
                         .scrollContentBackground(.hidden)
@@ -140,18 +143,19 @@ struct CreatePostView: View {
                             Image(systemName: "chevron.backward")
                             Text("Back")
                         }
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.customOrange)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         Task {
                             await postReview()
+                            onPostComplete?()
                         }
                     }) {
                         Text("Post")
                             .font(.headline)
-                            .foregroundColor(postText.isEmpty || selectedImage == nil || isUploading ? .gray : .accentColor)
+                            .foregroundColor(postText.isEmpty || selectedImage == nil || isUploading ? .gray : .customOrange)
                     }
                     .disabled(postText.isEmpty || selectedImage == nil || isUploading)
                 }
@@ -213,67 +217,65 @@ struct CreatePostView: View {
     }
 
     private func postReview() async {
-        guard let image = selectedImage else {
-            print("No image selected.")
-            return
-        }
-
-        isUploading = true
-        do {
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-                print("Failed to compress image.")
-                isUploading = false
+            guard let image = selectedImage else {
+                print("No image selected.")
                 return
             }
 
-            guard let userId = AuthManager.shared.userId else {
-                print("User ID is not available.")
-                isUploading = false
-                return
+            isUploading = true
+            do {
+                guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+                    print("Failed to compress image.")
+                    isUploading = false
+                    return
+                }
+
+                if restaurantName.isEmpty || restaurantName == "Location not found" {
+                    restaurantName = locationDisplay
+                }
+
+                let coordinates = selectedLocationCoordinates ?? imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+                let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
+
+                let reviewContent = reviewText.isEmpty ? postText : reviewText
+
+                // Use AuthViewModel's addPost
+                let newPost = try await authViewModel.addPost(
+                    imageData: imageData,
+                    review: reviewContent,
+                    location: locationString,
+                    restaurantName: restaurantName,
+                    starRating: rating
+                )
+
+                NotificationCenter.default.post(
+                    name: .postAdded,
+                    object: nil,
+                    userInfo: [
+                        "userId": newPost.userId,
+                        "imageData": newPost.imageUrl,
+                        "review": newPost.review,
+                        "location": newPost.location,
+                        "restaurantName": newPost.restaurantName,
+                        "starRating": newPost.starRating
+                    ]
+                )
+
+                print("Post created successfully: \(newPost)")
+                resetPostState()
+                DispatchQueue.main.async {
+                    print("Attempting to dismiss and change tab")
+                    dismiss()
+                    selectedTab = 1
+                    print("Navigation attempted: selectedTab =", selectedTab)
+                }
+            } catch {
+                print("Failed to create post: \(error.localizedDescription)")
             }
 
-            if restaurantName.isEmpty || restaurantName == "Location not found" {
-                restaurantName = locationDisplay
-            }
-
-            let coordinates = selectedLocationCoordinates ?? imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
-            let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
-
-            let reviewContent = reviewText.isEmpty ? postText : reviewText
-            let newPost = try await NetworkManager.shared.addPost(
-                userId: userId,
-                imageData: imageData,
-                review: reviewContent,
-                location: locationString,
-                restaurantName: restaurantName,
-                starRating: rating
-            )
-            
-            NotificationCenter.default.post(
-                name: .postAdded,
-                object: nil,
-                userInfo: [
-                    "userId": userId,
-                    "imageData": imageData,
-                    "review": reviewContent,
-                    "location": locationString,
-                    "restaurantName": restaurantName,
-                    "starRating": rating
-                ]
-            )
-
-            print("Post created successfully: \(newPost)")
-            resetPostState()
-            DispatchQueue.main.async {
-                dismiss()
-                selectedTab = 1
-            }
-        } catch {
-            print("Failed to create post: \(error.localizedDescription)")
+            isUploading = false
         }
 
-        isUploading = false
-    }
 
     private func resetPostState() {
         selectedImage = nil

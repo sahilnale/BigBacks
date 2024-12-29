@@ -1,54 +1,73 @@
-//
-//  FriendsViewModel.swift
-//  FindMyFood
-//
-//  Created by Ridhima Morampudi on 11/26/24.
-//
-
 import SwiftUI
 
 class FriendsViewModel: ObservableObject {
-    @Published var friends: [User] = [] // To store the friends list
-    @Published var isLoading: Bool = false // To show loading state
-    @Published var errorMessage: String? // To handle errors
+    @Published var friends: [User] = []
+    @Published var friendRequests: [User] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    @Published var hasNewRequests: Bool {
+        didSet {
+            UserDefaults.standard.set(hasNewRequests, forKey: "hasNewRequests")
+        }
+    }
 
-    func loadFriends(for userId: String) async {
-        guard let userId = AuthManager.shared.userId else {
-            errorMessage = "User is not logged in."
-            return
+    private let authViewModel: AuthViewModel
+
+    init(authViewModel: AuthViewModel) {
+        self.authViewModel = authViewModel
+        self.hasNewRequests = UserDefaults.standard.bool(forKey: "hasNewRequests") // Load from UserDefaults
+    }
+
+    func loadFriends() async {
+        DispatchQueue.main.async {
+            self.isLoading = true
+            self.errorMessage = nil
         }
 
-        isLoading = true
-
         do {
-            // Fetch the current user to access their friends (friend IDs)
-            let user = try await NetworkManager.shared.getCurrentUser(userId: userId)
-
-            // Fetch data for each friend
-            var fetchedFriends: [User] = []
-            for friendId in user.friends {
-                do {
-                    let friend = try await NetworkManager.shared.getUserById(userId: friendId)
-                    fetchedFriends.append(friend)
-                } catch {
-                    DispatchQueue.main.async {
-                        self.errorMessage = "Failed to load friend with ID \(friendId): \(error.localizedDescription)"
-                    }
-                }
-            }
-
-            // Update the UI on the main thread
+            let fetchedFriends = try await authViewModel.getFriends()
             DispatchQueue.main.async {
                 self.friends = fetchedFriends
+                print("Friends Loaded: \(self.friends.count)") // Debugging
                 self.isLoading = false
             }
         } catch {
             DispatchQueue.main.async {
-                self.errorMessage = "Failed to load user: \(error.localizedDescription)"
+                self.errorMessage = "Failed to load friends: \(error.localizedDescription)"
                 self.isLoading = false
             }
         }
     }
-}//end
 
+    func loadFriendRequests() async {
+        DispatchQueue.main.async {
+            self.isLoading = true
+            self.errorMessage = nil
+        }
 
+        do {
+            guard let currentUserId = await authViewModel.currentUser?.id else {
+                throw NSError(domain: "No user logged in", code: 1)
+            }
+
+            let fetchedRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            DispatchQueue.main.async {
+                self.friendRequests = fetchedRequests
+                self.hasNewRequests = !fetchedRequests.isEmpty
+                print("Friend Requests Updated: \(self.friendRequests.count)") // Debugging
+                self.isLoading = false
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to load friend requests: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+        }
+    }
+
+    func markRequestsAsViewed() {
+        DispatchQueue.main.async {
+            self.hasNewRequests = false
+        }
+    }
+}

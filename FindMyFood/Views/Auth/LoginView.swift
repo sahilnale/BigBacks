@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var username = ""
+    @State private var email = ""
     @State private var password = ""
     @State private var isPasswordVisible = false
     @State private var canNavigate = false
@@ -20,7 +20,7 @@ struct LoginView: View {
                 HStack {
                     Image(systemName: "person")
                         .foregroundColor(.gray)
-                    TextField("Username", text: $username)
+                    TextField("Email", text: $email)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.emailAddress)
@@ -64,7 +64,7 @@ struct LoginView: View {
 
             // Login Button
             Button(action: {
-                authViewModel.login(username: username, password: password) { success in
+                authViewModel.login(email: email, password: password) { success in
                     if success {
                         canNavigate = true
                     }
@@ -80,11 +80,11 @@ struct LoginView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(username.isEmpty || password.isEmpty || authViewModel.isLoading ? Color.gray : Color.accentColor)
+            .background(email.isEmpty || password.isEmpty || authViewModel.isLoading ? Color.gray : Color.accentColor)
             .foregroundColor(.white)
             .cornerRadius(10)
             .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 3)
-            .disabled(username.isEmpty || password.isEmpty || authViewModel.isLoading)
+            .disabled(email.isEmpty || password.isEmpty || authViewModel.isLoading)
 
             .font(.headline)
             .foregroundColor(Color.accentColor)
@@ -102,7 +102,7 @@ struct LoginView: View {
         .alert("Error", isPresented: $authViewModel.showError) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text(authViewModel.error?.errorDescription ?? "An unknown error occurred")
+            Text(authViewModel.error ?? "An unknown error occurred")
         }
     }
 }

@@ -1,55 +1,60 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @State private var selectedTab: Int = 0
+    @EnvironmentObject var authViewModel: AuthViewModel // Fetch from environment
+
     init() {
         UITabBar.appearance().backgroundColor = UIColor { traitCollection in
-                    return traitCollection.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
+            return traitCollection.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
         }
     }
-    @State private var selectedTab: Int = 0
-    
+
     var body: some View {
-        NavigationView {
+       // NavigationView {
             
-            TabView(selection: $selectedTab) {
-                ZStack {
-                    MainView(selectedTab: $selectedTab)
-                }
+//             TabView(selection: $selectedTab) {
+//                 ZStack {
+//                     MainView(selectedTab: $selectedTab)
+//                 }
+      //CHECK THIS JUST IN CASE
+        TabView(selection: $selectedTab) {
+            // Main Map View
+            MainView(selectedTab: $selectedTab)
                 .tabItem {
                     Label("Explore", systemImage: "map")
-                }.tag(0)
-                
-                if let userId = AuthManager.shared.userId {
-                    FeedView()
-                        .tabItem {
-                            Label("Feed", systemImage: "list.bullet")
-                        }.tag(1)
-                } else {
-                    Text("Please log in to view your feed.")
-                        .tabItem {
-                            Label("Feed", systemImage: "list.bullet")
-                        }.tag(1)
                 }
+                .tag(0)
 
-                
-                FriendsView(currentUserId: "account123") //should this be userId??
+                FeedView()
                     .tabItem {
-                        Label("Friends", systemImage: "person.2")
-                    }.tag(2)
-                
-                ProfileView()
-                    .tabItem {
-                        Label("Profile", systemImage: "person.crop.circle")
-                    }.tag(3)
-            }
-            .accentColor(.accentColor)
+                        Label("Feed", systemImage: "list.bullet")
+                    }
+                    .tag(1)
+            
+
+            // Friends View
+            FriendsView(authViewModel: authViewModel)
+                .tabItem {
+                    Label("Friends", systemImage: "person.2")
+                }
+                .tag(2)
+
+            // Profile View
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.crop.circle")
+                }
+                .tag(3)
         }
-        .navigationBarBackButtonHidden(true)
+        .accentColor(.customOrange)
+       // .navigationBarBackButtonHidden(true)
     }
 }
 
 struct MainTabView_Previews: PreviewProvider {
     static var previews: some View {
         MainTabView()
+            .environmentObject(AuthViewModel()) // Inject a sample `AuthViewModel` for preview
     }
 }

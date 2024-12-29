@@ -1,7 +1,9 @@
 import SwiftUI
 import MapKit
 import CoreLocation
-
+import Firebase
+import FirebaseAuth
+import FirebaseFirestore
 
 
 
@@ -106,7 +108,7 @@ class CustomPopupView: UIView {
         
         // Title Label
         titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 22) ?? UIFont.systemFont(ofSize: 22, weight: .bold)
-        titleLabel.textColor = UIColor(Color.accentColor)
+        titleLabel.textColor = UIColor(Color.customOrange)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
@@ -497,62 +499,50 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     //Load image annotation
     func loadImageAnnotation() async {
-        guard let userId = AuthManager.shared.userId else {
+        guard let userId = Auth.auth().currentUser?.uid else {
             print("Failed to get user")
             return
         }
 
         do {
-            
-            let posts = try await NetworkManager.shared.fetchPostDetailsFromFeed(userId: userId)
+            let feed = try await AuthViewModel.shared.fetchPostDetailsFromFeed(userId: userId)
 
-            for (post, user) in posts {
-                
-                
+            for (post, user) in feed {
                 guard let imageUrl = URL(string: post.imageUrl) else {
-                    print("Invalid URL for post: \(post.id)")
+                    print("Invalid URL for post: \(post._id)")
                     continue
                 }
-                
+
                 // Load the image asynchronously
                 let image: UIImage? = await withCheckedContinuation { continuation in
                     URLSession.shared.dataTask(with: imageUrl) { data, _, error in
                         if let data = data, let fetchedImage = UIImage(data: data) {
                             continuation.resume(returning: fetchedImage)
                         } else {
-                            print("Failed to fetch image for post: \(post.id), error: \(String(describing: error))")
+                            print("Failed to fetch image for post: \(post._id), error: \(String(describing: error))")
                             continuation.resume(returning: nil)
                         }
                     }.resume()
                 }
-                
-                guard let image = image else {
-                    continue
-                }
-                
-                
-                
-                let locate = post.location
-                
-                let locationComponents = locate.split(separator: ",")
 
-               
+                guard let image = image else { continue }
+
+                // Parse the location
+                let locationComponents = post.location.split(separator: ",")
                 guard locationComponents.count == 2,
-              let latitude = Double(locationComponents[0]),
-              let longitude = Double(locationComponents[1]) else {
-                    print("Invalid location format for post: \(post.id)")
+                      let latitude = Double(locationComponents[0]),
+                      let longitude = Double(locationComponents[1]) else {
+                    print("Invalid location format for post: \(post._id)")
                     continue
                 }
-                    
-                    
-                // Create annotation coordinate from post (replace with actual lat/lon from post)
+
                 let annotationCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
 
-                // Create annotation object
+                // Create annotation
                 let annotation = ImageAnnotation(
                     coordinate: annotationCoordinate,
-                    title: post.restaurantName, // or use other field as title
-                    subtitle: post.review,     // replace with proper user display name or other subtitle info
+                    title: post.restaurantName,
+                    subtitle: post.review,
                     image: image,
                     author: user.name,
                     rating: post.starRating,
@@ -563,12 +553,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 DispatchQueue.main.async {
                     self.map.addAnnotation(annotation)
                 }
-                            
-           
-
-                }
-
-         
+            }
         } catch {
             print("Error fetching post details: \(error)")
         }

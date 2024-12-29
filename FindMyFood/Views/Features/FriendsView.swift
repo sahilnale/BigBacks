@@ -2,27 +2,45 @@ import SwiftUI
 
 struct FriendsView: View {
     @State private var showingFriendRequests = false
-    @State private var showingAddFriend = false // New state for add friend sheet
-    let currentUserId: String  // Add this property
-    @StateObject private var viewModel = FriendsViewModel() // Initialize the view model
-    
+    @State private var showingAddFriend = false
+
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var viewModel: FriendsViewModel
+
+    init(authViewModel: AuthViewModel) {
+        _viewModel = StateObject(wrappedValue: FriendsViewModel(authViewModel: authViewModel))
+    }
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
+                // Button to View Friend Requests
                 Button(action: {
                     showingFriendRequests = true
+                    viewModel.markRequestsAsViewed()
                 }) {
-                    Text("View Requests")
-                        .font(.headline)
-                }
-                .foregroundColor(.accentColor)
-                .sheet(isPresented: $showingFriendRequests) {
-                    NavigationView {
-                        FriendRequestView()
+                    HStack {
+                        Text("View Requests (\(viewModel.friendRequests.count))")
+                            .font(.headline)
+                            .foregroundColor(.accentColor)
+
+                        // Indicator for new requests
+                        if viewModel.hasNewRequests {
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 10, height: 10)
+                        }
                     }
                 }
-                
-                // Display friends in the List view
+                .sheet(isPresented: $showingFriendRequests) {
+                    NavigationStack {
+                        FriendRequestView()
+                            .environmentObject(authViewModel)
+                            .navigationTitle("Friend Requests")
+                    }
+                }
+
+                // Friends List or Loading/Error States
                 if viewModel.isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
@@ -36,6 +54,7 @@ struct FriendsView: View {
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .font(.system(size: 40))
+                                .foregroundColor(.accentColor)
                             VStack(alignment: .leading) {
                                 Text(friend.name)
                                     .font(.headline)
@@ -48,29 +67,47 @@ struct FriendsView: View {
                 }
             }
             .onAppear {
-                // Wrap async function call in a Task to support concurrency
                 Task {
-                    await viewModel.loadFriends(for: currentUserId) // Fetch friends when the view appears
+                    await viewModel.loadFriends()
+                    await viewModel.loadFriendRequests()
                 }
             }
             .navigationTitle("Friends")
-            .navigationBarItems(trailing: Button("Add") {
-                showingAddFriend = true
-            })
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingAddFriend = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showingAddFriend) {
-            NavigationView {
+            NavigationStack {
                 AddFriendView(
-                    currentUserId: currentUserId,
-                    friends: viewModel.friends.map { $0.id } // Extract friend IDs
+                    currentUserId: authViewModel.currentUser?.id ?? "",
+                    friends: viewModel.friends.map { $0.id }
                 )
+                .navigationTitle("Add Friends")
+                .environmentObject(authViewModel)
             }
         }
     }
 }
 
+
+
+
+//Friend Requests page below now
+
+import SwiftUI
+
 struct FriendRequestView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var friendRequests: [User] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -108,72 +145,63 @@ struct FriendRequestView: View {
     }
     
     private func loadFriendRequests() async {
-        guard let currentUserId = AuthManager.shared.userId else {
+        guard let currentUserId = authViewModel.currentUser?.id else {
             errorMessage = "Not logged in"
             isLoading = false
             return
         }
         
         do {
-            friendRequests = try await NetworkManager.shared.getFriendRequests(userId: currentUserId)
+            friendRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            print("Friend Requests Fetched: \(friendRequests)") // Debugging output
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
         }
     }
+
     
     private func acceptRequest(from user: User) {
-        guard let currentUserId = AuthManager.shared.userId else {
+        guard let currentUserId = authViewModel.currentUser?.id else {
             errorMessage = "Not logged in"
             return
         }
-        
-        Task {
-            do {
-                try await NetworkManager.shared.acceptFriendRequest(userId: currentUserId, friendId: user.id)
-                // Remove the accepted request from the list
-                friendRequests.removeAll { $0.id == user.id }
-            } catch {
-                errorMessage = error.localizedDescription
+
+        authViewModel.acceptFriendRequest(currentUserId: currentUserId, friendId: user.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    // Remove the accepted request from the list
+                    friendRequests.removeAll { $0.id == user.id }
+                case .failure(let error):
+                    errorMessage = error.localizedDescription
+                }
             }
         }
     }
+
     
     private func rejectRequest(from user: User) {
-        guard let currentUserId = AuthManager.shared.userId, !currentUserId.isEmpty else {
+        guard let currentUserId = authViewModel.currentUser?.id else {
             errorMessage = "Not logged in"
             return
         }
-        
-        guard !user.id.isEmpty else {
-            errorMessage = "Invalid friend ID"
-            return
-        }
-        
-        Task {
-            do {
-                try await NetworkManager.shared.rejectFriendRequest(userId: currentUserId, friendId: user.id)
-                friendRequests.removeAll { $0.id == user.id }
-            } catch let networkError as NetworkError {
-                switch networkError {
-                case .invalidURL:
-                    errorMessage = "Invalid URL"
-                case .invalidResponse:
-                    errorMessage = "Invalid response from server"
-                case .badRequest(let message):
-                    errorMessage = "Bad request: \(message)"
-                default:
-                    errorMessage = "Unknown error occurred"
+
+        authViewModel.rejectFriendRequest(currentUserId: currentUserId, friendId: user.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    // Remove the rejected request from the list
+                    friendRequests.removeAll { $0.id == user.id }
+                case .failure(let error):
+                    errorMessage = error.localizedDescription
                 }
-                print("Error rejecting friend request: \(errorMessage ?? "Unknown error")")
-            } catch {
-                errorMessage = error.localizedDescription
-                print("Unexpected error: \(error.localizedDescription)")
             }
         }
     }
 }
+
 
 struct FriendRequestRow: View {
     let requester: User
@@ -215,8 +243,11 @@ struct FriendRequestRow: View {
 }
 
 //Add friend view
+import SwiftUI
+
 struct AddFriendView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var searchResults: [User] = []
@@ -230,11 +261,11 @@ struct AddFriendView: View {
                 performSearch(searchText)
             }
             SearchResultsListView(
-                isSearching: isSearching,
-                searchResults: searchResults,
-                searchText: searchText,
-                friends: friends,
-                errorMessage: $errorMessage
+                searchResults: $searchResults,
+                isSearching: $isSearching,
+                searchText: $searchText,
+                errorMessage: $errorMessage,
+                friends: friends
             )
         }
         .alert("Error", isPresented: .constant(errorMessage != nil)) {
@@ -251,10 +282,14 @@ struct AddFriendView: View {
             if !query.isEmpty {
                 isSearching = true
                 do {
-                    let results = try await NetworkManager.shared.searchUsers(query: query)
-                    searchResults = results
+                    let results = try await authViewModel.searchUsers(by: query)
+                    DispatchQueue.main.async {
+                        searchResults = results
+                    }
                 } catch {
-                    errorMessage = error.localizedDescription
+                    DispatchQueue.main.async {
+                        errorMessage = error.localizedDescription
+                    }
                 }
                 isSearching = false
             } else {
@@ -264,20 +299,22 @@ struct AddFriendView: View {
     }
 }
 
+
 // MARK: - Supporting Views
+// MARK: - Search Bar View
 private struct SearchBarView: View {
     @Binding var searchText: String
     var onSearch: () -> Void
-    
+
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
-            
+
             TextField("Search by username...", text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .onSubmit(onSearch)
-            
+
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
@@ -293,14 +330,16 @@ private struct SearchBarView: View {
     }
 }
 
+
+// MARK: - Search Results List View
 private struct SearchResultsListView: View {
-    let isSearching: Bool
-    let searchResults: [User]
-    let searchText: String
-    @State private var currentUserId: String?
-    let friends: [String] // Pass friends list here
+    @EnvironmentObject var authViewModel: AuthViewModel // Access from environment
+    @Binding var searchResults: [User]
+    @Binding var isSearching: Bool
+    @Binding var searchText: String
     @Binding var errorMessage: String?
-    
+    let friends: [String]
+
     var body: some View {
         List {
             if isSearching {
@@ -311,28 +350,18 @@ private struct SearchResultsListView: View {
                 ForEach(searchResults) { user in
                     UserRowView(
                         user: user,
-                        currentUserId: currentUserId ?? " ",
+                        currentUserId: authViewModel.currentUser?.id ?? "",
                         errorMessage: $errorMessage,
-                        isAlreadyFriend: friends.contains(user.id), // Check if user is a friend
-                        isAlreadyRequestedBy: user.pendingRequests.contains(currentUserId ?? " ")
+                        isAlreadyFriend: friends.contains(user.id),
+                        isAlreadyRequestedBy: user.pendingRequests.contains(authViewModel.currentUser?.id ?? "")
                     )
                 }
             }
         }
         .listStyle(PlainListStyle())
-        .onAppear {
-                    loadCurrentUserId()
-        }
-    }
-
-private func loadCurrentUserId() {
-        guard let id = AuthManager.shared.userId else {
-            errorMessage = "Not logged in"
-            return
-        }
-        currentUserId = id
     }
 }
+
 
 
 private struct SearchLoadingView: View {
@@ -405,14 +434,14 @@ private struct AddFriendButton: View {
     let currentUserId: String
     @State private var isRequestPending: Bool
     @Binding var errorMessage: String?
-    
+
     init(user: User, currentUserId: String, isRequestPending: Bool, errorMessage: Binding<String?>) {
         self.user = user
         self.currentUserId = currentUserId
         self._isRequestPending = State(initialValue: isRequestPending)
         self._errorMessage = errorMessage
     }
-    
+
     var body: some View {
         Button(action: sendFriendRequest) {
             Text(isRequestPending ? "Pending" : "Add")
@@ -424,13 +453,14 @@ private struct AddFriendButton: View {
         }
         .disabled(isRequestPending)
     }
-    
+
     private func sendFriendRequest() {
         guard !isRequestPending else { return }
         
         Task {
             do {
-                try await NetworkManager.shared.sendFriendRequest(from: currentUserId, to: user.id)
+                // Call `sendFriendRequest` from `AuthViewModel`
+                try await AuthViewModel.shared.sendFriendRequest(from: currentUserId, to: user.id)
                 isRequestPending = true // Update state to show "Pending"
             } catch {
                 errorMessage = error.localizedDescription
