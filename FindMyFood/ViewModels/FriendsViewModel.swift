@@ -1,4 +1,5 @@
 import SwiftUI
+import Firebase
 
 class FriendsViewModel: ObservableObject {
     @Published var friends: [User] = []
@@ -12,12 +13,17 @@ class FriendsViewModel: ObservableObject {
     }
 
     private let authViewModel: AuthViewModel
+    private var listener: ListenerRegistration?
 
     init(authViewModel: AuthViewModel) {
         self.authViewModel = authViewModel
         self.hasNewRequests = UserDefaults.standard.bool(forKey: "hasNewRequests") // Load from UserDefaults
-    }
 
+        // Call the main actor-isolated function asynchronously
+        Task { @MainActor in
+            self.observeFriendRequests()
+        }
+    }
     func loadFriends() async {
         DispatchQueue.main.async {
             self.isLoading = true
@@ -51,9 +57,13 @@ class FriendsViewModel: ObservableObject {
             }
 
             let fetchedRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            
+            // Extract the User objects from the tuple
+            let users = fetchedRequests.map { $0.0 }
+
             DispatchQueue.main.async {
-                self.friendRequests = fetchedRequests
-                self.hasNewRequests = !fetchedRequests.isEmpty
+                self.friendRequests = users
+                self.hasNewRequests = !users.isEmpty
                 print("Friend Requests Updated: \(self.friendRequests.count)") // Debugging
                 self.isLoading = false
             }
@@ -65,9 +75,51 @@ class FriendsViewModel: ObservableObject {
         }
     }
 
+
     func markRequestsAsViewed() {
         DispatchQueue.main.async {
             self.hasNewRequests = false
         }
+    }
+
+    // MARK: - Real-Time Listener for Friend Requests
+    @MainActor func observeFriendRequests() {
+        guard let userId = authViewModel.currentUser?.id else { return }
+
+        listener = Firestore.firestore().collection("users").document(userId)
+            .addSnapshotListener { [weak self] documentSnapshot, error in
+                guard let self = self else { return }
+
+                if let error = error {
+                    print("Error listening to friend requests: \(error)")
+                    return
+                }
+
+                if let data = documentSnapshot?.data(),
+                   let friendRequestIds = data["friendRequests"] as? [String] {
+                    Task {
+                        do {
+                            var users: [User] = []
+                            for id in friendRequestIds {
+                                if let user = try await self.authViewModel.getUserById(friendId: id) {
+                                    users.append(user)
+                                }
+                            }
+                            DispatchQueue.main.async {
+                                self.friendRequests = users
+                                self.hasNewRequests = !users.isEmpty
+                                print("Real-time friend requests updated: \(users.count)")
+                            }
+                        } catch {
+                            print("Failed to fetch friend request users: \(error)")
+                        }
+                    }
+                }
+            }
+    }
+
+    // MARK: - Clean Up
+    deinit {
+        listener?.remove()
     }
 }

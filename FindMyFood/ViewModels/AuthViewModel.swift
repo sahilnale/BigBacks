@@ -1,67 +1,142 @@
-import Firebase
 import SwiftUI
+import Firebase
 import FirebaseAuth
+import FirebaseFirestore
 import FirebaseStorage
+import JWTKit
+import Foundation
 
 @MainActor
 class AuthViewModel: ObservableObject {
     static let shared = AuthViewModel()
-    
-    
+
     @Published var error: String?
     @Published var isLoading = false
     @Published var showError = false
-    
     @Published var currentUser: User? = nil
-    
-    
 
-    
-    
-    
     init() {
-            Task {
-                await loadCurrentUser()
-            }
+        Task {
+            await loadCurrentUser()
         }
-    
+    }
+
+    // MARK: - Load Current User
     func loadCurrentUser() async {
-            guard let firebaseUser = Auth.auth().currentUser else {
+        guard let firebaseUser = Auth.auth().currentUser else {
+            self.currentUser = nil
+            return
+        }
+
+        let db = Firestore.firestore()
+        do {
+            let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
+            guard let data = userDoc.data(),
+                  let name = data["name"] as? String,
+                  let username = data["username"] as? String,
+                  let email = data["email"] as? String else {
                 self.currentUser = nil
                 return
             }
 
-            let db = Firestore.firestore()
-            do {
-                let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
-                
-                guard let data = userDoc.data(),
-                      let name = data["name"] as? String,
-                      let username = data["username"] as? String,
-                      let email = data["email"] as? String else {
-                    self.currentUser = nil
-                    return
-                }
-
-                await MainActor.run {
-                    self.currentUser = User(
-                        id: firebaseUser.uid,
-                        name: name,
-                        username: username,
-                        email: email,
-                        friends: data["friends"] as? [String] ?? [],
-                        friendRequests: data["friendRequests"] as? [String] ?? [],
-                        pendingRequests: data["pendingRequests"] as? [String] ?? [],
-                        posts: [],
-                        profilePicture: data["profilePicture"] as? String,
-                        loggedIn: true
-                    )
-                }
-            } catch {
-                print("Failed to fetch current user: \(error.localizedDescription)")
-                self.currentUser = nil
+            await MainActor.run {
+                self.currentUser = User(
+                    id: firebaseUser.uid,
+                    name: name,
+                    username: username,
+                    email: email,
+                    friends: data["friends"] as? [String] ?? [],
+                    friendRequests: data["friendRequests"] as? [String] ?? [],
+                    pendingRequests: data["pendingRequests"] as? [String] ?? [],
+                    posts: [],
+                    profilePicture: data["profilePicture"] as? String,
+                    loggedIn: true
+                )
             }
+        } catch {
+            print("Failed to fetch current user: \(error.localizedDescription)")
+            self.currentUser = nil
         }
+    }
+
+//    // MARK: - Get OAuth2 Access Token
+//    private func getAccessToken() async throws -> String {
+//        // Locate the ServiceAccount.json file in the app bundle
+//        guard let filePath = Bundle.main.path(forResource: "ServiceAccount", ofType: "json"),
+//              let fileData = FileManager.default.contents(atPath: filePath) else {
+//            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Service account file not found."])
+//        }
+//
+//        // Decode the service account JSON into a struct
+//        let credentials = try JSONDecoder().decode(GoogleServiceAccount.self, from: fileData)
+//
+//        // Create a signer using the private key from the service account
+//        guard let privateKeyData = credentials.privateKey.data(using: .utf8) else {
+//            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid private key format."])
+//        }
+//        let signer = try RSA256.privateKey(privateKeyData)
+//
+//        // Create the JWT payload
+//        let payload = GoogleJWT(
+//            iss: credentials.clientEmail,
+//            aud: "https://oauth2.googleapis.com/token",
+//            exp: Date().addingTimeInterval(3600),
+//            iat: Date()
+//        )
+//
+//        // Sign the JWT to get the token
+//        let jwtString = try signer.sign(payload: payload)
+//
+//        // Prepare the URL and request to fetch the OAuth token
+//        let tokenURL = URL(string: "https://oauth2.googleapis.com/token")!
+//        var request = URLRequest(url: tokenURL)
+//        request.httpMethod = "POST"
+//        request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+//        let requestBody = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=\(jwtString)"
+//        request.httpBody = requestBody.data(using: String.Encoding.utf8)
+//
+//        // Send the request and decode the response
+//        let (data, _) = try await URLSession.shared.data(for: request)
+//        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+//
+//        // Return the access token
+//        return tokenResponse.accessToken
+//    }
+//
+//
+//
+//
+//    // MARK: - Send Notification
+//    private func sendNotification(to fcmToken: String, fromUserName: String) async throws {
+//        let projectId = "bigbacks" // Replace with your Firebase project ID
+//        let url = URL(string: "https://fcm.googleapis.com/v1/projects/\(projectId)/messages:send")!
+//        let accessToken = try await getAccessToken()
+//
+//        var request = URLRequest(url: url)
+//        request.httpMethod = "POST"
+//        request.addValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+//        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+//
+//        let payload: [String: Any] = [
+//            "message": [
+//                "token": fcmToken,
+//                "notification": [
+//                    "title": "New Friend Request",
+//                    "body": "\(fromUserName) sent you a friend request.",
+//                    "sound": "default"
+//                ]
+//            ]
+//        ]
+//
+//        let jsonData = try JSONSerialization.data(withJSONObject: payload)
+//        request.httpBody = jsonData
+//
+//        let (data, response) = try await URLSession.shared.data(for: request)
+//        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+//            let responseString = String(data: data, encoding: .utf8) ?? "Unknown error"
+//            throw NSError(domain: "", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: responseString])
+//        }
+//    }
 
 
     func fetchCurrentUser() async throws -> User {
@@ -401,171 +476,178 @@ class AuthViewModel: ObservableObject {
         return users
     }
     
-    func sendFriendRequest(from userId: String, to friendId: String) async throws {
+    // MARK: - Send Friend Request
+    func sendFriendRequest(from userId: String, to friendId: String, fromUserName: String) async throws {
         let db = Firestore.firestore()
-        
-        do {
-            // Fetch both users
-            let userDoc = try await db.collection("users").document(userId).getDocument()
-            let friendDoc = try await db.collection("users").document(friendId).getDocument()
-            
-            guard let userData = userDoc.data(), let friendData = friendDoc.data() else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not found."])
-            }
-            
-            // Fetch existing friend requests and pending requests
-            var userPendingRequests = userData["pendingRequests"] as? [String] ?? []
-            var friendFriendRequests = friendData["friendRequests"] as? [String] ?? []
-            
-            // Check if the friend request already exists
-            if !friendFriendRequests.contains(userId) && !userPendingRequests.contains(friendId) {
-                // Add the friend request
-                friendFriendRequests.append(userId)
-                userPendingRequests.append(friendId)
-                
-                // Update Firestore
-                try await db.collection("users").document(friendId).updateData([
-                    "friendRequests": friendFriendRequests
-                ])
-                try await db.collection("users").document(userId).updateData([
-                    "pendingRequests": userPendingRequests
-                ])
-            }
-        } catch {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to send friend request. \(error.localizedDescription)"])
-        }
+
+        // Create the friend request document
+        let friendRequestData: [String: Any] = [
+            "toUserId": friendId,
+            "fromUserId": userId,
+            "fromUserName": fromUserName
+        ]
+
+        // Add the friend request to the friendRequests collection
+        try await db.collection("friendRequests").addDocument(data: friendRequestData)
+
+        // Update the sender's pendingRequests list
+        let userRef = db.collection("users").document(userId)
+        try await userRef.updateData([
+            "pendingRequests": FieldValue.arrayUnion([friendId])
+        ])
+
+        print("Friend request sent from \(fromUserName) to \(friendId)")
     }
 
-    
-    func getFriendRequests(for userId: String) async throws -> [User] {
+        // MARK: - Update FCM Token
+        func updateFCMTokenForCurrentUser() async throws {
+            guard let userId = Auth.auth().currentUser?.uid else { return }
+            
+            let fcmToken = try await Messaging.messaging().token()
+            
             let db = Firestore.firestore()
-            let userDoc = try await db.collection("users").document(userId).getDocument()
-            
-            guard let data = userDoc.data(),
-                  let friendRequestIds = data["friendRequests"] as? [String] else {
-                return []
-            }
-            
-            var users: [User] = []
-            for friendId in friendRequestIds {
-                let friendDoc = try await db.collection("users").document(friendId).getDocument()
-                guard let friendData = friendDoc.data(),
-                      let id = friendDoc.documentID as? String,
-                      let name = friendData["name"] as? String,
-                      let username = friendData["username"] as? String else {
-                    continue
-                }
-                users.append(User(
-                    id: id,
-                    name: name,
-                    username: username,
-                    email: friendData["email"] as? String ?? "",
-                    friends: friendData["friends"] as? [String] ?? [],
-                    friendRequests: friendData["friendRequests"] as? [String] ?? [],
-                    pendingRequests: friendData["pendingRequests"] as? [String] ?? [],
-                    posts: [],
-                    profilePicture: friendData["profilePicture"] as? String,
-                    loggedIn: friendData["loggedIn"] as? Bool ?? false
-                ))
-            }
-            return users
+            try await db.collection("users").document(userId).updateData([
+                "fcmToken": fcmToken
+            ])
+
+            print("FCM token updated for user: \(userId)")
         }
+
+    
+    func getFriendRequests(for userId: String) async throws -> [(User, String)] {
+        let db = Firestore.firestore()
+
+        // Query the friendRequests collection for requests sent to this user
+        let friendRequestSnapshot = try await db.collection("friendRequests")
+            .whereField("toUserId", isEqualTo: userId)
+            .getDocuments()
+
+        var friendRequests: [(User, String)] = []
+
+        for document in friendRequestSnapshot.documents {
+            let data = document.data()
+            if let fromUserId = data["fromUserId"] as? String,
+               let fromUserName = data["fromUserName"] as? String {
+                // Fetch the user who sent the friend request
+                let friendDoc = try await db.collection("users").document(fromUserId).getDocument()
+                if let friendData = friendDoc.data(),
+                   let id = friendDoc.documentID as? String,
+                   let name = friendData["name"] as? String,
+                   let username = friendData["username"] as? String {
+                    let user = User(
+                        id: id,
+                        name: name,
+                        username: username,
+                        email: friendData["email"] as? String ?? "",
+                        friends: friendData["friends"] as? [String] ?? [],
+                        friendRequests: [],
+                        pendingRequests: [],
+                        posts: [],
+                        profilePicture: friendData["profilePicture"] as? String,
+                        loggedIn: friendData["loggedIn"] as? Bool ?? false
+                    )
+                    friendRequests.append((user, fromUserName))
+                }
+            }
+        }
+
+        return friendRequests
+    }
+
     
     func acceptFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let db = Firestore.firestore()
-        
-        // References to the current user and friend documents
-        let currentUserRef = db.collection("users").document(currentUserId)
-        let friendRef = db.collection("users").document(friendId)
-        
-        db.runTransaction { (transaction, errorPointer) -> Any? in
+
+        // Query the friendRequests collection before starting the transaction
+        let friendRequestQuery = db.collection("friendRequests")
+            .whereField("toUserId", isEqualTo: currentUserId)
+            .whereField("fromUserId", isEqualTo: friendId)
+
+        // Fetch the matching friend request documents outside the transaction
+        Task {
             do {
-                // Get current user document
-                guard let currentUserSnapshot = try? transaction.getDocument(currentUserRef),
-                      let currentUserData = currentUserSnapshot.data(),
-                      var friendRequests = currentUserData["friendRequests"] as? [String],
-                      var friends = currentUserData["friends"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
+                let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
+
+                // Run the Firestore transaction
+                db.runTransaction({ transaction, errorPointer in
+                    do {
+                        // References to the current user and friend documents
+                        let currentUserRef = db.collection("users").document(currentUserId)
+                        let friendRef = db.collection("users").document(friendId)
+
+                        // Get the current user's document
+                        let currentUserSnapshot = try transaction.getDocument(currentUserRef)
+                        guard var currentUserData = currentUserSnapshot.data(),
+                              var currentUserFriends = currentUserData["friends"] as? [String] else {
+                            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
+                        }
+
+                        // Get the friend's document
+                        let friendSnapshot = try transaction.getDocument(friendRef)
+                        guard var friendData = friendSnapshot.data(),
+                              var friendFriends = friendData["friends"] as? [String] else {
+                            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
+                        }
+
+                        // Add each other to the friends list
+                        currentUserFriends.append(friendId)
+                        friendFriends.append(currentUserId)
+
+                        // Update the users' documents in the transaction
+                        transaction.updateData(["friends": currentUserFriends], forDocument: currentUserRef)
+                        transaction.updateData(["friends": friendFriends], forDocument: friendRef)
+
+                        // Delete the matching friend request documents
+                        for doc in friendRequestSnapshot.documents {
+                            transaction.deleteDocument(doc.reference)
+                        }
+
+                        // Remove the pending request from the sender's document
+                        transaction.updateData([
+                            "pendingRequests": FieldValue.arrayRemove([currentUserId])
+                        ], forDocument: friendRef)
+                    } catch {
+                        // Set the error in the transaction's error pointer
+                        errorPointer?.pointee = error as NSError
+                    }
                     return nil
+                }) { _, error in
+                    // Handle the result of the transaction
+                    if let error = error {
+                        completion(.failure(error))
+                    } else {
+                        completion(.success(()))
+                    }
                 }
-                
-                // Get friend document
-                guard let friendSnapshot = try? transaction.getDocument(friendRef),
-                      let friendData = friendSnapshot.data(),
-                      var friendFriends = friendData["friends"] as? [String],
-                      var pendingRequests = friendData["pendingRequests"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
-                    return nil
-                }
-                
-                // Update friend requests and friends lists
-                friendRequests.removeAll { $0 == friendId }
-                friends.append(friendId)
-                friendFriends.append(currentUserId)
-                pendingRequests.removeAll { $0 == currentUserId }
-                
-                // Update the Firestore documents in the transaction
-                transaction.updateData(["friendRequests": friendRequests, "friends": friends], forDocument: currentUserRef)
-                transaction.updateData(["friends": friendFriends, "pendingRequests": pendingRequests], forDocument: friendRef)
-                
-                return nil
             } catch {
-                errorPointer?.pointee = error as NSError
-                return nil
-            }
-        } completion: { (_, error) in
-            if let error = error {
+                // Handle any errors that occur outside the transaction
                 completion(.failure(error))
-            } else {
-                completion(.success(()))
             }
         }
     }
 
-    
+
     
     func rejectFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let db = Firestore.firestore()
-        
-        let currentUserRef = db.collection("users").document(currentUserId)
-        let friendRef = db.collection("users").document(friendId)
-        
-        db.runTransaction { (transaction, errorPointer) -> Any? in
+
+        // Query the friendRequests collection to find the specific request
+        let friendRequestQuery = db.collection("friendRequests")
+            .whereField("toUserId", isEqualTo: currentUserId)
+            .whereField("fromUserId", isEqualTo: friendId)
+
+        Task {
             do {
-                // Fetch current user's document
-                guard let currentUserSnapshot = try? transaction.getDocument(currentUserRef),
-                      let currentUserData = currentUserSnapshot.data(),
-                      var friendRequests = currentUserData["friendRequests"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
-                    return nil
+                let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
+
+                // Delete all matching friend requests
+                for doc in friendRequestSnapshot.documents {
+                    try await doc.reference.delete()
                 }
-                
-                // Fetch friend's document
-                guard let friendSnapshot = try? transaction.getDocument(friendRef),
-                      let friendData = friendSnapshot.data(),
-                      var pendingRequests = friendData["pendingRequests"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
-                    return nil
-                }
-                
-                // Update friend requests and pending requests
-                friendRequests.removeAll { $0 == friendId }
-                pendingRequests.removeAll { $0 == currentUserId }
-                
-                // Update the Firestore documents in the transaction
-                transaction.updateData(["friendRequests": friendRequests], forDocument: currentUserRef)
-                transaction.updateData(["pendingRequests": pendingRequests], forDocument: friendRef)
-                
-                return nil
-            } catch {
-                errorPointer?.pointee = error as NSError
-                return nil
-            }
-        } completion: { (_, error) in
-            if let error = error {
-                completion(.failure(error))
-            } else {
+
                 completion(.success(()))
+            } catch {
+                completion(.failure(error))
             }
         }
     }
@@ -848,9 +930,6 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    
-
-
 
 
         
