@@ -6,11 +6,12 @@ import FirebaseAuth
 import FirebaseFirestore
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
-
+    
     func application(_ application: UIApplication,
-                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         FirebaseApp.configure()
 
+        // Request notification permissions
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if let error = error {
@@ -20,8 +21,21 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
         }
 
+        // Register for remote notifications
         application.registerForRemoteNotifications()
         Messaging.messaging().delegate = self
+
+        // Force token refresh at app startup
+        Messaging.messaging().token { token, error in
+            if let error = error {
+                print("Error fetching FCM token: \(error)")
+            } else if let token = token {
+                print("Fetched initial FCM token: \(token)")
+                Task {
+                    await self.updateFCMToken(token)
+                }
+            }
+        }
 
         return true
     }
@@ -43,17 +57,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             return
         }
 
-        await MainActor.run { // Ensure this runs on the main actor
-            do {
-                let db = Firestore.firestore()
-                try db.collection("users").document(userId).setData(["fcmToken": fcmToken], merge: true)
-                print("FCM token updated in Firestore")
-            } catch {
-                print("Failed to update FCM token in Firestore: \(error)")
-                if let error = error as NSError? {
-                    print("Firestore Error Code: \(error.code), Domain: \(error.domain), UserInfo: \(error.userInfo)")
-                }
+        do {
+            let db = Firestore.firestore()
+            // Check if the token already exists in Firestore to avoid unnecessary writes
+            let userDoc = try await db.collection("users").document(userId).getDocument()
+            if let existingToken = userDoc.get("fcmToken") as? String, existingToken == fcmToken {
+                print("FCM token is already up-to-date.")
+            } else {
+                try await db.collection("users").document(userId).setData(["fcmToken": fcmToken], merge: true)
+                print("FCM token updated in Firestore.")
             }
+        } catch {
+            print("Failed to update FCM token in Firestore: \(error)")
         }
     }
 
@@ -74,9 +89,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
 @main
 struct FindMyFoodApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate // Register Firebase AppDelegate
-    @StateObject private var authViewModel = AuthViewModel.shared // Use the shared instance
-    
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject private var authViewModel = AuthViewModel.shared
+
     var body: some Scene {
         WindowGroup {
             NavigationView {

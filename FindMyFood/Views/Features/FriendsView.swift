@@ -152,7 +152,11 @@ struct FriendRequestView: View {
         }
         
         do {
-            friendRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            let fetchedRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            
+            // Extract only the User objects from the tuples
+            friendRequests = fetchedRequests.map { $0.0 }
+            
             print("Friend Requests Fetched: \(friendRequests)") // Debugging output
             isLoading = false
         } catch {
@@ -160,6 +164,7 @@ struct FriendRequestView: View {
             isLoading = false
         }
     }
+
 
     
     private func acceptRequest(from user: User) {
@@ -459,8 +464,16 @@ private struct AddFriendButton: View {
         
         Task {
             do {
-                // Call `sendFriendRequest` from `AuthViewModel`
-                try await AuthViewModel.shared.sendFriendRequest(from: currentUserId, to: user.id)
+                // Add `fromUserName` to friend request data
+                let currentUser = AuthViewModel.shared.currentUser
+                let fromUserName = currentUser?.username ?? "Unknown"
+                
+                // Send friend request with sender's username
+                try await AuthViewModel.shared.sendFriendRequest(
+                    from: currentUserId,
+                    to: user.id,
+                    fromUserName: fromUserName
+                )
                 isRequestPending = true // Update state to show "Pending"
             } catch {
                 errorMessage = error.localizedDescription
