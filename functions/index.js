@@ -76,8 +76,8 @@ exports.notifyPostLiked = onDocumentWritten(
       const message = {
         token: fcmToken,
         notification: {
-          title: "Someone liked your post!",
-          body: `${likerName} liked your post.`,
+          title: `${likerName}`,
+          body: `Liked your post!`,
           image: postImageUrl, // Adds the image to the notification
         },
       };
@@ -146,8 +146,8 @@ exports.notifyPostcommented = onDocumentWritten(
       const message = {
         token: fcmToken,
         notification: {
-          title: `${commenterName} commented on your post!`,
-          body: `${comment}`,
+          title: `${commenterName}`,
+          body: `commented on your post: ${comment}`,
           image: postImageUrl, // Adds the image to the notification
         },
       };
