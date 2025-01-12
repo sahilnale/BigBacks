@@ -19,9 +19,160 @@
 // });
 
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onDocumentWritten} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
+
+exports.notifyPostLiked = onDocumentWritten(
+    "posts/{postId}",
+    async (event) => {
+      const before = event.data.before.exists ? event.data.before.data() : null;
+      const after = event.data.after.exists ? event.data.after.data() : null;
+
+      if (!before || !after) {
+        return; // Skip if the document is newly created or deleted
+      }
+
+      // Check if the `likedBy` array was updated
+      const beforeLikes = before.likedBy || [];
+      const afterLikes = after.likedBy || [];
+
+      if (afterLikes.length <= beforeLikes.length) {
+        return; // No new like added
+      }
+
+      // Get the new liker
+      const newLikeUserId = afterLikes[afterLikes.length - 1];
+
+      // Get the post owner's userId
+      const postOwnerId = after.userId;
+
+      // Retrieve the post owner's FCM token
+      const userCollection = admin.firestore().collection("users");
+      const postOwnerDoc = await userCollection.doc(postOwnerId).get();
+      const postOwnerData = postOwnerDoc.data();
+      const fcmToken = postOwnerData && postOwnerData.fcmToken;
+
+      if (!fcmToken) {
+        console.error(`No FCM token found for user: ${postOwnerId}`);
+        return;
+      }
+
+      // Retrieve the liker’s name
+      const likerDoc = await userCollection.doc(newLikeUserId).get();
+      const likerData = likerDoc.data();
+      const likerName = likerData && likerData.name;
+
+      if (!likerName) {
+        console.error(`No name found for liker: ${newLikeUserId}`);
+        return;
+      }
+
+      // Get the post's image URL
+      const postImageUrl = getImageUrl(after.imageUrl);
+
+      // Create the notification message with image
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: "Someone liked your post!",
+          body: `${likerName} liked your post.`,
+          image: postImageUrl, // Adds the image to the notification
+        },
+      };
+
+      // Send the notification
+      try {
+        await admin.messaging().send(message);
+        console.log(`Notification sent to post owner: ${postOwnerId}`);
+      } catch (error) {
+        console.error("Error sending like notification:", error);
+      }
+    },
+);
+
+exports.notifyPostcommented = onDocumentWritten(
+    "posts/{postId}",
+    async (event) => {
+      const before = event.data.before.exists ? event.data.before.data() : null;
+      const after = event.data.after.exists ? event.data.after.data() : null;
+
+      if (!before || !after) {
+        return; // Skip if the document is newly created or deleted
+      }
+
+      // Check if the `comments` array was updated
+      const beforeComments = before.comments || [];
+      const afterComments = after.comments || [];
+
+      if (afterComments.length <= beforeComments.length) {
+        return; // No new comment added
+      }
+
+      // Get the new commenter
+      const newComment = afterComments[afterComments.length - 1];
+      const newCommenterUserId = afterComments[afterComments.length - 1].userId;
+
+      // Get the post owner's userId
+      const postOwnerId = after.userId;
+
+      // Retrieve the post owner's FCM token
+      const userCollection = admin.firestore().collection("users");
+      const postOwnerDoc = await userCollection.doc(postOwnerId).get();
+      const postOwnerData = postOwnerDoc.data();
+      const fcmToken = postOwnerData && postOwnerData.fcmToken;
+
+      if (!fcmToken) {
+        console.error(`No FCM token found for user: ${postOwnerId}`);
+        return;
+      }
+
+      // Retrieve the commenter's name
+      const commenterDoc = await userCollection.doc(newCommenterUserId).get();
+      const commenterData = commenterDoc.data();
+      const commenterName = commenterData && commenterData.name;
+      const comment = newComment.text;
+
+      if (!commenterName) {
+        console.error(`No name found for liker: ${newCommenterUserId}`);
+        return;
+      }
+
+      // Get the post's image URL
+      const postImageUrl = getImageUrl(after.imageUrl);
+
+      // Create the notification message with image
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: `${commenterName} commented on your post!`,
+          body: `${comment}`,
+          image: postImageUrl, // Adds the image to the notification
+        },
+      };
+
+      // Send the notification
+      try {
+        await admin.messaging().send(message);
+        console.log(`Notification sent to post owner: ${postOwnerId}`);
+      } catch (error) {
+        console.error("Error sending like notification:", error);
+      }
+    },
+);
+
+/**
+ * Cleans the image URL to ensure it ends with ?alt=media.
+ * @param {string} postImageUrl - The original image URL from Firestore.
+ * @return {string} - The cleaned image URL.
+ */
+function getImageUrl(postImageUrl) {
+  if (postImageUrl.includes("?")) {
+    return postImageUrl.split("?")[0] + "?alt=media";
+  }
+  return postImageUrl + "?alt=media";
+}
 
 exports.notifyFriendRequest = onDocumentCreated(
     "friendRequests/{requestId}",
