@@ -121,15 +121,13 @@ struct FeedView: View {
                             }
 
                             // Parse post data
-                            let likes = postData["likes"] as? Int ?? 0 // Fallback to 0 if missing
-                            print("Fetched likes for post \(postDoc.documentID): \(likes)") // Debugging print
-
-                            let timestamp = (postData["timestamp"] as? Timestamp)?.dateValue() ?? Date()
+                            let likes = postData["likes"] as? Int ?? 0
+                            let timestamp = postData["timestamp"] as? Timestamp ?? Timestamp(date: Date())
                             let post = Post(
                                 _id: postDoc.documentID,
                                 userId: userId,
                                 imageUrl: postData["imageUrl"] as? String ?? "",
-                                timestamp: ISO8601DateFormatter().string(from: timestamp),
+                                timestamp: timestamp,
                                 review: postData["review"] as? String ?? "",
                                 location: postData["location"] as? String ?? "",
                                 restaurantName: postData["restaurantName"] as? String ?? "",
@@ -144,13 +142,7 @@ struct FeedView: View {
                     }
 
                     group.notify(queue: .main) {
-                        // Sort feed by timestamp
-                        feed.sort { postA, postB in
-                            let formatter = ISO8601DateFormatter()
-                            let dateA = formatter.date(from: postA.post.timestamp) ?? Date.distantPast
-                            let dateB = formatter.date(from: postB.post.timestamp) ?? Date.distantPast
-                            return dateA > dateB
-                        }
+                        feed.sort { $0.post.date > $1.post.date }
 
                         self.posts = feed
                         self.isLoading = false

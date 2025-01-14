@@ -336,7 +336,6 @@ class AuthViewModel: ObservableObject {
                 isoFormatter.timeZone = TimeZone(abbreviation: "UTC")
                 isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
                 
-                let isoTimestampString = isoFormatter.string(from: Date())
 
             // Step 2: Save Post in Firestore
             let db = Firestore.firestore()
@@ -345,7 +344,7 @@ class AuthViewModel: ObservableObject {
                 "id": postId,
                 "userId": userId,
                 "imageUrl": imageUrl,
-                "timestamp": isoTimestampString,
+                "timestamp": FieldValue.serverTimestamp(),
                 "review": review,
                 "location": location,
                 "restaurantName": restaurantName,
@@ -368,7 +367,7 @@ class AuthViewModel: ObservableObject {
                 _id: postId,
                 userId: userId,
                 imageUrl: imageUrl,
-                timestamp: "", // You can fetch the timestamp from Firestore if needed
+                timestamp: Timestamp(date: Date()), // You can fetch the timestamp from Firestore if needed
                 review: review,
                 location: location,
                 restaurantName: restaurantName,
@@ -763,7 +762,7 @@ class AuthViewModel: ObservableObject {
             _id: postDoc.documentID,
             userId: postData["userId"] as? String ?? "",
             imageUrl: postData["imageUrl"] as? String ?? "",
-            timestamp: (postData["timestamp"] as? Timestamp)?.dateValue().description ?? "",
+            timestamp: postData["timestamp"] as? Timestamp ?? Timestamp(date: Date()),
             review: postData["review"] as? String ?? "",
             location: postData["location"] as? String ?? "",
             restaurantName: postData["restaurantName"] as? String ?? "",
