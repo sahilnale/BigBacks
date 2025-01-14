@@ -23,27 +23,28 @@ class AuthViewModel: ObservableObject {
     // MARK: - Load Current User
     func loadCurrentUser() async {
         guard let firebaseUser = Auth.auth().currentUser else {
-            self.currentUser = nil
+            await MainActor.run {
+                self.currentUser = nil
+            }
             return
         }
 
         let db = Firestore.firestore()
         do {
             let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
-            guard let data = userDoc.data(),
-                  let name = data["name"] as? String,
-                  let username = data["username"] as? String,
-                  let email = data["email"] as? String else {
-                self.currentUser = nil
+            guard let data = userDoc.data() else {
+                await MainActor.run {
+                    self.currentUser = nil
+                }
                 return
             }
 
             await MainActor.run {
                 self.currentUser = User(
                     id: firebaseUser.uid,
-                    name: name,
-                    username: username,
-                    email: email,
+                    name: data["name"] as? String ?? "",
+                    username: data["username"] as? String ?? "",
+                    email: data["email"] as? String ?? "",
                     friends: data["friends"] as? [String] ?? [],
                     friendRequests: data["friendRequests"] as? [String] ?? [],
                     pendingRequests: data["pendingRequests"] as? [String] ?? [],
@@ -54,9 +55,12 @@ class AuthViewModel: ObservableObject {
             }
         } catch {
             print("Failed to fetch current user: \(error.localizedDescription)")
-            self.currentUser = nil
+            await MainActor.run {
+                self.currentUser = nil
+            }
         }
     }
+
 
 //    // MARK: - Get OAuth2 Access Token
 //    private func getAccessToken() async throws -> String {
@@ -528,14 +532,11 @@ class AuthViewModel: ObservableObject {
                let fromUserName = data["fromUserName"] as? String {
                 // Fetch the user who sent the friend request
                 let friendDoc = try await db.collection("users").document(fromUserId).getDocument()
-                if let friendData = friendDoc.data(),
-                   let id = friendDoc.documentID as? String,
-                   let name = friendData["name"] as? String,
-                   let username = friendData["username"] as? String {
+                if let friendData = friendDoc.data() {
                     let user = User(
-                        id: id,
-                        name: name,
-                        username: username,
+                        id: fromUserId,
+                        name: friendData["name"] as? String ?? "",
+                        username: friendData["username"] as? String ?? "",
                         email: friendData["email"] as? String ?? "",
                         friends: friendData["friends"] as? [String] ?? [],
                         friendRequests: [],

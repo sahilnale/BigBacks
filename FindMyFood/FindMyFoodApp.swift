@@ -13,11 +13,17 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         // Request notification permissions
         UNUserNotificationCenter.current().delegate = self
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-            if let error = error {
-                print("Failed to request authorization: \(error)")
-            } else if granted {
-                print("Authorization granted")
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            if settings.authorizationStatus == .notDetermined {
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                    if let error = error {
+                        print("Failed to request authorization: \(error)")
+                    } else if granted {
+                        print("Authorization granted")
+                    }
+                }
+            } else {
+                print("Notification permissions already determined.")
             }
         }
 
@@ -41,7 +47,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
+        #if DEBUG
+        Messaging.messaging().setAPNSToken(deviceToken, type: .sandbox)
+        #else
+        Messaging.messaging().setAPNSToken(deviceToken, type: .prod)
+        #endif
     }
 
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
@@ -59,16 +69,16 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         do {
             let db = Firestore.firestore()
-            // Check if the token already exists in Firestore to avoid unnecessary writes
             let userDoc = try await db.collection("users").document(userId).getDocument()
+            
             if let existingToken = userDoc.get("fcmToken") as? String, existingToken == fcmToken {
                 print("FCM token is already up-to-date.")
             } else {
                 try await db.collection("users").document(userId).setData(["fcmToken": fcmToken], merge: true)
-                print("FCM token updated in Firestore.")
+                print("FCM token updated in Firestore for user: \(userId)")
             }
         } catch {
-            print("Failed to update FCM token in Firestore: \(error)")
+            print("Failed to update FCM token in Firestore for user: \(userId) - Error: \(error.localizedDescription)")
         }
     }
 
