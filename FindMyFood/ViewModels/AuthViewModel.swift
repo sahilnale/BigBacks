@@ -3,7 +3,6 @@ import Firebase
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
-import JWTKit
 import Foundation
 
 @MainActor
