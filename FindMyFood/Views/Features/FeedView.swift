@@ -149,6 +149,7 @@ struct FeedView: View {
                     }
                 }
         }
-    }
+    }//end of Load
 
 }
+

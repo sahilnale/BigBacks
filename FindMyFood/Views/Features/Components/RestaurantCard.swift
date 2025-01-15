@@ -1,39 +1,3 @@
-//import SwiftUI
-//
-//struct RestaurantCard: View {
-//    var body: some View {
-//        VStack(alignment: .leading) {
-//            Image("placeholder")
-//                .resizable()
-//                .aspectRatio(contentMode: .fill)
-//                .frame(height: 200)
-//                .clipped()
-//            
-//            HStack {
-//                Text("Restaurant Name")
-//                    .font(.headline)
-//                Spacer()
-//                HStack {
-//                    Image(systemName: "star.fill")
-//                        .foregroundColor(.yellow)
-//                    Text("4.5")
-//                }
-//            }
-//            .padding(.horizontal)
-//            
-//            Text("Description of the restaurant or recent review...")
-//                .font(.subheadline)
-//                .foregroundColor(.gray)
-//                .padding(.horizontal)
-//                .padding(.bottom)
-//        }
-//        .background(Color.white)
-//        .cornerRadius(10)
-//        .shadow(radius: 5)
-//    }
-//}
-//
-
 
 import SwiftUI
 import FirebaseAuth
@@ -65,10 +29,12 @@ struct RestaurantCard: View {
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 307, height: 200)
+                    .frame(width: 350, height: 350)
+                    .clipShape(RoundedRectangle(cornerRadius: 15))
                     .clipped()
             } placeholder: {
-                Color.gray.frame(width: 307, height: 200)
+                Color.gray.frame(width: 350, height: 350)
+                    .clipShape(RoundedRectangle(cornerRadius: 15))
             }
             
             Text("@\(userName)")
@@ -82,12 +48,14 @@ struct RestaurantCard: View {
                         Image(systemName: "mappin.and.ellipse")
                             .foregroundColor(.customOrange)
                         Text(post.restaurantName)
-                            .font(.headline)
+                            //.font(.headline)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(Color.primary)
                     }
                     
                     Text(post.review)
-                        .font(.subheadline)
+                        //.font(.subheadline)
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundColor(Color.secondary)
                         .lineLimit(isExpanded ? nil : 2)
                         .onTapGesture {
@@ -107,38 +75,6 @@ struct RestaurantCard: View {
                             .foregroundColor(Color.primary)
                     }
                     
-                    //                    Button(action: {
-                    //                        isLiked.toggle()
-                    //                        likeCount += isLiked ? 1 : -1
-                    //                    }) {
-                    //                        HStack(spacing: 4) {
-                    //                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                    //                                .foregroundColor(isLiked ? .customOrange : .gray)
-                    //                            Text("\(likeCount)")
-                    //                                .foregroundColor(Color.primary)
-                    //                                .font(.subheadline)
-                    //                        }
-                    //                    }
-                    //                    .buttonStyle(PlainButtonStyle())
-                    
-                    //Ridhima's version
-                    
-                    //                    Button(action: {
-                    //                        NetworkManager.shared.toggleLike(postId: post.id, currentLikeCount: likeCount, isLiked: isLiked) { newLikeCount, newIsLiked in
-                    //                            // Update the UI with the new like count and like status
-                    //                            likeCount = newLikeCount
-                    //                            isLiked = newIsLiked
-                    //                        }
-                    //                    }) {
-                    //                        HStack(spacing: 4) {
-                    //                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                    //                                .foregroundColor(isLiked ? .customOrange : .gray)
-                    //                            Text("\(likeCount)")
-                    //                                .foregroundColor(Color.primary)
-                    //                                .font(.subheadline)
-                    //                        }
-                    //                    }
-                    //                    .buttonStyle(PlainButtonStyle())
                     
                     
                     VStack {
@@ -166,6 +102,7 @@ struct RestaurantCard: View {
                                     .foregroundColor(isLiked ? .red : .gray)
                                     .scaleEffect(isLiked ? 1.2 : 1.0) // Scaling animation for like action
                                     .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.5), value: isLiked)
+                                    
                                 
                                 Text("\(likeCount) likes")
                                     .font(.subheadline)
@@ -335,6 +272,7 @@ struct RestaurantCard: View {
     }
 }
 
+
 func timeAgo(from date: Date) -> String {
     let calendar = Calendar.current
     let now = Date()
@@ -349,6 +287,14 @@ func timeAgo(from date: Date) -> String {
     
     return "Just now"
 }
+
+
+
+
+
+
+
+
 
 
 
