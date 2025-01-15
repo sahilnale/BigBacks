@@ -189,43 +189,6 @@ struct ProfileHeaderView: View {
     }
 }
 
-// MARK: - Post Grid View
-//struct PostGridView: View {
-//    let posts: [Post]
-//    let columns: [GridItem]
-//    
-//    var body: some View {
-//        LazyVGrid(columns: columns, spacing: 8) {
-//            ForEach(posts.reversed(), id: \._id) { post in
-//                NavigationLink(destination: PostDetailView(post: post)) {
-//                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
-//                        switch phase {
-//                        case .empty:
-//                            ProgressView() // Show a loading indicator while the image loads
-//                                .frame(width: 100, height: 100)
-//                                .background(Color.gray.opacity(0.3))
-//                                .clipShape(RoundedRectangle(cornerRadius: 8))
-//                        case .success(let image):
-//                            image
-//                                .resizable()
-//                                .scaledToFill()
-//                                .frame(width: 100, height: 100)
-//                                .clipShape(RoundedRectangle(cornerRadius: 8))
-//                                .clipped()
-//                        case .failure:
-//                            Color.red // Display a red box if the image fails to load
-//                                .frame(width: 100, height: 100)
-//                                .clipShape(RoundedRectangle(cornerRadius: 8))
-//                        @unknown default:
-//                            EmptyView()
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
-
 struct PostGridView: View {
     let posts: [Post]
     let columns: [GridItem]

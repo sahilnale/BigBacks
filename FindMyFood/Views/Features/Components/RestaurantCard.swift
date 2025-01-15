@@ -37,10 +37,15 @@ struct RestaurantCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 15))
             }
             
-            Text("@\(userName)")
-                .font(.subheadline.bold())
-                .foregroundColor(.customOrange)
-                .padding(.leading)
+            NavigationLink(destination: FriendProfileView(userId: post.userId)) {
+                Text("@\(userName)")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.customOrange)
+                    .padding(.leading)
+            }
+            .buttonStyle(PlainButtonStyle()) // Removes the default button appearance
+            .contentShape(Rectangle())       // Limits the tap area to the text
+
             
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -135,6 +140,7 @@ struct RestaurantCard: View {
                         .foregroundColor(.customOrange)
                 }
             }
+            .buttonStyle(PlainButtonStyle()) // Keeps button behavior simple
             .padding(.leading)
             .padding(.bottom)
             
