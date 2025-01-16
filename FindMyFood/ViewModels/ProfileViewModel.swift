@@ -149,6 +149,7 @@ class ProfileViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
     @Published var profilePicture: String? = nil
+    @Published var profileImageUrl: String = ""
 
     private let authViewModel: AuthViewModel
 
