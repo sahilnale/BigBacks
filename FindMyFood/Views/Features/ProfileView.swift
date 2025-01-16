@@ -4,121 +4,170 @@ struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
     
-    
-    
-    @State private var isPickerPresented = false // State to control picker presentation
-    @State private var selectedImage: UIImage? // Store the selected image
-
+    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
+    private let screenHeight = UIScreen.main.bounds.height
     
     private let columns = [
-        GridItem(.flexible()),
         GridItem(.flexible()),
         GridItem(.flexible())
     ]
     
-    
-    
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack {
-                    // Profile Image Placeholder
-                    VStack {
-                         Image(systemName: "person.circle.fill")
-                             .resizable()
-                             .scaledToFill()
-                             .frame(width: 100, height: 100)
-                             .clipShape(Circle())
-                             .foregroundColor(.customOrange)
-                     }
-                     .padding(.top)
-                    
-                    // Profile Header
+        NavigationStack {
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                GeometryReader { geometry in
                     VStack(spacing: 16) {
-                        // Name and Username Section
+                        Capsule()
+                            .frame(width: 40, height: 6)
+                            .foregroundColor(.gray)
+                            .padding(.top, 8)
+                        
                         VStack(spacing: 4) {
                             Text(viewModel.name)
-                                .font(.custom("Lobster-Regular", size: 28)) // Creative, bold, and eye-catching
+                                .font(.system(size: 24, weight: .bold))
                                 .foregroundColor(.primary)
+                                .padding(.top, 8)
                             
                             Text("@\(viewModel.username)")
-                                .font(.custom("Lobster-Regular", size: 18)) // Stylish and complementary
+                                .font(.system(size: 16, weight: .regular))
                                 .foregroundColor(.gray)
                         }
-                        .padding(.top)
                         
-                        
-                        
-                        // Profile Image
-//                        Image(systemName: "person.circle.fill")
-//                            .resizable()
-//                            .scaledToFit()
-//                            .frame(width: 100, height: 100)
-//                            .clipShape(Circle())
-//                            .foregroundColor(Color.customOrange)
-//                            .padding(.bottom, 8)
-                        
-                        
-                        
-                        // Posts and Friends Count
                         HStack(spacing: 32) {
                             VStack {
                                 Text("\(viewModel.posts.count)")
-                                    .font(.custom("Lobster-Regular", size: 20)) // Consistent and stylish
+                                    .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(.primary)
                                 Text("Posts")
-                                    .font(.system(size: 14, weight: .regular)) // Keep labels clean for balance
+                                    .font(.system(size: 14))
                                     .foregroundColor(.gray)
                             }
                             
                             VStack {
                                 Text("\(viewModel.friendsCount)")
-                                    .font(.custom("Lobster-Regular", size: 20)) // Consistent and stylish
+                                    .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(.primary)
                                 Text("Friends")
-                                    .font(.system(size: 14, weight: .regular)) // Keep labels clean for balance
+                                    .font(.system(size: 14))
                                     .foregroundColor(.gray)
                             }
                         }
+                        .padding(.bottom, 16)
+                        
+                        if offset <= geometry.size.height * 0.3 {
+                            ScrollView {
+                                VStack {
+                                    // Posts Grid
+                                    PostGridView(posts: viewModel.posts, columns: columns)
+                                        .padding(.horizontal)
+                                    
+                                    // Logout button placed after all posts
+                                    LogoutButton {
+                                        authViewModel.logout()
+                                    }
+                                    .padding(.top, 16)
+                                    .padding(.horizontal)
+                                    .padding(.bottom, 32) // Add spacing at the end
+                                }
+                            }
+                            .transition(.opacity)
+                        } else {
+                            Spacer()
+                        }
                     }
-                    .padding(.horizontal)
-                    
-                    Divider()
-                        .padding(.vertical, 16)
-                    
-                    // Posts Section
-                    if viewModel.isLoading {
-                        ProgressView("Loading posts...")
-                            .padding()
-                    } else if viewModel.posts.isEmpty {
-                        Text("No posts yet.")
-                            .font(.custom("Lobster-Regular", size: 16))
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
-                    } else {
-                        PostGridView(posts: viewModel.posts, columns: columns)
-                            .padding(.horizontal)
-                    }
-                    
-                    // Logout Button
-                    LogoutButton {
-                        authViewModel.logout()
-                    }
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        Color(.systemBackground)
+                            .opacity(0.9)
+                            .overlay(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                    )
+                    .cornerRadius(20)
+                    .shadow(radius: 5)
+                    .offset(y: offset)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { gesture in
+                                let newOffset = offset + gesture.translation.height
+                                if newOffset >= 0 && newOffset <= screenHeight * 0.6 {
+                                    offset = newOffset
+                                }
+                            }
+                            .onEnded { gesture in
+                                withAnimation(.spring()) {
+                                    if gesture.predictedEndTranslation.height < 0 {
+                                        offset = 0
+                                    } else {
+                                        offset = screenHeight * 0.5
+                                    }
+                                }
+                            }
+                    )
+                    .animation(.easeInOut, value: offset)
                 }
             }
-//            .navigationBarItems(trailing: NavigationLink(destination: EditProfileView()) {
-//                Image(systemName: "pencil")
-//                    .font(.system(size: 20))
-//            })
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
                 }
             }
-            // Attach image picker
-            
         }
+    }
+}
+
+
+
+
+struct PostGridView: View {
+    let posts: [Post]
+    let columns: [GridItem]
+    
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 2) {
+            ForEach(posts.reversed(), id: \._id) { post in
+                NavigationLink(destination: PostDetailView(post: post)) {
+                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 177, height: 177)
+                                .background(Color.gray.opacity(0.3))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 177, height: 177)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipped()
+                        case .failure:
+                            Color.red
+                                .frame(width: 177, height: 177)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.bottom)
+    }
+}
+
+
+struct ProfileView_Previews: PreviewProvider {
+    static var previews: some View {
+        ProfileView()
+            .environmentObject(AuthViewModel())
     }
 }
 
@@ -188,49 +237,6 @@ struct ProfileHeaderView: View {
         }
     }
 }
-
-struct PostGridView: View {
-    let posts: [Post]
-    let columns: [GridItem]
-    @State private var selectedPost: Post? // State to track selected post for the sheet
-
-    var body: some View {
-        LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(posts.reversed(), id: \._id) { post in
-                Button(action: {
-                    selectedPost = post // Set the selected post
-                }) {
-                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView() // Show a loading indicator while the image loads
-                                .frame(width: 100, height: 100)
-                                .background(Color.gray.opacity(0.3))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .clipped()
-                        case .failure:
-                            Color.red // Display a red box if the image fails to load
-                                .frame(width: 100, height: 100)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                }
-            }
-        }
-        .sheet(item: $selectedPost) { post in
-            PostDetailView(post: post) // Present PostDetailView as a sheet
-        }
-    }
-}
-
 
 
 // MARK: - Logout Button
@@ -368,11 +374,8 @@ struct PostDetailView: View {
 }
 
 
-
-
 // MARK: - Preview
 #Preview {
     ProfileView()
         .environmentObject(AuthViewModel())
 }
-
