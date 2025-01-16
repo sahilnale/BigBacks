@@ -108,6 +108,296 @@
 //}
 
 
+//import SwiftUI
+//
+//struct FriendProfileView: View {
+//    let userId: String // Friend's user ID
+//    @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
+//    
+//    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
+//    private let screenHeight = UIScreen.main.bounds.height
+//    
+//    private let columns = [
+//        GridItem(.flexible()),
+//        GridItem(.flexible())
+//    ]
+//
+//    var body: some View {
+//        NavigationStack {
+//            ZStack {
+//                Color(.systemBackground)
+//                    .ignoresSafeArea()
+//                
+//                GeometryReader { geometry in
+//                    VStack(spacing: 16) {
+//                        Capsule()
+//                            .frame(width: 40, height: 6)
+//                            .foregroundColor(.gray)
+//                            .padding(.top, 8)
+//                        
+//                        VStack(spacing: 4) {
+//                            Text(viewModel.name)
+//                                .font(.system(size: 24, weight: .bold))
+//                                .foregroundColor(.primary)
+//                                .padding(.top, 8)
+//                            
+//                            Text("@\(viewModel.username)")
+//                                .font(.system(size: 16, weight: .regular))
+//                                .foregroundColor(.gray)
+//                        }
+//                        
+//                        HStack(spacing: 32) {
+//                            VStack {
+//                                Text("\(viewModel.posts.count)")
+//                                    .font(.system(size: 18, weight: .bold))
+//                                    .foregroundColor(.primary)
+//                                Text("Posts")
+//                                    .font(.system(size: 14))
+//                                    .foregroundColor(.gray)
+//                            }
+//                            
+//                            VStack {
+//                                Text("\(viewModel.friendsCount)")
+//                                    .font(.system(size: 18, weight: .bold))
+//                                    .foregroundColor(.primary)
+//                                Text("Friends")
+//                                    .font(.system(size: 14))
+//                                    .foregroundColor(.gray)
+//                            }
+//                        }
+//                        .padding(.bottom, 16)
+//                        
+//                        if offset <= geometry.size.height * 0.3 {
+//                            ScrollView {
+//                                VStack {
+//                                    if viewModel.isLoading {
+//                                        ProgressView("Loading posts...")
+//                                            .padding()
+//                                    } else if viewModel.posts.isEmpty {
+//                                        Text("No posts yet.")
+//                                            .font(.system(size: 16, weight: .regular))
+//                                            .foregroundColor(.gray)
+//                                            .frame(maxWidth: .infinity, alignment: .center)
+//                                            .padding()
+//                                    } else {
+//                                        PostGridView(posts: viewModel.posts, columns: columns)
+//                                            .padding(.horizontal)
+//                                    }
+//                                }
+//                            }
+//                            .transition(.opacity)
+//                        } else {
+//                            Spacer()
+//                        }
+//                    }
+//                    .frame(maxWidth: .infinity)
+//                    .background(
+//                        Color(.systemBackground)
+//                            .opacity(0.9)
+//                            .overlay(
+//                                LinearGradient(
+//                                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
+//                                    startPoint: .top,
+//                                    endPoint: .bottom
+//                                )
+//                            )
+//                    )
+//                    .cornerRadius(20)
+//                    .shadow(radius: 5)
+//                    .offset(y: offset)
+//                    .gesture(
+//                        DragGesture()
+//                            .onChanged { gesture in
+//                                let newOffset = offset + gesture.translation.height
+//                                if newOffset >= 0 && newOffset <= screenHeight * 0.6 {
+//                                    offset = newOffset
+//                                }
+//                            }
+//                            .onEnded { gesture in
+//                                withAnimation(.spring()) {
+//                                    if gesture.predictedEndTranslation.height < 0 {
+//                                        offset = 0
+//                                    } else {
+//                                        offset = screenHeight * 0.5
+//                                    }
+//                                }
+//                            }
+//                    )
+//                    .animation(.easeInOut, value: offset)
+//                }
+//            }
+//            .onAppear {
+//                Task {
+//                    await viewModel.loadFriendProfile(userId: userId)
+//                }
+//            }
+//        }
+//    }
+//}
+
+
+//import SwiftUI
+//
+//struct FriendProfileView: View {
+//    let userId: String // Friend's user ID
+//    @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
+//    @Environment(\.dismiss) var dismiss // Access the dismiss action
+//    
+//    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
+//    private let screenHeight = UIScreen.main.bounds.height
+//    
+//    private let columns = [
+//        GridItem(.flexible()),
+//        GridItem(.flexible())
+//    ]
+//    
+//    var body: some View {
+//        NavigationStack {
+//            ZStack {
+//                // Background with Back Button
+//                VStack {
+//                    HStack {
+//                        Button(action: {
+//                            dismiss() // Navigate back to the feed
+//                        }) {
+//                            HStack {
+//                                Image(systemName: "chevron.left")
+//                                    .foregroundColor(.blue)
+//                                    .font(.system(size: 20, weight: .medium))
+//                                Text("Back")
+//                                    .foregroundColor(.blue)
+//                                    .font(.system(size: 18, weight: .regular))
+//                            }
+//                        }
+//                        .padding(.leading, 16)
+//                        Spacer()
+//                    }
+//                    .padding(.top, 50) // For safe area adjustment
+//                    
+//                    Spacer() // Push the rest of the content below the back button
+//                }
+//                
+//                // Sliding Drawer
+//                GeometryReader { geometry in
+//                    VStack(spacing: 16) {
+//                        Capsule()
+//                            .frame(width: 40, height: 6)
+//                            .foregroundColor(.gray)
+//                            .padding(.top, 8)
+//                        
+//                        VStack {
+//                            if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+//                                AsyncImage(url: URL(string: profilePicture)) { image in
+//                                    image
+//                                        .resizable()
+//                                        .scaledToFill()
+//                                        .frame(width: 100, height: 100)
+//                                        .clipShape(Circle())
+//                                } placeholder: {
+//                                    Circle()
+//                                        .fill(Color.gray.opacity(0.5))
+//                                        .frame(width: 100, height: 100)
+//                                }
+//                            } else {
+//                                Image(systemName: "person.circle.fill")
+//                                    .resizable()
+//                                    .scaledToFill()
+//                                    .frame(width: 100, height: 100)
+//                                    .clipShape(Circle())
+//                                    .foregroundColor(.customOrange)
+//                            }
+//                        }
+//                        .padding(.top)
+//                        
+//                        VStack(spacing: 4) {
+//                            Text(viewModel.name)
+//                                .font(.system(size: 24, weight: .bold))
+//                                .foregroundColor(.primary)
+//                                .padding(.top, 8)
+//                            
+//                            Text("@\(viewModel.username)")
+//                                .font(.system(size: 16, weight: .regular))
+//                                .foregroundColor(.gray)
+//                        }
+//                        
+//                        HStack(spacing: 32) {
+//                            VStack {
+//                                Text("\(viewModel.posts.count)")
+//                                    .font(.system(size: 18, weight: .bold))
+//                                    .foregroundColor(.primary)
+//                                Text("Posts")
+//                                    .font(.system(size: 14))
+//                                    .foregroundColor(.gray)
+//                            }
+//                            
+//                            VStack {
+//                                Text("\(viewModel.friendsCount)")
+//                                    .font(.system(size: 18, weight: .bold))
+//                                    .foregroundColor(.primary)
+//                                Text("Friends")
+//                                    .font(.system(size: 14))
+//                                    .foregroundColor(.gray)
+//                            }
+//                        }
+//                        .padding(.bottom, 16)
+//                        
+//                        if offset <= geometry.size.height * 0.3 {
+//                            ScrollView {
+//                                PostGridView(posts: viewModel.posts, columns: columns)
+//                                    .padding(.horizontal)
+//                            }
+//                            .transition(.opacity)
+//                        } else {
+//                            Spacer()
+//                        }
+//                    }
+//                    .frame(maxWidth: .infinity)
+//                    .background(
+//                        Color(.systemBackground)
+//                            .opacity(0.9)
+//                            .overlay(
+//                                LinearGradient(
+//                                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
+//                                    startPoint: .top,
+//                                    endPoint: .bottom
+//                                )
+//                            )
+//                    )
+//                    .cornerRadius(20)
+//                    .shadow(radius: 5)
+//                    .offset(y: offset)
+//                    .gesture(
+//                        DragGesture()
+//                            .onChanged { gesture in
+//                                let newOffset = offset + gesture.translation.height
+//                                if newOffset >= 0 && newOffset <= screenHeight * 0.6 {
+//                                    offset = newOffset
+//                                }
+//                            }
+//                            .onEnded { gesture in
+//                                withAnimation(.spring()) {
+//                                    if gesture.predictedEndTranslation.height < 0 {
+//                                        offset = 0
+//                                    } else {
+//                                        offset = screenHeight * 0.5
+//                                    }
+//                                }
+//                            }
+//                    )
+//                    .animation(.easeInOut, value: offset)
+//                }
+//            }
+//            .onAppear {
+//                Task {
+//                    await viewModel.loadFriendProfile(userId: userId)
+//                }
+//            }
+//        }
+//    }
+//}
+//
+
+
 import SwiftUI
 
 struct FriendProfileView: View {
@@ -121,115 +411,128 @@ struct FriendProfileView: View {
         GridItem(.flexible()),
         GridItem(.flexible())
     ]
-
+    
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(.systemBackground)
-                    .ignoresSafeArea()
-                
-                GeometryReader { geometry in
-                    VStack(spacing: 16) {
-                        Capsule()
-                            .frame(width: 40, height: 6)
-                            .foregroundColor(.gray)
+        ZStack {
+            // Background
+            Color(.systemBackground)
+                .ignoresSafeArea()
+            
+            // Sliding Drawer
+            GeometryReader { geometry in
+                VStack(spacing: 16) {
+                    Capsule()
+                        .frame(width: 40, height: 6)
+                        .foregroundColor(.gray)
+                        .padding(.top, 8)
+                    
+                    VStack {
+                        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+                            AsyncImage(url: URL(string: profilePicture)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(Circle())
+                            } placeholder: {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.5))
+                                    .frame(width: 100, height: 100)
+                            }
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 100, height: 100)
+                                .clipShape(Circle())
+                                .foregroundColor(.customOrange)
+                        }
+                    }
+                    .padding(.top)
+                    
+                    VStack(spacing: 4) {
+                        Text(viewModel.name)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
                             .padding(.top, 8)
                         
-                        VStack(spacing: 4) {
-                            Text(viewModel.name)
-                                .font(.system(size: 24, weight: .bold))
+                        Text("@\(viewModel.username)")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.gray)
+                    }
+                    
+                    HStack(spacing: 32) {
+                        VStack {
+                            Text("\(viewModel.posts.count)")
+                                .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.primary)
-                                .padding(.top, 8)
-                            
-                            Text("@\(viewModel.username)")
-                                .font(.system(size: 16, weight: .regular))
+                            Text("Posts")
+                                .font(.system(size: 14))
                                 .foregroundColor(.gray)
                         }
                         
-                        HStack(spacing: 32) {
-                            VStack {
-                                Text("\(viewModel.posts.count)")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.primary)
-                                Text("Posts")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                            }
-                            
-                            VStack {
-                                Text("\(viewModel.friendsCount)")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.primary)
-                                Text("Friends")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding(.bottom, 16)
-                        
-                        if offset <= geometry.size.height * 0.3 {
-                            ScrollView {
-                                VStack {
-                                    if viewModel.isLoading {
-                                        ProgressView("Loading posts...")
-                                            .padding()
-                                    } else if viewModel.posts.isEmpty {
-                                        Text("No posts yet.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.gray)
-                                            .frame(maxWidth: .infinity, alignment: .center)
-                                            .padding()
-                                    } else {
-                                        PostGridView(posts: viewModel.posts, columns: columns)
-                                            .padding(.horizontal)
-                                    }
-                                }
-                            }
-                            .transition(.opacity)
-                        } else {
-                            Spacer()
+                        VStack {
+                            Text("\(viewModel.friendsCount)")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text("Friends")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
                         }
                     }
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        Color(.systemBackground)
-                            .opacity(0.9)
-                            .overlay(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
+                    .padding(.bottom, 16)
+                    
+                    if offset <= geometry.size.height * 0.3 {
+                        ScrollView {
+                            PostGridView(posts: viewModel.posts, columns: columns)
+                                .padding(.horizontal)
+                        }
+                        .transition(.opacity)
+                    } else {
+                        Spacer()
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .background(
+                    Color(.systemBackground)
+                        .opacity(0.9)
+                        .overlay(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
+                                startPoint: .top,
+                                endPoint: .bottom
                             )
-                    )
-                    .cornerRadius(20)
-                    .shadow(radius: 5)
-                    .offset(y: offset)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { gesture in
-                                let newOffset = offset + gesture.translation.height
-                                if newOffset >= 0 && newOffset <= screenHeight * 0.6 {
-                                    offset = newOffset
+                        )
+                )
+                .cornerRadius(20)
+                .shadow(radius: 5)
+                .offset(y: offset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { gesture in
+                            let newOffset = offset + gesture.translation.height
+                            if newOffset >= 0 && newOffset <= screenHeight * 0.6 {
+                                offset = newOffset
+                            }
+                        }
+                        .onEnded { gesture in
+                            withAnimation(.spring()) {
+                                if gesture.predictedEndTranslation.height < 0 {
+                                    offset = 0
+                                } else {
+                                    offset = screenHeight * 0.5
                                 }
                             }
-                            .onEnded { gesture in
-                                withAnimation(.spring()) {
-                                    if gesture.predictedEndTranslation.height < 0 {
-                                        offset = 0
-                                    } else {
-                                        offset = screenHeight * 0.5
-                                    }
-                                }
-                            }
-                    )
-                    .animation(.easeInOut, value: offset)
-                }
+                        }
+                )
+                .animation(.easeInOut, value: offset)
             }
-            .onAppear {
-                Task {
-                    await viewModel.loadFriendProfile(userId: userId)
-                }
+        }
+        .navigationTitle(viewModel.name.isEmpty ? "Friend's Profile" : viewModel.name) // Set navigation title
+        .navigationBarTitleDisplayMode(.inline) // Inline display for the title
+        .onAppear {
+            Task {
+                await viewModel.loadFriendProfile(userId: userId)
             }
         }
     }
