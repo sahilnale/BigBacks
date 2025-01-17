@@ -210,3 +210,136 @@ exports.notifyFriendRequest = onDocumentCreated(
         console.error("Error sending friend request notification:", error);
       }
     });
+
+
+exports.notifyPostLiked = onDocumentWritten(
+    "posts/{postId}",
+    async (event) => {
+      const before = event.data.before.exists ? event.data.before.data() : null;
+      const after = event.data.after.exists ? event.data.after.data() : null;
+
+      if (!before || !after) {
+        return; // Skip if the document is newly created or deleted
+      }
+
+      // Check if the `likedBy` array was updated
+      const beforeLikes = before.likedBy || [];
+      const afterLikes = after.likedBy || [];
+
+      if (afterLikes.length <= beforeLikes.length) {
+        return; // No new like added
+      }
+
+      // Get the new liker
+      const newLikeUserId = afterLikes[afterLikes.length - 1];
+
+      // Get the post owner's userId
+      const postOwnerId = after.userId;
+
+      // Retrieve the post owner's FCM token
+      const userCollection = admin.firestore().collection("users");
+      const postOwnerDoc = await userCollection.doc(postOwnerId).get();
+      const postOwnerData = postOwnerDoc.data();
+      const fcmToken = postOwnerData && postOwnerData.fcmToken;
+
+      if (!fcmToken) {
+        console.error(`No FCM token found for user: ${postOwnerId}`);
+        return;
+      }
+
+      // Retrieve the liker’s name
+      const likerDoc = await userCollection.doc(newLikeUserId).get();
+      const likerData = likerDoc.data();
+      const likerName = likerData && likerData.name;
+
+      if (!likerName) {
+        console.error(`No name found for liker: ${newLikeUserId}`);
+        return;
+      }
+
+      // Get the post's image URL
+      const postImageUrl = getImageUrl(after.imageUrl);
+
+      // Create the notification message with image
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: `${likerName}`,
+          body: `Liked your post!`,
+          image: postImageUrl, // Adds the image to the notification
+        },
+      };
+
+      // Send the notification
+      try {
+        await admin.messaging().send(message);
+        console.log(`Notification sent to post owner: ${postOwnerId}`);
+      } catch (error) {
+        console.error("Error sending like notification:", error);
+      }
+    },
+);
+
+exports.notifyFriendRequest = onDocumentWritten(
+    "users/{userId}",
+    async (event) => {
+      const before = event.data.before.exists ? event.data.before.data() : null;
+      const after = event.data.after.exists ? event.data.after.data() : null;
+
+      if (!before || !after) {
+        return; // Skip if the document is newly created or deleted
+      }
+
+      // Check if the friends array was updated
+      const beforeFriends = before.friends || [];
+      const afterFriends = after.friends || [];
+
+      if (afterFriends.length <= beforeFriends.length) {
+        return; // No new friend added
+      }
+
+      // Get the new friend
+      const newFriendId = afterFriends[afterFriends.length - 1];
+
+      // Get the userId of who is receiving the notification
+      const currUser = after.userId;
+
+      // Retrieve the post owner's FCM token
+      const userCollection = admin.firestore().collection("users");
+      const postOwnerDoc = await userCollection.doc(currUser).get();
+      const postOwnerData = postOwnerDoc.data();
+      const fcmToken = postOwnerData && postOwnerData.fcmToken;
+
+      if (!fcmToken) {
+        console.error(`No FCM token found for user: ${currUser}`);
+        return;
+      }
+
+      // Retrieve the friend's name
+      const friendDoc = await userCollection.doc(newFriendId).get();
+      const friendData = friendDoc.data();
+      const friendName = friendData && friendData.name;
+
+      if (!friendName) {
+        console.error(`No name found for liker: ${friendName}`);
+        return;
+      }
+
+      // Create the notification
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: `${friendName}`,
+          body: `Accepted your follow request!`,
+        },
+      };
+
+      // Send the notification
+      try {
+        await admin.messaging().send(message);
+        console.log(`Notification sent to post owner: ${currUser}`);
+      } catch (error) {
+        console.error("Error sending like notification:", error);
+      }
+    },
+);

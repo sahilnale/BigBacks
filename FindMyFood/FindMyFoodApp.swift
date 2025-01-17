@@ -6,7 +6,7 @@ import FirebaseAuth
 import FirebaseFirestore
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
-    
+
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         FirebaseApp.configure()
@@ -20,15 +20,20 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                         print("Failed to request authorization: \(error)")
                     } else if granted {
                         print("Authorization granted")
+                        DispatchQueue.main.async {
+                            application.registerForRemoteNotifications()
+                        }
                     }
                 }
             } else {
                 print("Notification permissions already determined.")
+                DispatchQueue.main.async {
+                    application.registerForRemoteNotifications()
+                }
             }
         }
 
-        // Register for remote notifications
-        application.registerForRemoteNotifications()
+        // Set the Messaging delegate
         Messaging.messaging().delegate = self
 
         // Force token refresh at app startup
@@ -70,24 +75,32 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         do {
             let db = Firestore.firestore()
             let userDoc = try await db.collection("users").document(userId).getDocument()
-            
-            if let existingToken = userDoc.get("fcmToken") as? String, existingToken == fcmToken {
-                print("FCM token is already up-to-date.")
+
+            if userDoc.exists {
+                if let existingToken = userDoc.get("fcmToken") as? String, existingToken == fcmToken {
+                    print("FCM token is already up-to-date.")
+                } else {
+                    try await db.collection("users").document(userId).setData(["fcmToken": fcmToken], merge: true)
+                    print("FCM token updated in Firestore for user: \(userId)")
+                }
             } else {
+                // Create the document if it doesn't exist
                 try await db.collection("users").document(userId).setData(["fcmToken": fcmToken], merge: true)
-                print("FCM token updated in Firestore for user: \(userId)")
+                print("FCM token document created for user: \(userId)")
             }
         } catch {
             print("Failed to update FCM token in Firestore for user: \(userId) - Error: \(error.localizedDescription)")
         }
     }
 
+    // Handle when notifications are received while the app is in the foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
     }
 
+    // Handle when a notification is tapped
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
@@ -96,6 +109,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler()
     }
 }
+
 
 @main
 struct FindMyFoodApp: App {
