@@ -414,41 +414,44 @@ struct FriendProfileView: View {
     
     var body: some View {
         ZStack {
-            // Background
-            Color(.systemBackground)
-                .ignoresSafeArea()
+            // Background Layer
+            Group {
+                if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+                    AsyncImage(url: URL(string: profilePicture)) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
+                            .clipped()
+                    } placeholder: {
+                        Color(.systemBackground)
+                            .ignoresSafeArea()
+                    }
+                } else if let latestPost = viewModel.posts.last, !latestPost.imageUrl.isEmpty {
+                    AsyncImage(url: URL(string: latestPost.imageUrl)) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
+                            .clipped()
+                    } placeholder: {
+                        Color(.systemBackground)
+                            .ignoresSafeArea()
+                    }
+                } else {
+                    Color(.systemBackground)
+                        .ignoresSafeArea()
+                }
+            }
+            .ignoresSafeArea() // Ensure the background covers the entire screen
             
-            // Sliding Drawer
+            // Foreground Sliding Drawer
             GeometryReader { geometry in
                 VStack(spacing: 16) {
                     Capsule()
                         .frame(width: 40, height: 6)
                         .foregroundColor(.gray)
                         .padding(.top, 8)
-                    
-                    VStack {
-                        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
-                            AsyncImage(url: URL(string: profilePicture)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(Circle())
-                            } placeholder: {
-                                Circle()
-                                    .fill(Color.gray.opacity(0.5))
-                                    .frame(width: 100, height: 100)
-                            }
-                        } else {
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(Circle())
-                                .foregroundColor(.customOrange)
-                        }
-                    }
-                    .padding(.top)
                     
                     VStack(spacing: 4) {
                         Text(viewModel.name)
@@ -528,8 +531,7 @@ struct FriendProfileView: View {
                 .animation(.easeInOut, value: offset)
             }
         }
-        .navigationTitle(viewModel.name.isEmpty ? "Friend's Profile" : viewModel.name) // Set navigation title
-        .navigationBarTitleDisplayMode(.inline) // Inline display for the title
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task {
                 await viewModel.loadFriendProfile(userId: userId)

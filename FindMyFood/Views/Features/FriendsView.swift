@@ -51,18 +51,22 @@ struct FriendsView: View {
                         .padding()
                 } else {
                     List(viewModel.friends) { friend in
-                        HStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.accentColor)
-                            VStack(alignment: .leading) {
-                                Text(friend.name)
-                                    .font(.headline)
-                                Text("@\(friend.username)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
+                        NavigationLink(destination: FriendProfileView(userId: friend.id)) {
+                            HStack {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.accentColor)
+                                
+                                VStack(alignment: .leading) {
+                                    Text(friend.name)
+                                        .font(.headline)
+                                    Text("@\(friend.username)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
                             }
                         }
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)) // Optional: Adjust padding
                     }
                 }
             }

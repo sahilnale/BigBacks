@@ -15,9 +15,38 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.systemBackground)
-                    .ignoresSafeArea()
+                // Background Layer
+                Group {
+                    if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+                        AsyncImage(url: URL(string: profilePicture)) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
+                                .clipped()
+                        } placeholder: {
+                            Color(.systemBackground)
+                                .ignoresSafeArea()
+                        }
+                    } else if let latestPost = viewModel.posts.last, !latestPost.imageUrl.isEmpty {
+                        AsyncImage(url: URL(string: latestPost.imageUrl)) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
+                                .clipped()
+                        } placeholder: {
+                            Color(.systemBackground)
+                                .ignoresSafeArea()
+                        }
+                    } else {
+                        Color(.systemBackground)
+                            .ignoresSafeArea()
+                    }
+                }
+                .ignoresSafeArea() // Ensure the background covers the entire screen
                 
+                // Foreground Sliding Drawer
                 GeometryReader { geometry in
                     VStack(spacing: 16) {
                         Capsule()
