@@ -193,6 +193,7 @@ class ProfileViewModel: ObservableObject {
                 self.name = userData["name"] as? String ?? "Unknown"
                 self.username = userData["username"] as? String ?? "unknown"
                 self.friendsCount = (userData["friends"] as? [String])?.count ?? 0
+                self.profilePicture = userData["profilePicture"] as? String ?? "" // Fetch the profile picture
             }
 
             // Fetch posts

@@ -17,34 +17,34 @@ struct ProfileView: View {
             ZStack {
                 // Background Layer
                 Group {
-                    if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
-                        AsyncImage(url: URL(string: profilePicture)) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
-                                .clipped()
-                        } placeholder: {
+                        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+                            AsyncImage(url: URL(string: profilePicture)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
+                                    .clipped()
+                            } placeholder: {
+                                Color(.systemBackground)
+                                    .ignoresSafeArea()
+                            }
+                        } else if let latestPost = viewModel.posts.last, !latestPost.imageUrl.isEmpty {
+                            AsyncImage(url: URL(string: latestPost.imageUrl)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
+                                    .clipped()
+                            } placeholder: {
+                                Color(.systemBackground)
+                                    .ignoresSafeArea()
+                            }
+                        } else {
                             Color(.systemBackground)
                                 .ignoresSafeArea()
                         }
-                    } else if let latestPost = viewModel.posts.last, !latestPost.imageUrl.isEmpty {
-                        AsyncImage(url: URL(string: latestPost.imageUrl)) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
-                                .clipped()
-                        } placeholder: {
-                            Color(.systemBackground)
-                                .ignoresSafeArea()
-                        }
-                    } else {
-                        Color(.systemBackground)
-                            .ignoresSafeArea()
                     }
-                }
-                .ignoresSafeArea() // Ensure the background covers the entire screen
+                    .ignoresSafeArea() // Ensure the background covers the entire screen
                 
                 // Foreground Sliding Drawer
                 GeometryReader { geometry in
@@ -146,6 +146,7 @@ struct ProfileView: View {
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
+                    print("Profile Picture URL: \(viewModel.profilePicture ?? "No URL")")
                 }
             }
         }
@@ -204,38 +205,39 @@ struct ProfileView_Previews: PreviewProvider {
 
 // MARK: - Image Picker Component
 struct ImagePicker: UIViewControllerRepresentable {
+    var sourceType: UIImagePickerController.SourceType
     @Binding var selectedImage: UIImage?
-    
+    @Environment(\.dismiss) var dismiss
+
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
-        picker.allowsEditing = true
-        picker.sourceType = .photoLibrary
+        picker.sourceType = sourceType
         return picker
     }
-    
+
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
-    
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
         let parent: ImagePicker
-        
+
         init(_ parent: ImagePicker) {
             self.parent = parent
         }
-        
+
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let uiImage = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage {
-                parent.selectedImage = uiImage
+            if let image = info[.originalImage] as? UIImage {
+                parent.selectedImage = image
             }
-            picker.dismiss(animated: true)
+            parent.dismiss()
         }
-        
+
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
+            parent.dismiss()
         }
     }
 }

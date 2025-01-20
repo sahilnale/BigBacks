@@ -176,7 +176,30 @@ class AuthViewModel: ObservableObject {
         currentUser != nil
     }
     
-    func signUp(name: String, username: String, email: String, password: String, completion: @escaping (Bool) -> Void) {
+    func uploadProfilePicture(imageData: Data) async throws -> String {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not logged in."])
+        }
+
+        let imageRef = Storage.storage().reference().child("profilePictures/\(userId)")
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
+        let imageUrl = try await imageRef.downloadURL().absoluteString
+
+        return imageUrl
+    }
+
+    
+    func signUp(
+        name: String,
+        username: String,
+        email: String,
+        password: String,
+        profileImageData: Data?,
+        completion: @escaping (Bool) -> Void
+    ) {
         isLoading = true
         Task {
             let db = Firestore.firestore()
@@ -191,21 +214,14 @@ class AuthViewModel: ObservableObject {
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
                 let userId = result.user.uid
 
-                // Create the user document in Firestore
-                let user = User(
-                    id: userId,
-                    name: name,
-                    username: username,
-                    email: email,
-                    friends: [],
-                    friendRequests: [],
-                    pendingRequests: [],
-                    posts: [],
-                    profilePicture: nil,
-                    loggedIn: true
-                )
+                // Upload the profile picture (if provided)
+                var profilePictureUrl: String? = nil
+                if let imageData = profileImageData {
+                    profilePictureUrl = try await uploadProfilePicture(imageData: imageData)
+                }
 
-                try await db.collection("users").document(userId).setData([
+                // Create the user document in Firestore
+                let user: [String: Any] = [
                     "id": userId,
                     "name": name,
                     "username": username,
@@ -214,12 +230,25 @@ class AuthViewModel: ObservableObject {
                     "friendRequests": [],
                     "pendingRequests": [],
                     "posts": [],
-                    "profilePicture": "",
+                    "profilePicture": profilePictureUrl ?? "",
                     "loggedIn": true
-                ])
+                ]
+                try await db.collection("users").document(userId).setData(user)
 
+                // Set the current user in the view model
                 await MainActor.run {
-                    self.currentUser = user
+                    self.currentUser = User(
+                        id: userId,
+                        name: name,
+                        username: username,
+                        email: email,
+                        friends: [],
+                        friendRequests: [],
+                        pendingRequests: [],
+                        posts: [],
+                        profilePicture: profilePictureUrl,
+                        loggedIn: true
+                    )
                     self.isLoading = false
                     completion(true)
                 }
