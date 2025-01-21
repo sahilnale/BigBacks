@@ -62,86 +62,6 @@ class AuthViewModel: ObservableObject {
     }
 
 
-//    // MARK: - Get OAuth2 Access Token
-//    private func getAccessToken() async throws -> String {
-//        // Locate the ServiceAccount.json file in the app bundle
-//        guard let filePath = Bundle.main.path(forResource: "ServiceAccount", ofType: "json"),
-//              let fileData = FileManager.default.contents(atPath: filePath) else {
-//            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Service account file not found."])
-//        }
-//
-//        // Decode the service account JSON into a struct
-//        let credentials = try JSONDecoder().decode(GoogleServiceAccount.self, from: fileData)
-//
-//        // Create a signer using the private key from the service account
-//        guard let privateKeyData = credentials.privateKey.data(using: .utf8) else {
-//            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid private key format."])
-//        }
-//        let signer = try RSA256.privateKey(privateKeyData)
-//
-//        // Create the JWT payload
-//        let payload = GoogleJWT(
-//            iss: credentials.clientEmail,
-//            aud: "https://oauth2.googleapis.com/token",
-//            exp: Date().addingTimeInterval(3600),
-//            iat: Date()
-//        )
-//
-//        // Sign the JWT to get the token
-//        let jwtString = try signer.sign(payload: payload)
-//
-//        // Prepare the URL and request to fetch the OAuth token
-//        let tokenURL = URL(string: "https://oauth2.googleapis.com/token")!
-//        var request = URLRequest(url: tokenURL)
-//        request.httpMethod = "POST"
-//        request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-//        let requestBody = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=\(jwtString)"
-//        request.httpBody = requestBody.data(using: String.Encoding.utf8)
-//
-//        // Send the request and decode the response
-//        let (data, _) = try await URLSession.shared.data(for: request)
-//        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
-//
-//        // Return the access token
-//        return tokenResponse.accessToken
-//    }
-//
-//
-//
-//
-//    // MARK: - Send Notification
-//    private func sendNotification(to fcmToken: String, fromUserName: String) async throws {
-//        let projectId = "bigbacks" // Replace with your Firebase project ID
-//        let url = URL(string: "https://fcm.googleapis.com/v1/projects/\(projectId)/messages:send")!
-//        let accessToken = try await getAccessToken()
-//
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "POST"
-//        request.addValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-//        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-//
-//        let payload: [String: Any] = [
-//            "message": [
-//                "token": fcmToken,
-//                "notification": [
-//                    "title": "New Friend Request",
-//                    "body": "\(fromUserName) sent you a friend request.",
-//                    "sound": "default"
-//                ]
-//            ]
-//        ]
-//
-//        let jsonData = try JSONSerialization.data(withJSONObject: payload)
-//        request.httpBody = jsonData
-//
-//        let (data, response) = try await URLSession.shared.data(for: request)
-//        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-//            let responseString = String(data: data, encoding: .utf8) ?? "Unknown error"
-//            throw NSError(domain: "", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: responseString])
-//        }
-//    }
-
-
     func fetchCurrentUser() async throws -> User {
         guard let userId = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User is not logged in."])
@@ -231,24 +151,14 @@ class AuthViewModel: ObservableObject {
                     "pendingRequests": [],
                     "posts": [],
                     "profilePicture": profilePictureUrl ?? "",
-                    "loggedIn": true
+                    "loggedIn": false
                 ]
                 try await db.collection("users").document(userId).setData(user)
 
-                // Set the current user in the view model
+                // Send email verification
+                try await result.user.sendEmailVerification()
+
                 await MainActor.run {
-                    self.currentUser = User(
-                        id: userId,
-                        name: name,
-                        username: username,
-                        email: email,
-                        friends: [],
-                        friendRequests: [],
-                        pendingRequests: [],
-                        posts: [],
-                        profilePicture: profilePictureUrl,
-                        loggedIn: true
-                    )
                     self.isLoading = false
                     completion(true)
                 }
@@ -308,8 +218,54 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
+    
+    func resetPassword(email: String, completion: @escaping (Bool) -> Void) {
+        isLoading = true
+        Task {
+            do {
+                try await Auth.auth().sendPasswordReset(withEmail: email)
+                await MainActor.run {
+                    self.error = "Password reset email sent! Please check your inbox."
+                    self.showError = true
+                    self.isLoading = false
+                    completion(true)
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    self.showError = true
+                    self.isLoading = false
+                    completion(false)
+                }
+            }
+        }
+    }
 
+    func refreshCurrentUser() async throws {
+            guard let firebaseUser = Auth.auth().currentUser else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user is logged in."])
+            }
+            try await firebaseUser.reload()
 
+            if firebaseUser.isEmailVerified {
+                // Update the app's user model to reflect verification status
+                await MainActor.run {
+                    self.currentUser = User(
+                        id: firebaseUser.uid,
+                        name: self.currentUser?.name ?? "",
+                        username: self.currentUser?.username ?? "",
+                        email: firebaseUser.email ?? "",
+                        friends: self.currentUser?.friends ?? [],
+                        friendRequests: self.currentUser?.friendRequests ?? [],
+                        pendingRequests: self.currentUser?.pendingRequests ?? [],
+                        posts: self.currentUser?.posts ?? [],
+                        profilePicture: self.currentUser?.profilePicture,
+                        loggedIn: true
+                    )
+                }
+            }
+    }
+    
     
     func logout() {
         do {

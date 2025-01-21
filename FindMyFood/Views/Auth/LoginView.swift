@@ -97,6 +97,12 @@ struct LoginView: View {
                     .font(.headline)
                     .foregroundColor(Color.accentColor)
             }
+            
+            HStack{
+                NavigationLink("Forgot Password?", destination: ResetPasswordView())
+                    .font(.headline)
+                    .foregroundColor(Color.accentColor)
+            }
         }
         .padding()
         .alert("Error", isPresented: $authViewModel.showError) {

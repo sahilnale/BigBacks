@@ -311,127 +311,6 @@ class NetworkManager {
     }
     
     
-//    func addPost(
-//        userId: String,
-//        imageData: Data,
-//        review: String,
-//        location: String,
-//        restaurantName: String,
-//        starRating: Int
-//    ) async throws -> Post {
-//        let endpoint = "\(baseURL)/post/upload/\(userId)"
-//        guard let url = URL(string: endpoint) else {
-//            throw NetworkError.invalidURL
-//        }
-//
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "POST"
-//        
-//        // Create a multipart form-data boundary
-//        let boundary = UUID().uuidString
-//        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-//        
-//        // Build multipart form-data body
-//        var body = Data()
-//        let lineBreak = "\r\n"
-//
-//        // Add the image as a file
-//        body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-//        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\(lineBreak)".data(using: .utf8)!)
-//        body.append("Content-Type: image/jpeg\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-//        body.append(imageData)
-//        body.append(lineBreak.data(using: .utf8)!)
-//        
-//        
-//
-//        // Add additional fields
-//        let fields: [String: Any] = [
-//            "review": review,
-//            "location": location,
-//            "restaurantName": restaurantName,
-//            "starRating": starRating
-//        ]
-//        
-//        for (key, value) in fields {
-//            body.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-//            body.append("Content-Disposition: form-data; name=\"\(key)\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-//            body.append("\(value)\(lineBreak)".data(using: .utf8)!)
-//        }
-//
-//        // Close the body
-//        body.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
-//        request.httpBody = body
-//
-//        let (data, response) = try await URLSession.shared.data(for: request)
-//
-//        guard let httpResponse = response as? HTTPURLResponse else {
-//            throw NetworkError.invalidResponse
-//        }
-//
-//        print("HTTP Status Code: \(httpResponse.statusCode)")
-//
-//        guard (200...299).contains(httpResponse.statusCode) else {
-//            if let responseBody = String(data: data, encoding: .utf8) {
-//                print("Server Error Response: \(responseBody)")
-//            }
-//            throw NetworkError.error(from: httpResponse.statusCode)
-//        }
-//
-//        // Manually parse the JSON response
-//        do {
-//            if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-//               let postDict = jsonObject["post"] as? [String: Any] {
-//                
-//                let post = Post(
-//                    _id: postDict["_id"] as? String ?? "",
-//                    userId: postDict["userId"] as? String ?? "",
-//                    imageUrl: postDict["imageUrl"] as? String ?? "",
-//                    timestamp: postDict["timestamp"] as? String ?? "",
-//                    review: postDict["review"] as? String ?? "",
-//                    location: postDict["location"] as? String ?? "",
-//                    restaurantName: postDict["restaurantName"] as? String ?? "",
-//                    likes: postDict["likes"] as? Int ?? 0,
-//                    likedBy: postDict["likedBy"] as? [String] ?? [],
-//                    starRating: postDict["starRating"] as? Int ?? 0,
-//                    comments: postDict["comments"] as? [Comment] ?? []
-//                )
-//                
-//                print("Manually Parsed Post: \(post)")
-//                
-//                let user = try await self.getCurrentUser(userId: post.userId)
-//                
-//                
-//                
-//                // Post a notification to trigger addAnnotation in MapView
-//                NotificationCenter.default.post(
-//                    name: .postAdded,
-//                    object: nil,
-//                    userInfo: [
-//                        "userId": user.name,
-//                        "imageData": post.imageUrl,
-//                        "review": post.review,
-//                        "location": post.location,
-//                        "restaurantName": post.restaurantName,
-//                        "starRating": post.starRating,
-//                        "likes":post.likes
-//                        
-//                    ]
-//                )
-//                
-//                
-//                print("getting post rn")
-//                
-//                
-//                
-//                return post
-//            } else {
-//                throw NetworkError.decodingError
-//            }
-//        } catch {
-//            print("JSON parsing error: \(error.localizedDescription)")
-//            throw NetworkError.decodingError
-//        }
-//    }
     
     func userFeed(userId: String) async throws -> [Post] {
         let endpoint = "\(baseURL)/user/getFeed/\(userId)"
@@ -791,7 +670,7 @@ struct User: Codable, Identifiable {
     let pendingRequests: [String]
     let posts: [Post]
     let profilePicture: String?
-    let loggedIn: Bool
+    var loggedIn: Bool
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
