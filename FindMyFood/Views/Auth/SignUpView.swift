@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct SignUpView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -11,8 +12,8 @@ struct SignUpView: View {
     @State private var isConfirmPasswordVisible = false
     @State private var shouldNavigateToVerifyEmail = false
     @State private var showImagePicker = false
-    @State private var selectedProfileImage: UIImage? = nil
     @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var selectedProfileImage: UIImage? = nil
 
     private var isFormValid: Bool {
         !name.isEmpty &&
@@ -27,7 +28,7 @@ struct SignUpView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Profile Picture Section (optional)
+                // Profile Picture Section
                 VStack {
                     if let image = selectedProfileImage {
                         Image(uiImage: image)
@@ -37,8 +38,11 @@ struct SignUpView: View {
                             .clipShape(Circle())
                             .overlay(
                                 Circle()
-                                    .stroke(Color.customOrange, lineWidth: 4)
+                                    .stroke(Color.accentColor, lineWidth: 4)
                             )
+                            .onTapGesture {
+                                showImagePicker = true
+                            }
                     } else {
                         Circle()
                             .fill(Color.gray.opacity(0.2))
@@ -58,7 +62,7 @@ struct SignUpView: View {
                 Text("Sign Up")
                     .font(.system(.largeTitle, design: .serif))
                     .fontWeight(.bold)
-                    .foregroundColor(Color.customOrange)
+                    .foregroundColor(Color.accentColor)
 
                 // Form Fields
                 VStack(spacing: 15) {
@@ -75,34 +79,31 @@ struct SignUpView: View {
                 }
 
                 // Sign-Up Button
+                // Sign-Up Button
                 Button(action: {
-                    let profileImageData = selectedProfileImage?.jpegData(compressionQuality: 0.8)
-                    authViewModel.signUp(
-                        name: name,
-                        username: username,
-                        email: email,
-                        password: password,
-                        profileImageData: profileImageData
-                    ) { success in
-                        if success {
-                            shouldNavigateToVerifyEmail = true
-                        }
-                    }
+                    shouldNavigateToVerifyEmail = true // Navigate to VerifyEmailView
                 }) {
                     Text("Sign Up")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.customOrange)
+                        .background(Color.accentColor)
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
                 .disabled(!isFormValid || authViewModel.isLoading)
                 .padding(.top, 10)
 
+                // Navigation to Verify Email
                 NavigationLink(
-                    destination: VerifyEmailView()
-                        .environmentObject(authViewModel),
+                    destination: VerifyEmailView(
+                        name: name,
+                        username: username,
+                        email: email,
+                        password: password,
+                        profileImageData: selectedProfileImage?.jpegData(compressionQuality: 0.8) // Pass image data
+                    )
+                    .environmentObject(authViewModel),
                     isActive: $shouldNavigateToVerifyEmail,
                     label: { EmptyView() }
                 )
@@ -113,9 +114,55 @@ struct SignUpView: View {
             } message: {
                 Text(authViewModel.error ?? "An unknown error occurred")
             }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(
+                    sourceType: sourceType,
+                    selectedImage: $selectedProfileImage
+                )
+            }
         }
     }
 }
+
+
+struct ProfileImagePicker: UIViewControllerRepresentable {
+    var sourceType: UIImagePickerController.SourceType
+    @Binding var selectedImage: UIImage?
+    @Environment(\.dismiss) var dismiss
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = sourceType
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: ProfileImagePicker
+
+        init(_ parent: ProfileImagePicker) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.selectedImage = image
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+
 
 
 
