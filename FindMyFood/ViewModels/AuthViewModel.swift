@@ -13,6 +13,7 @@ class AuthViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var showError = false
     @Published var currentUser: User? = nil
+    @Published var isAuthenticated: Bool = false
 
     init() {
         Task {
@@ -88,6 +89,103 @@ class AuthViewModel: ObservableObject {
             profilePicture: data["profilePicture"] as? String,
             loggedIn: true
         )
+    }
+    
+    func updateFirestoreUser(
+        userId: String,
+        name: String,
+        username: String,
+        email: String,
+        profileImageData: Data?,
+        completion: @escaping (Bool) -> Void
+    ) {
+        isLoading = true
+        let db = Firestore.firestore()
+        let userRef = db.collection("users").document(userId)
+
+        Task {
+            do {
+                // Check if the user document exists
+                let document = try await userRef.getDocument()
+                if document.exists {
+                    print("User already exists in Firestore. Updating data...")
+                } else {
+                    print("User does not exist in Firestore. Creating new document...")
+                }
+                
+                // Upload profile picture if provided
+                var profilePictureUrl: String? = nil
+                if let imageData = profileImageData {
+                    profilePictureUrl = try await uploadProfilePicture(imageData: imageData)
+                }
+
+                // Update Firestore document
+                let userData: [String: Any] = [
+                    "id": userId,
+                    "name": name,
+                    "username": username,
+                    "email": email,
+                    "profilePicture": profilePictureUrl ?? "",
+                    "loggedIn": true
+                ]
+                try await userRef.setData(userData, merge: true)
+
+                await MainActor.run {
+                    self.isLoading = false
+                    completion(true)
+                }
+            } catch {
+                print("Failed to update Firestore user: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.isLoading = false
+                    self.error = error.localizedDescription
+                    completion(false)
+                }
+            }
+        }
+    }
+
+    
+    func createUser(
+        name: String,
+        username: String,
+        email: String,
+        password: String,
+        completion: @escaping (Bool, Error?) -> Void
+    ) {
+        Task {
+            do {
+                let result = try await Auth.auth().createUser(withEmail: email, password: password)
+                try await result.user.sendEmailVerification()
+                completion(true, nil)
+            } catch {
+                completion(false, error)
+            }
+        }
+    }
+
+    
+    func sendVerificationEmail(email: String, password: String, completion: @escaping (Bool) -> Void) {
+            isLoading = true
+            Task {
+                do {
+                    // Create user in Firebase Auth
+                    let result = try await Auth.auth().createUser(withEmail: email, password: password)
+                    try await result.user.sendEmailVerification()
+
+                    await MainActor.run {
+                        self.isLoading = false
+                        completion(true)
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.error = error.localizedDescription
+                        self.showError = true
+                        self.isLoading = false
+                        completion(false)
+                    }
+                }
+            }
     }
     
     
