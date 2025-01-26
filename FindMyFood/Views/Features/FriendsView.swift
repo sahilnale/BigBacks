@@ -50,26 +50,48 @@ struct FriendsView: View {
                         .foregroundColor(.red)
                         .padding()
                 } else {
-                    List(viewModel.friends) { friend in
-                        NavigationLink(destination: FriendProfileView(userId: friend.id)) {
-                            HStack {
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.accentColor)
-                                
-                                VStack(alignment: .leading) {
-                                    Text(friend.name)
-                                        .font(.headline)
-                                    Text("@\(friend.username)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)) // Optional: Adjust padding
-                    }
-                }
-            }
+//                    List(viewModel.friends) { friend in
+//                        NavigationLink(destination: FriendProfileView(userId: friend.id)) {
+//                            HStack {
+//                                Image(systemName: "person.circle.fill")
+//                                    .font(.system(size: 40))
+//                                    .foregroundColor(.accentColor)
+//                                
+//                                VStack(alignment: .leading) {
+//                                    Text(friend.name)
+//                                        .font(.headline)
+//                                    Text("@\(friend.username)")
+//                                        .font(.subheadline)
+//                                        .foregroundColor(.gray)
+//                                }
+//                            }
+//                        }
+//                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)) // Optional: Adjust padding
+//                    }
+//                }
+//            }
+            List {
+                                   ForEach(viewModel.friends) { friend in
+                                       NavigationLink(destination: FriendProfileView(userId: friend.id)) {
+                                           HStack {
+                                               Image(systemName: "person.circle.fill")
+                                                   .font(.system(size: 40))
+                                                   .foregroundColor(.accentColor)
+
+                                               VStack(alignment: .leading) {
+                                                   Text(friend.name)
+                                                       .font(.headline)
+                                                   Text("@\(friend.username)")
+                                                       .font(.subheadline)
+                                                       .foregroundColor(.gray)
+                                               }
+                                           }
+                                       }
+                                   }
+                                   .onDelete(perform: removeFriend) // Add swipe-to-delete
+                               }
+                           }
+                       }
             .onAppear {
                 Task {
                     await viewModel.loadFriends()
@@ -100,7 +122,15 @@ struct FriendsView: View {
             }
         }
     }
-}
+    private func removeFriend(at offsets: IndexSet) {
+         for index in offsets {
+             let friend = viewModel.friends[index]
+             Task {
+                 await viewModel.deleteFriend(friend)
+             }
+         }
+     }
+ }
 
 
 

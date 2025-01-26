@@ -158,8 +158,8 @@
             filePath = "FindMyFood/Views/Features/FriendsView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "418"
-            endingLineNumber = "418"
+            startingLineNumber = "448"
+            endingLineNumber = "448"
             landmarkName = "body"
             landmarkType = "24">
          </BreakpointContent>
@@ -174,8 +174,8 @@
             filePath = "FindMyFood/Views/Features/FriendsView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "423"
-            endingLineNumber = "423"
+            startingLineNumber = "453"
+            endingLineNumber = "453"
             landmarkName = "body"
             landmarkType = "24">
          </BreakpointContent>
@@ -190,8 +190,8 @@
             filePath = "FindMyFood/Views/Features/FriendsView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "349"
-            endingLineNumber = "349"
+            startingLineNumber = "379"
+            endingLineNumber = "379"
             landmarkName = "SearchResultsListView"
             landmarkType = "14">
          </BreakpointContent>
@@ -206,8 +206,8 @@
             filePath = "FindMyFood/Views/Features/FriendsView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "350"
-            endingLineNumber = "350"
+            startingLineNumber = "380"
+            endingLineNumber = "380"
             landmarkName = "SearchResultsListView"
             landmarkType = "14">
          </BreakpointContent>
@@ -222,8 +222,8 @@
             filePath = "FindMyFood/Views/Features/FriendsView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "417"
-            endingLineNumber = "417"
+            startingLineNumber = "447"
+            endingLineNumber = "447"
             landmarkName = "body"
             landmarkType = "24">
          </BreakpointContent>
