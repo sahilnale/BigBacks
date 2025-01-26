@@ -949,6 +949,49 @@ class AuthViewModel: ObservableObject {
         return comment
     }
     
+    func removeFriend(currentUserId: String, friendId: String) async throws {
+        let db = Firestore.firestore()
+        let currentUserRef = db.collection("users").document(currentUserId)
+        let friendRef = db.collection("users").document(friendId)
+
+        try await db.runTransaction { transaction, errorPointer in
+            // Fetch current user's data
+            let currentUserSnapshot: DocumentSnapshot
+            do {
+                currentUserSnapshot = try transaction.getDocument(currentUserRef)
+            } catch {
+                errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
+                return nil
+            }
+
+            // Fetch friend's data
+            let friendSnapshot: DocumentSnapshot
+            do {
+                friendSnapshot = try transaction.getDocument(friendRef)
+            } catch {
+                errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
+                return nil
+            }
+
+            // Extract friends list and remove each other
+            guard var currentUserFriends = currentUserSnapshot.data()?["friends"] as? [String],
+                  var friendFriends = friendSnapshot.data()?["friends"] as? [String] else {
+                errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid friend data."])
+                return nil
+            }
+
+            currentUserFriends.removeAll { $0 == friendId }
+            friendFriends.removeAll { $0 == currentUserId }
+
+            // Update Firestore documents
+            transaction.updateData(["friends": currentUserFriends], forDocument: currentUserRef)
+            transaction.updateData(["friends": friendFriends], forDocument: friendRef)
+
+            return nil
+        }
+    }
+
+    
     func getFriends() async throws -> [User] {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User is not logged in."])
@@ -1117,3 +1160,4 @@ enum UserFetchError: Error, LocalizedError {
         }
     }
 }
+

@@ -17,13 +17,13 @@ class FriendsViewModel: ObservableObject {
 
     init(authViewModel: AuthViewModel) {
         self.authViewModel = authViewModel
-        self.hasNewRequests = UserDefaults.standard.bool(forKey: "hasNewRequests") // Load from UserDefaults
+        self.hasNewRequests = UserDefaults.standard.bool(forKey: "hasNewRequests")
 
-        // Call the main actor-isolated function asynchronously
         Task { @MainActor in
             self.observeFriendRequests()
         }
     }
+
     func loadFriends() async {
         DispatchQueue.main.async {
             self.isLoading = true
@@ -34,7 +34,6 @@ class FriendsViewModel: ObservableObject {
             let fetchedFriends = try await authViewModel.getFriends()
             DispatchQueue.main.async {
                 self.friends = fetchedFriends
-                print("Friends Loaded: \(self.friends.count)") // Debugging
                 self.isLoading = false
             }
         } catch {
@@ -57,14 +56,11 @@ class FriendsViewModel: ObservableObject {
             }
 
             let fetchedRequests = try await authViewModel.getFriendRequests(for: currentUserId)
-            
-            // Extract the User objects from the tuple
             let users = fetchedRequests.map { $0.0 }
 
             DispatchQueue.main.async {
                 self.friendRequests = users
                 self.hasNewRequests = !users.isEmpty
-                print("Friend Requests Updated: \(self.friendRequests.count)") // Debugging
                 self.isLoading = false
             }
         } catch {
@@ -75,14 +71,27 @@ class FriendsViewModel: ObservableObject {
         }
     }
 
-
     func markRequestsAsViewed() {
         DispatchQueue.main.async {
             self.hasNewRequests = false
         }
     }
 
-    // MARK: - Real-Time Listener for Friend Requests
+    func deleteFriend(_ friend: User) async {
+        guard let currentUserId = await authViewModel.currentUser?.id else { return }
+
+        do {
+            try await authViewModel.removeFriend(currentUserId: currentUserId, friendId: friend.id)
+            DispatchQueue.main.async {
+                self.friends.removeAll { $0.id == friend.id }
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.errorMessage = "Failed to remove friend: \(error.localizedDescription)"
+            }
+        }
+    }
+
     @MainActor func observeFriendRequests() {
         guard let userId = authViewModel.currentUser?.id else { return }
 
@@ -108,7 +117,6 @@ class FriendsViewModel: ObservableObject {
                             DispatchQueue.main.async {
                                 self.friendRequests = users
                                 self.hasNewRequests = !users.isEmpty
-                                print("Real-time friend requests updated: \(users.count)")
                             }
                         } catch {
                             print("Failed to fetch friend request users: \(error)")
@@ -118,7 +126,6 @@ class FriendsViewModel: ObservableObject {
             }
     }
 
-    // MARK: - Clean Up
     deinit {
         listener?.remove()
     }
