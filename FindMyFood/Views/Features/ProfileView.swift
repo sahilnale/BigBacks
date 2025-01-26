@@ -288,6 +288,7 @@ struct LogoutButton: View {
 }
 
 struct PostDetailView: View {
+    @ObservedObject private var authViewModel = AuthViewModel.shared
     var post: Post // Pass the entire `Post` object
     @Environment(\.dismiss) var dismiss
     @State private var isDeleting = false
@@ -317,7 +318,7 @@ struct PostDetailView: View {
                         EmptyView()
                     }
                 }
-
+                
                 Text(post.restaurantName)
                     .font(.title)
                     .fontWeight(.bold)
@@ -328,27 +329,27 @@ struct PostDetailView: View {
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
-
+                
                 HStack {
                     ForEach(0..<5) { star in
                         Image(systemName: star < post.starRating ? "star.fill" : "star")
                             .foregroundColor(star < post.starRating ? .yellow : .gray)
                     }
                 }
-
+                
                 Text("Review")
                     .font(.headline)
                 Text(post.review)
                     .font(.body)
                     .foregroundColor(.secondary)
-
+                
                 HStack {
                     Image(systemName: "heart.fill")
                         .foregroundColor(.red)
                     Text("\(post.likes) likes")
                         .font(.subheadline)
                 }
-
+                
                 if !post.comments.isEmpty {
                     Text("Comments")
                         .font(.headline)
@@ -363,18 +364,19 @@ struct PostDetailView: View {
                         .font(.body)
                         .foregroundColor(.gray)
                 }
-
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        showAlert = true
-                    }) {
-                        Text("Delete Post")
-                            .foregroundColor(.customOrange)
+                if authViewModel.currentUser?.id == post.userId {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            showAlert = true
+                        }) {
+                            Text("Delete Post")
+                                .foregroundColor(.customOrange)
+                        }
+                        Spacer()
                     }
-                    Spacer()
+                    .padding()
                 }
-                .padding()
             }
             .padding()
         }
