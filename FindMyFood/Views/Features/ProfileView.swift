@@ -163,7 +163,7 @@ struct PostGridView: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 2) {
             ForEach(posts.reversed(), id: \._id) { post in
-                NavigationLink(destination: PostDetailView(post: post)) {
+                NavigationLink(destination: PostView(post: post)) {
                     AsyncImage(url: URL(string: post.imageUrl)) { phase in
                         switch phase {
                         case .empty:
