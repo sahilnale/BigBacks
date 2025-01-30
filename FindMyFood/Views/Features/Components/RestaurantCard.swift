@@ -17,49 +17,77 @@ struct RestaurantCard: View {
     @State private var commenterUsernames: [String: String] = [:]
     @State private var isLiked: Bool = false
     @State private var likeCount: Int = 0
-    @State private var isExpanded: Bool = false // Tracks if the description is expanded
+    @State private var isExpanded: Bool = false
     @State private var newCommentText: String = ""
     @State private var showComments: Bool = false
+    @State private var navigateToProfile = false
+    @State private var navigateToPost = false
     var userName: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Dynamic image from post.imageUrl
-            AsyncImage(url: URL(string: post.imageUrl)) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 350, height: 350)
-                    .clipShape(RoundedRectangle(cornerRadius: 15))
-                    .clipped()
-            } placeholder: {
-                Color.gray.frame(width: 350, height: 350)
-                    .clipShape(RoundedRectangle(cornerRadius: 15))
+            // Dynamic image from post.imageUrl
+            Button(action: {
+                navigateToPost = true
+            }) {
+                AsyncImage(url: URL(string: post.imageUrl)) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 350, height: 350)
+                        .clipShape(RoundedRectangle(cornerRadius: 15))
+                        .clipped()
+                } placeholder: {
+                    Color.gray.frame(width: 350, height: 350)
+                        .clipShape(RoundedRectangle(cornerRadius: 15))
+                }
             }
-            
-            NavigationLink(destination: FriendProfileView(userId: post.userId)) {
-                Text("@\(userName)")
-                    .font(.subheadline.bold())
-                    .foregroundColor(.customOrange)
-                    .padding(.leading)
-            }
-            .buttonStyle(PlainButtonStyle()) // Removes the default button appearance
-            .contentShape(Rectangle())       // Limits the tap area to the text
+            .buttonStyle(PlainButtonStyle())
+            .background(
+                NavigationLink(
+                    destination: PostView(post: post),
+                    isActive: $navigateToPost
+                ) {
+                    EmptyView()
+                }
+                .hidden()
+            )
 
-            
+            // Username without arrow
+            HStack {
+                Button(action: {
+                    navigateToProfile = true
+                }) {
+                    Text("@\(userName)")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.customOrange)
+                        .padding(.leading)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .background(
+                NavigationLink(
+                    destination: FriendProfileView(userId: post.userId),
+                    isActive: $navigateToProfile
+                ) {
+                    EmptyView()
+                }
+                .hidden()
+            )
+
+            // Post details and interactions
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Image(systemName: "mappin.and.ellipse")
                             .foregroundColor(.customOrange)
                         Text(post.restaurantName)
-                            //.font(.headline)
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(Color.primary)
                     }
-                    
+
                     Text(post.review)
-                        //.font(.subheadline)
                         .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundColor(Color.secondary)
                         .lineLimit(isExpanded ? nil : 2)
@@ -70,7 +98,7 @@ struct RestaurantCard: View {
                         }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                
+
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")
@@ -79,56 +107,42 @@ struct RestaurantCard: View {
                             .font(.subheadline)
                             .foregroundColor(Color.primary)
                     }
-                    
-                    
-                    
-                    VStack {
-                        Button(action: {
-                            // Toggle the like/dislike functionality
-                            Task {
-                                do {
-                                    // Persist the state with the backend
-                                    let result = try await AuthViewModel.shared.toggleLike(
-                                        postId: post.id,
-                                        userId: Auth.auth().currentUser?.uid ?? "",
-                                        isCurrentlyLiked: isLiked
-                                    )
-                                    await MainActor.run {
-                                        self.likeCount = result.newLikeCount
-                                        self.isLiked = result.isLiked
-                                    }
-                                } catch {
-                                    print("Failed to toggle like: \(error)")
+
+                    Button(action: {
+                        Task {
+                            do {
+                                let result = try await AuthViewModel.shared.toggleLike(
+                                    postId: post.id,
+                                    userId: Auth.auth().currentUser?.uid ?? "",
+                                    isCurrentlyLiked: isLiked
+                                )
+                                await MainActor.run {
+                                    self.likeCount = result.newLikeCount
+                                    self.isLiked = result.isLiked
                                 }
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: isLiked ? "heart.fill" : "heart")
-                                    .foregroundColor(isLiked ? .red : .gray)
-                                    .scaleEffect(isLiked ? 1.2 : 1.0) // Scaling animation for like action
-                                    .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.5), value: isLiked)
-                                    
-                                
-                                Text("\(likeCount) likes")
-                                    .font(.subheadline)
-                                    .foregroundColor(.primary)
+                            } catch {
+                                print("Failed to toggle like: \(error)")
                             }
                         }
-                        .disabled(isLiked && !isLiked) // Disable like if already liked
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    
-                    
-                    
-    
+                    }) {
+                        HStack {
+                            Image(systemName: isLiked ? "heart.fill" : "heart")
+                                .foregroundColor(isLiked ? .red : .gray)
+                                .scaleEffect(isLiked ? 1.2 : 1.0)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.5), value: isLiked)
 
-                    
-                    
+                            Text("\(likeCount) likes")
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            
+
+            // Comments section
             Button(action: {
                 withAnimation {
                     showComments.toggle()
@@ -140,10 +154,10 @@ struct RestaurantCard: View {
                         .foregroundColor(.customOrange)
                 }
             }
-            .buttonStyle(PlainButtonStyle()) // Keeps button behavior simple
+            .buttonStyle(PlainButtonStyle())
             .padding(.leading)
             .padding(.bottom)
-            
+
             if showComments {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(post.comments) { comment in
@@ -158,17 +172,15 @@ struct RestaurantCard: View {
                             } placeholder: {
                                 Circle()
                                     .fill(Color.gray)
-                                    .frame(width: 25, height: 25) // Placeholder for missing profile photo
+                                    .frame(width: 25, height: 25)
                                     .padding(.leading)
                             }
-                            
+
                             VStack(alignment: .leading, spacing: 4) {
-                                // Display the fetched username or show a placeholder
                                 Text("@\(commenterUsernames[comment.userId] ?? "Loading...")")
                                     .foregroundColor(Color.accentColor)
                                     .font(.subheadline)
                                     .onAppear {
-                                        // Fetch the username if not already cached
                                         if commenterUsernames[comment.userId] == nil {
                                             Task {
                                                 do {
@@ -190,7 +202,7 @@ struct RestaurantCard: View {
                                             }
                                         }
                                     }
-                                
+
                                 Text(comment.text)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
@@ -198,55 +210,9 @@ struct RestaurantCard: View {
                                     .padding(.horizontal)
                                     .background(Color(UIColor.systemGray6))
                                     .cornerRadius(8)
-                                
-                                Text("\(timeAgo(from: comment.timestamp))")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
                             }
                         }
                     }
-
-
-                    
-                    HStack {
-                        TextField("Add a comment...", text: $newCommentText)
-                            .textFieldStyle(DefaultTextFieldStyle())
-                        
-                        Button(action: {
-                            guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-
-                            Task {
-                                do {
-                                    let comment = Comment(
-                                        id: UUID().uuidString,
-                                        commentId: UUID().uuidString,
-                                        userId: Auth.auth().currentUser?.uid ?? "",
-                                        profilePhotoUrl: AuthViewModel.shared.currentUser?.profilePicture ?? "placeholder",
-                                        text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
-                                        timestamp: Date()
-                                    )
-                                    
-                                    let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
-                                    
-                                    await MainActor.run {
-                                        post.comments.append(newComment)
-                                        newCommentText = ""
-                                    }
-
-                                    print("Comment added successfully.")
-                                } catch {
-                                    print("Failed to add comment: \(error)")
-                                }
-                            }
-                        }) {
-                            Text("Post")
-                                .font(.subheadline)
-                                .foregroundColor(.customOrange)
-                                .padding(.horizontal)
-                        }
-
-                    }
-                    .padding(.horizontal)
                 }
                 .padding(.bottom)
             }
@@ -255,12 +221,6 @@ struct RestaurantCard: View {
         .cornerRadius(10)
         .shadow(color: Color.primary.opacity(0.1), radius: 5)
         .padding(.horizontal)
-        //       .onAppear {
-        //            likeCount = post.likes
-        //            isLiked = post.likedBy.contains(AuthManager.shared.userId ?? "")
-        
-        //        }
-        
         .onAppear {
             Task {
                 do {
