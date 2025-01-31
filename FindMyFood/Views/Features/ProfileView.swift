@@ -92,15 +92,18 @@ struct ProfileView: View {
                                     // Posts Grid
                                     PostGridView(posts: viewModel.posts, columns: columns)
                                         .padding(.horizontal)
-                                    
+                                    Spacer()
                                     // Logout button placed after all posts
                                     LogoutButton {
                                         authViewModel.logout()
                                     }
                                     .padding(.top, 16)
                                     .padding(.horizontal)
-                                    .padding(.bottom, 32) // Add spacing at the end
+                                    .padding(.bottom, 80) // Add spacing at the end
                                 }
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: geometry.size.height - offset, alignment: .top)
+                                .padding(.bottom, 80)
                             }
                             .transition(.opacity)
                         } else {
@@ -133,7 +136,7 @@ struct ProfileView: View {
                             .onEnded { gesture in
                                 withAnimation(.spring()) {
                                     let upperLimit = screenHeight * 0.08  // Adjust this to control how high it goes
-                                    let lowerLimit = screenHeight * 0.5   // Default lower position
+                                    let lowerLimit = screenHeight * 0.08   // Default lower position
                                                     
                                     if gesture.predictedEndTranslation.height < 0 {
                                         offset = upperLimit
