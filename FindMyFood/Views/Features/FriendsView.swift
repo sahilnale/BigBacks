@@ -17,21 +17,26 @@ struct FriendsView: View {
                 // Button to View Friend Requests
                 Button(action: {
                     showingFriendRequests = true
+                    viewModel.markRequestsAsViewed()
                 }) {
-                    Text("View Requests")
-                        .font(.headline)
-                        .foregroundColor(.accentColor)
+                    HStack {
+                        Text("View Requests (\(viewModel.friendRequests.count))")
+                            .font(.headline)
+                            .foregroundColor(.accentColor)
+
+                        // Indicator for new requests
+                        if viewModel.hasNewRequests {
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 10, height: 10)
+                        }
+                    }
                 }
                 .sheet(isPresented: $showingFriendRequests) {
-                    // Present FriendRequestView in its own NavigationStack
                     NavigationStack {
                         FriendRequestView()
+                            .environmentObject(authViewModel)
                             .navigationTitle("Friend Requests")
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    
-                                }
-                            }
                     }
                 }
 
@@ -45,25 +50,52 @@ struct FriendsView: View {
                         .foregroundColor(.red)
                         .padding()
                 } else {
-                    List(viewModel.friends) { friend in
-                        HStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.accentColor)
-                            VStack(alignment: .leading) {
-                                Text(friend.name)
-                                    .font(.headline)
-                                Text("@\(friend.username)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                }
-            }
+//                    List(viewModel.friends) { friend in
+//                        NavigationLink(destination: FriendProfileView(userId: friend.id)) {
+//                            HStack {
+//                                Image(systemName: "person.circle.fill")
+//                                    .font(.system(size: 40))
+//                                    .foregroundColor(.accentColor)
+//                                
+//                                VStack(alignment: .leading) {
+//                                    Text(friend.name)
+//                                        .font(.headline)
+//                                    Text("@\(friend.username)")
+//                                        .font(.subheadline)
+//                                        .foregroundColor(.gray)
+//                                }
+//                            }
+//                        }
+//                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)) // Optional: Adjust padding
+//                    }
+//                }
+//            }
+            List {
+                                   ForEach(viewModel.friends) { friend in
+                                       NavigationLink(destination: FriendProfileView(userId: friend.id)) {
+                                           HStack {
+                                               Image(systemName: "person.circle.fill")
+                                                   .font(.system(size: 40))
+                                                   .foregroundColor(.accentColor)
+
+                                               VStack(alignment: .leading) {
+                                                   Text(friend.name)
+                                                       .font(.headline)
+                                                   Text("@\(friend.username)")
+                                                       .font(.subheadline)
+                                                       .foregroundColor(.gray)
+                                               }
+                                           }
+                                       }
+                                   }
+                                   .onDelete(perform: removeFriend) // Add swipe-to-delete
+                               }
+                           }
+                       }
             .onAppear {
                 Task {
-                    await viewModel.loadFriends() // Fetch friends on view appearance
+                    await viewModel.loadFriends()
+                    await viewModel.loadFriendRequests()
                 }
             }
             .navigationTitle("Friends")
@@ -80,25 +112,30 @@ struct FriendsView: View {
             }
         }
         .sheet(isPresented: $showingAddFriend) {
-            // Present AddFriendView in its own NavigationStack
             NavigationStack {
                 AddFriendView(
                     currentUserId: authViewModel.currentUser?.id ?? "",
                     friends: viewModel.friends.map { $0.id }
                 )
                 .navigationTitle("Add Friends")
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        
-                    }
-                }
+                .environmentObject(authViewModel)
             }
         }
     }
-}
+    private func removeFriend(at offsets: IndexSet) {
+         for index in offsets {
+             let friend = viewModel.friends[index]
+             Task {
+                 await viewModel.deleteFriend(friend)
+             }
+         }
+     }
+ }
 
 
 
+
+//Friend Requests page below now
 
 import SwiftUI
 
@@ -149,13 +186,20 @@ struct FriendRequestView: View {
         }
         
         do {
-            friendRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            let fetchedRequests = try await authViewModel.getFriendRequests(for: currentUserId)
+            
+            // Extract only the User objects from the tuples
+            friendRequests = fetchedRequests.map { $0.0 }
+            
+            print("Friend Requests Fetched: \(friendRequests)") // Debugging output
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
         }
     }
+
+
     
     private func acceptRequest(from user: User) {
         guard let currentUserId = authViewModel.currentUser?.id else {
@@ -454,8 +498,16 @@ private struct AddFriendButton: View {
         
         Task {
             do {
-                // Call `sendFriendRequest` from `AuthViewModel`
-                try await AuthViewModel.shared.sendFriendRequest(from: currentUserId, to: user.id)
+                // Add `fromUserName` to friend request data
+                let currentUser = AuthViewModel.shared.currentUser
+                let fromUserName = currentUser?.username ?? "Unknown"
+                
+                // Send friend request with sender's username
+                try await AuthViewModel.shared.sendFriendRequest(
+                    from: currentUserId,
+                    to: user.id,
+                    fromUserName: fromUserName
+                )
                 isRequestPending = true // Update state to show "Pending"
             } catch {
                 errorMessage = error.localizedDescription

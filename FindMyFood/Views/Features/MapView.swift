@@ -84,7 +84,12 @@ class CustomPopupView: UIView {
 
         // 2. Warm Deep Gray
         let warmDeepGray = UIColor(red: 0.2, green: 0.18, blue: 0.18, alpha: 1.0) // Hex: #332F2F
-
+        
+        //added
+        titleLabel.isUserInteractionEnabled = true
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps))
+        titleLabel.addGestureRecognizer(tapGesture)
+        
 
         backgroundColor = softCreamyWhite
         layer.cornerRadius = 20
@@ -108,7 +113,7 @@ class CustomPopupView: UIView {
         
         // Title Label
         titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 22) ?? UIFont.systemFont(ofSize: 22, weight: .bold)
-        titleLabel.textColor = UIColor(Color.accentColor)
+        titleLabel.textColor = UIColor(Color.customOrange)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         
@@ -212,7 +217,23 @@ class CustomPopupView: UIView {
     }
 
     
+//added
+    @objc private func openInAppleMaps() {
+        guard let title = titleLabel.text else { return }
 
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = title
+
+        let search = MKLocalSearch(request: request)
+        search.start { response, error in
+            guard let coordinate = response?.mapItems.first?.placemark.coordinate else { return }
+
+            let placemark = MKPlacemark(coordinate: coordinate)
+            let mapItem = MKMapItem(placemark: placemark)
+            mapItem.name = title
+            mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+        }
+    }
 
 
 
@@ -474,33 +495,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         }
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     //Load image annotation
     func loadImageAnnotation() async {
         guard let userId = Auth.auth().currentUser?.uid else {
@@ -564,10 +558,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     }
     
     
-
-
-
-    
     // CLLocationManagerDelegate methods
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
@@ -625,8 +615,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         return nil
     }
-    
-    
+        
     
     // Show popup when annotation is selected
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
@@ -654,7 +643,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     comment: annotation.subtitle,
                     star: annotation.rating,
                     heart: annotation.heartC
-                    
 
                 )
         
@@ -677,7 +665,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             }
         }
 }
-
 
 // Utility extension for MKMapView to get annotations in a given map rectangle
 extension MKMapView {

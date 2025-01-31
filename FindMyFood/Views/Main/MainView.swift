@@ -24,7 +24,7 @@ struct MainView: View {
                     Text("FindMyFood")
                         .font(.system(.title2, design: .serif))
                         .fontWeight(.bold)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.customOrange)
                         .padding(.top, 40)
                     Spacer()
                 }
@@ -48,7 +48,7 @@ struct MainView: View {
                                 .font(.system(size: 20))
                                 .foregroundColor(.white)
                                 .padding()
-                                .background(Color.accentColor)
+                                .background(Color.customOrange)
                                 .clipShape(Circle())
                                 .shadow(radius: 5)
                         }
@@ -59,7 +59,7 @@ struct MainView: View {
                         }) {
                             Image(systemName: "plus")
                                 .font(.system(size: 30))
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(.customOrange)
                                 .padding()
                                 .background(Color.white)
                                 .clipShape(Circle())

@@ -1,67 +1,66 @@
-import Firebase
 import SwiftUI
+import Firebase
 import FirebaseAuth
+import FirebaseFirestore
 import FirebaseStorage
+import Foundation
 
 @MainActor
 class AuthViewModel: ObservableObject {
     static let shared = AuthViewModel()
-    
-    
+
     @Published var error: String?
     @Published var isLoading = false
     @Published var showError = false
-    
     @Published var currentUser: User? = nil
-    
-    
+    @Published var isAuthenticated: Bool = false
 
-    
-    
-    
     init() {
-            Task {
-                await loadCurrentUser()
-            }
+        Task {
+            await loadCurrentUser()
         }
-    
+    }
+
+    // MARK: - Load Current User
     func loadCurrentUser() async {
-            guard let firebaseUser = Auth.auth().currentUser else {
+        guard let firebaseUser = Auth.auth().currentUser else {
+            await MainActor.run {
                 self.currentUser = nil
+            }
+            return
+        }
+
+        let db = Firestore.firestore()
+        do {
+            let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
+            guard let data = userDoc.data() else {
+                await MainActor.run {
+                    self.currentUser = nil
+                }
                 return
             }
 
-            let db = Firestore.firestore()
-            do {
-                let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
-                
-                guard let data = userDoc.data(),
-                      let name = data["name"] as? String,
-                      let username = data["username"] as? String,
-                      let email = data["email"] as? String else {
-                    self.currentUser = nil
-                    return
-                }
-
-                await MainActor.run {
-                    self.currentUser = User(
-                        id: firebaseUser.uid,
-                        name: name,
-                        username: username,
-                        email: email,
-                        friends: data["friends"] as? [String] ?? [],
-                        friendRequests: data["friendRequests"] as? [String] ?? [],
-                        pendingRequests: data["pendingRequests"] as? [String] ?? [],
-                        posts: [],
-                        profilePicture: data["profilePicture"] as? String,
-                        loggedIn: true
-                    )
-                }
-            } catch {
-                print("Failed to fetch current user: \(error.localizedDescription)")
+            await MainActor.run {
+                self.currentUser = User(
+                    id: firebaseUser.uid,
+                    name: data["name"] as? String ?? "",
+                    username: data["username"] as? String ?? "",
+                    email: data["email"] as? String ?? "",
+                    friends: data["friends"] as? [String] ?? [],
+                    friendRequests: data["friendRequests"] as? [String] ?? [],
+                    pendingRequests: data["pendingRequests"] as? [String] ?? [],
+                    posts: [],
+                    profilePicture: data["profilePicture"] as? String,
+                    loggedIn: true
+                )
+            }
+        } catch {
+            print("Failed to fetch current user: \(error.localizedDescription)")
+            await MainActor.run {
                 self.currentUser = nil
             }
         }
+    }
 
 
     func fetchCurrentUser() async throws -> User {
@@ -92,13 +91,133 @@ class AuthViewModel: ObservableObject {
         )
     }
     
+    func updateFirestoreUser(
+        userId: String,
+        name: String,
+        username: String,
+        email: String,
+        profileImageData: Data?,
+        completion: @escaping (Bool) -> Void
+    ) {
+        isLoading = true
+        let db = Firestore.firestore()
+        let userRef = db.collection("users").document(userId)
+
+        Task {
+            do {
+                // Check if the user document exists
+                let document = try await userRef.getDocument()
+                if document.exists {
+                    print("User already exists in Firestore. Updating data...")
+                } else {
+                    print("User does not exist in Firestore. Creating new document...")
+                }
+                
+                // Upload profile picture if provided
+                var profilePictureUrl: String? = nil
+                if let imageData = profileImageData {
+                    profilePictureUrl = try await uploadProfilePicture(imageData: imageData)
+                }
+
+                // Update Firestore document
+                let userData: [String: Any] = [
+                    "id": userId,
+                    "name": name,
+                    "username": username,
+                    "email": email,
+                    "profilePicture": profilePictureUrl ?? "",
+                    "loggedIn": true
+                ]
+                try await userRef.setData(userData, merge: true)
+
+                await MainActor.run {
+                    self.isLoading = false
+                    completion(true)
+                }
+            } catch {
+                print("Failed to update Firestore user: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.isLoading = false
+                    self.error = error.localizedDescription
+                    completion(false)
+                }
+            }
+        }
+    }
+
+    
+    func createUser(
+        name: String,
+        username: String,
+        email: String,
+        password: String,
+        completion: @escaping (Bool, Error?) -> Void
+    ) {
+        Task {
+            do {
+                let result = try await Auth.auth().createUser(withEmail: email, password: password)
+                try await result.user.sendEmailVerification()
+                completion(true, nil)
+            } catch {
+                completion(false, error)
+            }
+        }
+    }
+
+    
+    func sendVerificationEmail(email: String, password: String, completion: @escaping (Bool) -> Void) {
+            isLoading = true
+            Task {
+                do {
+                    // Create user in Firebase Auth
+                    let result = try await Auth.auth().createUser(withEmail: email, password: password)
+                    try await result.user.sendEmailVerification()
+
+                    await MainActor.run {
+                        self.isLoading = false
+                        completion(true)
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.error = error.localizedDescription
+                        self.showError = true
+                        self.isLoading = false
+                        completion(false)
+                    }
+                }
+            }
+    }
+    
     
     
     var isLoggedIn: Bool {
         currentUser != nil
     }
     
-    func signUp(name: String, username: String, email: String, password: String, completion: @escaping (Bool) -> Void) {
+    func uploadProfilePicture(imageData: Data) async throws -> String {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not logged in."])
+        }
+
+        let imageRef = Storage.storage().reference().child("profilePictures/\(userId)")
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
+        let imageUrl = try await imageRef.downloadURL().absoluteString
+
+        return imageUrl
+    }
+
+    
+    func signUp(
+        name: String,
+        username: String,
+        email: String,
+        password: String,
+        profileImageData: Data?,
+        completion: @escaping (Bool) -> Void
+    ) {
         isLoading = true
         Task {
             let db = Firestore.firestore()
@@ -113,21 +232,14 @@ class AuthViewModel: ObservableObject {
                 let result = try await Auth.auth().createUser(withEmail: email, password: password)
                 let userId = result.user.uid
 
-                // Create the user document in Firestore
-                let user = User(
-                    id: userId,
-                    name: name,
-                    username: username,
-                    email: email,
-                    friends: [],
-                    friendRequests: [],
-                    pendingRequests: [],
-                    posts: [],
-                    profilePicture: nil,
-                    loggedIn: true
-                )
+                // Upload the profile picture (if provided)
+                var profilePictureUrl: String? = nil
+                if let imageData = profileImageData {
+                    profilePictureUrl = try await uploadProfilePicture(imageData: imageData)
+                }
 
-                try await db.collection("users").document(userId).setData([
+                // Create the user document in Firestore
+                let user: [String: Any] = [
                     "id": userId,
                     "name": name,
                     "username": username,
@@ -136,12 +248,15 @@ class AuthViewModel: ObservableObject {
                     "friendRequests": [],
                     "pendingRequests": [],
                     "posts": [],
-                    "profilePicture": "",
-                    "loggedIn": true
-                ])
+                    "profilePicture": profilePictureUrl ?? "",
+                    "loggedIn": false
+                ]
+                try await db.collection("users").document(userId).setData(user)
+
+                // Send email verification
+                try await result.user.sendEmailVerification()
 
                 await MainActor.run {
-                    self.currentUser = user
                     self.isLoading = false
                     completion(true)
                 }
@@ -201,8 +316,54 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
+    
+    func resetPassword(email: String, completion: @escaping (Bool) -> Void) {
+        isLoading = true
+        Task {
+            do {
+                try await Auth.auth().sendPasswordReset(withEmail: email)
+                await MainActor.run {
+                    self.error = "Password reset email sent! Please check your inbox."
+                    self.showError = true
+                    self.isLoading = false
+                    completion(true)
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    self.showError = true
+                    self.isLoading = false
+                    completion(false)
+                }
+            }
+        }
+    }
 
+    func refreshCurrentUser() async throws {
+            guard let firebaseUser = Auth.auth().currentUser else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user is logged in."])
+            }
+            try await firebaseUser.reload()
 
+            if firebaseUser.isEmailVerified {
+                // Update the app's user model to reflect verification status
+                await MainActor.run {
+                    self.currentUser = User(
+                        id: firebaseUser.uid,
+                        name: self.currentUser?.name ?? "",
+                        username: self.currentUser?.username ?? "",
+                        email: firebaseUser.email ?? "",
+                        friends: self.currentUser?.friends ?? [],
+                        friendRequests: self.currentUser?.friendRequests ?? [],
+                        pendingRequests: self.currentUser?.pendingRequests ?? [],
+                        posts: self.currentUser?.posts ?? [],
+                        profilePicture: self.currentUser?.profilePicture,
+                        loggedIn: true
+                    )
+                }
+            }
+    }
+    
     
     func logout() {
         do {
@@ -261,7 +422,6 @@ class AuthViewModel: ObservableObject {
                 isoFormatter.timeZone = TimeZone(abbreviation: "UTC")
                 isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
                 
-                let isoTimestampString = isoFormatter.string(from: Date())
 
             // Step 2: Save Post in Firestore
             let db = Firestore.firestore()
@@ -270,7 +430,7 @@ class AuthViewModel: ObservableObject {
                 "id": postId,
                 "userId": userId,
                 "imageUrl": imageUrl,
-                "timestamp": isoTimestampString,
+                "timestamp": FieldValue.serverTimestamp(),
                 "review": review,
                 "location": location,
                 "restaurantName": restaurantName,
@@ -293,7 +453,7 @@ class AuthViewModel: ObservableObject {
                 _id: postId,
                 userId: userId,
                 imageUrl: imageUrl,
-                timestamp: "", // You can fetch the timestamp from Firestore if needed
+                timestamp: Timestamp(date: Date()), // You can fetch the timestamp from Firestore if needed
                 review: review,
                 location: location,
                 restaurantName: restaurantName,
@@ -401,171 +561,175 @@ class AuthViewModel: ObservableObject {
         return users
     }
     
-    func sendFriendRequest(from userId: String, to friendId: String) async throws {
+    // MARK: - Send Friend Request
+    func sendFriendRequest(from userId: String, to friendId: String, fromUserName: String) async throws {
         let db = Firestore.firestore()
-        
-        do {
-            // Fetch both users
-            let userDoc = try await db.collection("users").document(userId).getDocument()
-            let friendDoc = try await db.collection("users").document(friendId).getDocument()
-            
-            guard let userData = userDoc.data(), let friendData = friendDoc.data() else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not found."])
-            }
-            
-            // Fetch existing friend requests and pending requests
-            var userPendingRequests = userData["pendingRequests"] as? [String] ?? []
-            var friendFriendRequests = friendData["friendRequests"] as? [String] ?? []
-            
-            // Check if the friend request already exists
-            if !friendFriendRequests.contains(userId) && !userPendingRequests.contains(friendId) {
-                // Add the friend request
-                friendFriendRequests.append(userId)
-                userPendingRequests.append(friendId)
-                
-                // Update Firestore
-                try await db.collection("users").document(friendId).updateData([
-                    "friendRequests": friendFriendRequests
-                ])
-                try await db.collection("users").document(userId).updateData([
-                    "pendingRequests": userPendingRequests
-                ])
-            }
-        } catch {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to send friend request. \(error.localizedDescription)"])
-        }
+
+        // Create the friend request document
+        let friendRequestData: [String: Any] = [
+            "toUserId": friendId,
+            "fromUserId": userId,
+            "fromUserName": fromUserName
+        ]
+
+        // Add the friend request to the friendRequests collection
+        try await db.collection("friendRequests").addDocument(data: friendRequestData)
+
+        // Update the sender's pendingRequests list
+        let userRef = db.collection("users").document(userId)
+        try await userRef.updateData([
+            "pendingRequests": FieldValue.arrayUnion([friendId])
+        ])
+
+        print("Friend request sent from \(fromUserName) to \(friendId)")
     }
 
-    
-    func getFriendRequests(for userId: String) async throws -> [User] {
+        // MARK: - Update FCM Token
+        func updateFCMTokenForCurrentUser() async throws {
+            guard let userId = Auth.auth().currentUser?.uid else { return }
+            
+            let fcmToken = try await Messaging.messaging().token()
+            
             let db = Firestore.firestore()
-            let userDoc = try await db.collection("users").document(userId).getDocument()
-            
-            guard let data = userDoc.data(),
-                  let friendRequestIds = data["friendRequests"] as? [String] else {
-                return []
-            }
-            
-            var users: [User] = []
-            for friendId in friendRequestIds {
-                let friendDoc = try await db.collection("users").document(friendId).getDocument()
-                guard let friendData = friendDoc.data(),
-                      let id = friendDoc.documentID as? String,
-                      let name = friendData["name"] as? String,
-                      let username = friendData["username"] as? String else {
-                    continue
-                }
-                users.append(User(
-                    id: id,
-                    name: name,
-                    username: username,
-                    email: friendData["email"] as? String ?? "",
-                    friends: friendData["friends"] as? [String] ?? [],
-                    friendRequests: friendData["friendRequests"] as? [String] ?? [],
-                    pendingRequests: friendData["pendingRequests"] as? [String] ?? [],
-                    posts: [],
-                    profilePicture: friendData["profilePicture"] as? String,
-                    loggedIn: friendData["loggedIn"] as? Bool ?? false
-                ))
-            }
-            return users
+            try await db.collection("users").document(userId).updateData([
+                "fcmToken": fcmToken
+            ])
+
+            print("FCM token updated for user: \(userId)")
         }
+
+    
+    func getFriendRequests(for userId: String) async throws -> [(User, String)] {
+        let db = Firestore.firestore()
+
+        // Query the friendRequests collection for requests sent to this user
+        let friendRequestSnapshot = try await db.collection("friendRequests")
+            .whereField("toUserId", isEqualTo: userId)
+            .getDocuments()
+
+        var friendRequests: [(User, String)] = []
+
+        for document in friendRequestSnapshot.documents {
+            let data = document.data()
+            if let fromUserId = data["fromUserId"] as? String,
+               let fromUserName = data["fromUserName"] as? String {
+                // Fetch the user who sent the friend request
+                let friendDoc = try await db.collection("users").document(fromUserId).getDocument()
+                if let friendData = friendDoc.data() {
+                    let user = User(
+                        id: fromUserId,
+                        name: friendData["name"] as? String ?? "",
+                        username: friendData["username"] as? String ?? "",
+                        email: friendData["email"] as? String ?? "",
+                        friends: friendData["friends"] as? [String] ?? [],
+                        friendRequests: [],
+                        pendingRequests: [],
+                        posts: [],
+                        profilePicture: friendData["profilePicture"] as? String,
+                        loggedIn: friendData["loggedIn"] as? Bool ?? false
+                    )
+                    friendRequests.append((user, fromUserName))
+                }
+            }
+        }
+
+        return friendRequests
+    }
+
     
     func acceptFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let db = Firestore.firestore()
-        
-        // References to the current user and friend documents
-        let currentUserRef = db.collection("users").document(currentUserId)
-        let friendRef = db.collection("users").document(friendId)
-        
-        db.runTransaction { (transaction, errorPointer) -> Any? in
+
+        // Query the friendRequests collection before starting the transaction
+        let friendRequestQuery = db.collection("friendRequests")
+            .whereField("toUserId", isEqualTo: currentUserId)
+            .whereField("fromUserId", isEqualTo: friendId)
+
+        // Fetch the matching friend request documents outside the transaction
+        Task {
             do {
-                // Get current user document
-                guard let currentUserSnapshot = try? transaction.getDocument(currentUserRef),
-                      let currentUserData = currentUserSnapshot.data(),
-                      var friendRequests = currentUserData["friendRequests"] as? [String],
-                      var friends = currentUserData["friends"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
+                let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
+
+                // Run the Firestore transaction
+                db.runTransaction({ transaction, errorPointer in
+                    do {
+                        // References to the current user and friend documents
+                        let currentUserRef = db.collection("users").document(currentUserId)
+                        let friendRef = db.collection("users").document(friendId)
+
+                        // Get the current user's document
+                        let currentUserSnapshot = try transaction.getDocument(currentUserRef)
+                        guard var currentUserData = currentUserSnapshot.data(),
+                              var currentUserFriends = currentUserData["friends"] as? [String] else {
+                            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
+                        }
+
+                        // Get the friend's document
+                        let friendSnapshot = try transaction.getDocument(friendRef)
+                        guard var friendData = friendSnapshot.data(),
+                              var friendFriends = friendData["friends"] as? [String] else {
+                            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
+                        }
+
+                        // Add each other to the friends list
+                        currentUserFriends.append(friendId)
+                        friendFriends.append(currentUserId)
+
+                        // Update the users' documents in the transaction
+                        transaction.updateData(["friends": currentUserFriends], forDocument: currentUserRef)
+                        transaction.updateData(["friends": friendFriends], forDocument: friendRef)
+
+                        // Delete the matching friend request documents
+                        for doc in friendRequestSnapshot.documents {
+                            transaction.deleteDocument(doc.reference)
+                        }
+
+                        // Remove the pending request from the sender's document
+                        transaction.updateData([
+                            "pendingRequests": FieldValue.arrayRemove([currentUserId])
+                        ], forDocument: friendRef)
+                    } catch {
+                        // Set the error in the transaction's error pointer
+                        errorPointer?.pointee = error as NSError
+                    }
                     return nil
+                }) { _, error in
+                    // Handle the result of the transaction
+                    if let error = error {
+                        completion(.failure(error))
+                    } else {
+                        completion(.success(()))
+                    }
                 }
-                
-                // Get friend document
-                guard let friendSnapshot = try? transaction.getDocument(friendRef),
-                      let friendData = friendSnapshot.data(),
-                      var friendFriends = friendData["friends"] as? [String],
-                      var pendingRequests = friendData["pendingRequests"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
-                    return nil
-                }
-                
-                // Update friend requests and friends lists
-                friendRequests.removeAll { $0 == friendId }
-                friends.append(friendId)
-                friendFriends.append(currentUserId)
-                pendingRequests.removeAll { $0 == currentUserId }
-                
-                // Update the Firestore documents in the transaction
-                transaction.updateData(["friendRequests": friendRequests, "friends": friends], forDocument: currentUserRef)
-                transaction.updateData(["friends": friendFriends, "pendingRequests": pendingRequests], forDocument: friendRef)
-                
-                return nil
             } catch {
-                errorPointer?.pointee = error as NSError
-                return nil
-            }
-        } completion: { (_, error) in
-            if let error = error {
+                // Handle any errors that occur outside the transaction
                 completion(.failure(error))
-            } else {
-                completion(.success(()))
             }
         }
     }
 
-    
+
     
     func rejectFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let db = Firestore.firestore()
-        
-        let currentUserRef = db.collection("users").document(currentUserId)
-        let friendRef = db.collection("users").document(friendId)
-        
-        db.runTransaction { (transaction, errorPointer) -> Any? in
+
+        // Query the friendRequests collection to find the specific request
+        let friendRequestQuery = db.collection("friendRequests")
+            .whereField("toUserId", isEqualTo: currentUserId)
+            .whereField("fromUserId", isEqualTo: friendId)
+
+        Task {
             do {
-                // Fetch current user's document
-                guard let currentUserSnapshot = try? transaction.getDocument(currentUserRef),
-                      let currentUserData = currentUserSnapshot.data(),
-                      var friendRequests = currentUserData["friendRequests"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
-                    return nil
+                let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
+
+                // Delete all matching friend requests
+                for doc in friendRequestSnapshot.documents {
+                    try await doc.reference.delete()
                 }
-                
-                // Fetch friend's document
-                guard let friendSnapshot = try? transaction.getDocument(friendRef),
-                      let friendData = friendSnapshot.data(),
-                      var pendingRequests = friendData["pendingRequests"] as? [String] else {
-                    errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
-                    return nil
-                }
-                
-                // Update friend requests and pending requests
-                friendRequests.removeAll { $0 == friendId }
-                pendingRequests.removeAll { $0 == currentUserId }
-                
-                // Update the Firestore documents in the transaction
-                transaction.updateData(["friendRequests": friendRequests], forDocument: currentUserRef)
-                transaction.updateData(["pendingRequests": pendingRequests], forDocument: friendRef)
-                
-                return nil
-            } catch {
-                errorPointer?.pointee = error as NSError
-                return nil
-            }
-        } completion: { (_, error) in
-            if let error = error {
-                completion(.failure(error))
-            } else {
+
                 completion(.success(()))
+            } catch {
+                completion(.failure(error))
             }
         }
     }
@@ -649,7 +813,7 @@ class AuthViewModel: ObservableObject {
         return feed
     }
 
-    private func fetchPostDetails(postId: String) async throws -> Post {
+    func fetchPostDetails(postId: String) async throws -> Post {
         let db = Firestore.firestore()
         let postDoc = try await db.collection("posts").document(postId).getDocument()
 
@@ -657,20 +821,42 @@ class AuthViewModel: ObservableObject {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Post not found."])
         }
 
+        let commentsData = postData["comments"] as? [[String: Any]] ?? []
+        let comments: [Comment] = commentsData.compactMap { data in
+            guard let id = data["id"] as? String,
+                  let commentId = data["commentId"] as? String,
+                  let userId = data["userId"] as? String,
+                  let profilePhotoUrl = data["profilePhotoUrl"] as? String,
+                  let text = data["text"] as? String,
+                  let timestamp = data["timestamp"] as? Timestamp else {
+                return nil
+            }
+            return Comment(
+                id: id,
+                commentId: commentId,
+                userId: userId,
+                profilePhotoUrl: profilePhotoUrl,
+                text: text,
+                timestamp: timestamp.dateValue()
+            )
+        }
+
         return Post(
             _id: postDoc.documentID,
             userId: postData["userId"] as? String ?? "",
             imageUrl: postData["imageUrl"] as? String ?? "",
-            timestamp: (postData["timestamp"] as? Timestamp)?.dateValue().description ?? "",
+            timestamp: postData["timestamp"] as? Timestamp ?? Timestamp(date: Date()),
             review: postData["review"] as? String ?? "",
             location: postData["location"] as? String ?? "",
             restaurantName: postData["restaurantName"] as? String ?? "",
             likes: postData["likes"] as? Int ?? 0,
             likedBy: postData["likedBy"] as? [String] ?? [],
             starRating: postData["starRating"] as? Int ?? 0,
-            comments: postData["comments"] as? [Comment] ?? []
+            comments: comments
         )
     }
+
+
 
     private func fetchUserDetails(userId: String) async throws -> User {
         let db = Firestore.firestore()
@@ -696,56 +882,179 @@ class AuthViewModel: ObservableObject {
     
     
     func toggleLike(postId: String, userId: String, isCurrentlyLiked: Bool) async throws -> (newLikeCount: Int, isLiked: Bool) {
+        let db = Firestore.firestore()
+        let postRef = db.collection("posts").document(postId)
         
-            let db = Firestore.firestore()
-            let postRef = db.collection("posts").document(postId)
-            
-            return try await withCheckedThrowingContinuation { continuation in
-                db.runTransaction({ transaction, _ in
-                    let postSnapshot: DocumentSnapshot
-                    do {
-                        postSnapshot = try transaction.getDocument(postRef)
-                    } catch {
-                        continuation.resume(throwing: error)
-                        return nil
-                    }
-                    
-                    guard let postData = postSnapshot.data(),
-                          let currentLikes = postData["likes"] as? Int,
-                          var likedBy = postData["likedBy"] as? [String] else {
-                        continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid post data."]))
-                        return nil
-                    }
-                    
-                    if isCurrentlyLiked {
-                        // User is unliking the post
-                        likedBy.removeAll { $0 == userId }
-                        transaction.updateData([
-                            "likes": currentLikes - 1,
-                            "likedBy": likedBy
-                        ], forDocument: postRef)
-                        continuation.resume(returning: (newLikeCount: currentLikes - 1, isLiked: false))
-                    } else {
-                        // User is liking the post
-                        likedBy.append(userId)
-                        transaction.updateData([
-                            "likes": currentLikes + 1,
-                            "likedBy": likedBy
-                        ], forDocument: postRef)
-                        continuation.resume(returning: (newLikeCount: currentLikes + 1, isLiked: true))
-                    }
+        return try await withCheckedThrowingContinuation { continuation in
+            db.runTransaction({ transaction, _ in
+                let postSnapshot: DocumentSnapshot
+                do {
+                    postSnapshot = try transaction.getDocument(postRef)
+                } catch {
+                    continuation.resume(throwing: error)
                     return nil
-                }, completion: { _, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    }
-                })
-            }
+                }
+                
+                guard let postData = postSnapshot.data(),
+                      let currentLikes = postData["likes"] as? Int,
+                      var likedBy = postData["likedBy"] as? [String] else {
+                    continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid post data."]))
+                    return nil
+                }
+                
+                if isCurrentlyLiked {
+                    // User is disliking the post
+                    likedBy.removeAll { $0 == userId }
+                    transaction.updateData([
+                        "likes": currentLikes - 1,
+                        "likedBy": likedBy
+                    ], forDocument: postRef)
+                    continuation.resume(returning: (newLikeCount: currentLikes - 1, isLiked: false))
+                } else {
+                    // User is liking the post
+                    likedBy.append(userId)
+                    transaction.updateData([
+                        "likes": currentLikes + 1,
+                        "likedBy": likedBy
+                    ], forDocument: postRef)
+                    continuation.resume(returning: (newLikeCount: currentLikes + 1, isLiked: true))
+                }
+                return nil
+            }, completion: { _, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                }
+            })
         }
+    }
+
         
         // Fetch updated post details
         
+    func addComment(to postId: String, comment: Comment) async throws -> Comment {
+        let db = Firestore.firestore()
+        let commentData: [String: Any] = [
+            "id": comment.id,
+            "commentId": comment.commentId,
+            "userId": comment.userId,
+            "profilePhotoUrl": comment.profilePhotoUrl,
+            "text": comment.text,
+            "timestamp": Timestamp(date: comment.timestamp)
+        ]
 
+        try await db.collection("posts").document(postId).updateData([
+            "comments": FieldValue.arrayUnion([commentData])
+        ])
+
+        return comment
+    }
+    
+    func removeFriend(currentUserId: String, friendId: String) async throws {
+        let db = Firestore.firestore()
+        let currentUserRef = db.collection("users").document(currentUserId)
+        let friendRef = db.collection("users").document(friendId)
+
+        try await db.runTransaction { transaction, errorPointer in
+            // Fetch current user's data
+            let currentUserSnapshot: DocumentSnapshot
+            do {
+                currentUserSnapshot = try transaction.getDocument(currentUserRef)
+            } catch {
+                errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
+                return nil
+            }
+
+            // Fetch friend's data
+            let friendSnapshot: DocumentSnapshot
+            do {
+                friendSnapshot = try transaction.getDocument(friendRef)
+            } catch {
+                errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friend data."])
+                return nil
+            }
+
+            // Extract friends list and remove each other
+            guard var currentUserFriends = currentUserSnapshot.data()?["friends"] as? [String],
+                  var friendFriends = friendSnapshot.data()?["friends"] as? [String] else {
+                errorPointer?.pointee = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid friend data."])
+                return nil
+            }
+
+            currentUserFriends.removeAll { $0 == friendId }
+            friendFriends.removeAll { $0 == currentUserId }
+
+            // Update Firestore documents
+            transaction.updateData(["friends": currentUserFriends], forDocument: currentUserRef)
+            transaction.updateData(["friends": friendFriends], forDocument: friendRef)
+
+            return nil
+        }
+    }
+
+    
+    func getFriends() async throws -> [User] {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User is not logged in."])
+        }
+
+        let db = Firestore.firestore()
+        do {
+            // Fetch the current user's document
+            let userDoc = try await db.collection("users").document(currentUserId).getDocument()
+
+            guard let data = userDoc.data(),
+                  let friendIds = data["friends"] as? [String] else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch user's friends list."])
+            }
+
+            // Fetch friend details for each friend ID
+            var fetchedFriends: [User] = []
+            for friendId in friendIds {
+                do {
+                    let friendDoc = try await db.collection("users").document(friendId).getDocument()
+                    guard let friendData = friendDoc.data() else {
+                        print("Friend document not found for ID: \(friendId)")
+                        continue
+                    }
+
+                    // Decode each friend's data manually
+                    guard let id = friendDoc.documentID as String?,
+                          let name = friendData["name"] as? String,
+                          let username = friendData["username"] as? String,
+                          let email = friendData["email"] as? String else {
+                        print("Failed to decode friend data for ID: \(friendId)")
+                        continue
+                    }
+
+                    let friends = friendData["friends"] as? [String] ?? []
+                    let friendRequests = friendData["friendRequests"] as? [String] ?? []
+                    let pendingRequests = friendData["pendingRequests"] as? [String] ?? []
+                    let profilePicture = friendData["profilePicture"] as? String
+
+                    let friend = User(
+                        id: id,
+                        name: name,
+                        username: username,
+                        email: email,
+                        friends: friends,
+                        friendRequests: friendRequests,
+                        pendingRequests: pendingRequests,
+                        posts: [], // Handle posts separately if needed
+                        profilePicture: profilePicture,
+                        loggedIn: true
+                    )
+                    fetchedFriends.append(friend)
+                } catch {
+                    print("Error fetching friend data for ID \(friendId): \(error.localizedDescription)")
+                }
+            }
+
+            return fetchedFriends
+        } catch {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch friends: \(error.localizedDescription)"])
+        }
+    }
+    
 
 
         
@@ -851,3 +1160,4 @@ enum UserFetchError: Error, LocalizedError {
         }
     }
 }
+
