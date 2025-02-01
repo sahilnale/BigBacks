@@ -2,10 +2,11 @@ import SwiftUI
 
 
 struct MainView: View {
-    private let mapViewModel = MapViewModel()
+//    private let mapViewModel = MapViewModel()
+    @StateObject private var mapViewModel = MapViewModel()
     @Binding var selectedTab: Int
     @State private var showCreatePost = false // Tracks whether to show CreatePostView
-
+    
     var body: some View {
         ZStack {
             // MapView with the MapViewModel
@@ -32,50 +33,50 @@ struct MainView: View {
             }
             .ignoresSafeArea(edges: .top)
             
-            // Overlay UI
-            VStack {
-                Spacer() // Push buttons to the bottom
-                
-                HStack {
-                    Spacer()
-                    
-                    VStack(spacing: 15) {
-                        // Recenter Button
-                        Button(action: {
-                            mapViewModel.recenterMap()
-                        }) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.customOrange)
-                                .clipShape(Circle())
-                                .shadow(radius: 5)
-                        }
-                        
-                        // Add Button
-                        Button(action: {
-                            showCreatePost = true
-                        }) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 30))
-                                .foregroundColor(.customOrange)
-                                .padding()
-                                .background(Color.white)
-                                .clipShape(Circle())
-                                .shadow(radius: 5)
-                        }
-                        .sheet(isPresented: $showCreatePost) {
-                            NavigationStack {
-                                CreatePostView(selectedTab: $selectedTab)
-                                
-                            }
-                        }
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 30)
-                }
-            }
-        }
-    }
-}
+            if !mapViewModel.isPopupShown {
+                           VStack {
+                               Spacer()
+                               
+                               HStack {
+                                   Spacer()
+                                   
+                                   VStack(spacing: 15) {
+                                       // Recenter Button
+                                       Button(action: {
+                                           mapViewModel.recenterMap()
+                                       }) {
+                                           Image(systemName: "location.fill")
+                                               .font(.system(size: 20))
+                                               .foregroundColor(.white)
+                                               .padding()
+                                               .background(Color.customOrange)
+                                               .clipShape(Circle())
+                                               .shadow(radius: 5)
+                                       }
+                                       
+                                       // Add Button
+                                       Button(action: {
+                                           showCreatePost = true
+                                       }) {
+                                           Image(systemName: "plus")
+                                               .font(.system(size: 30))
+                                               .foregroundColor(.customOrange)
+                                               .padding()
+                                               .background(Color.white)
+                                               .clipShape(Circle())
+                                               .shadow(radius: 5)
+                                       }
+                                       .sheet(isPresented: $showCreatePost) {
+                                           NavigationStack {
+                                               CreatePostView(selectedTab: $selectedTab)
+                                           }
+                                       }
+                                   }
+                                   .padding(.trailing, 20)
+                                   .padding(.bottom, 30)
+                               }
+                           }
+                       }
+                   }
+               }
+           }
