@@ -3,7 +3,8 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
-    
+    @State private var showEditProfile = false
+
     @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
     private let screenHeight = UIScreen.main.bounds.height
     
@@ -53,6 +54,18 @@ struct ProfileView: View {
                             .frame(width: 40, height: 6)
                             .foregroundColor(.gray)
                             .padding(.top, 8)
+                        HStack {
+                                    Spacer()
+                                    Button(action: {
+                                        showEditProfile = true
+                                    }) {
+                                        Image(systemName: "pencil")
+                                            .foregroundColor(.customOrange)
+                                            .font(.system(size: 20))
+                                    }
+                                    .padding(.top, 8)
+                                    .padding(.trailing, 20)
+                                }
                         
                         VStack(spacing: 4) {
                             Text(viewModel.name)
@@ -63,6 +76,7 @@ struct ProfileView: View {
                             Text("@\(viewModel.username)")
                                 .font(.system(size: 16, weight: .regular))
                                 .foregroundColor(.gray)
+                            
                         }
                         
                         HStack(spacing: 32) {
@@ -109,6 +123,9 @@ struct ProfileView: View {
                         } else {
                             Spacer()
                         }
+                    }
+                    .sheet(isPresented: $showEditProfile) {
+                        EditProfileView()
                     }
                     .frame(maxWidth: .infinity)
                     .background(
