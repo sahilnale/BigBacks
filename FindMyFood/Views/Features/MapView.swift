@@ -27,11 +27,273 @@ class ImageAnnotation: NSObject, MKAnnotation {
         self.heartC = heartC
     }
 }
-
-//Popup
-
+//
+////Popup
+//
+//class CustomPopupView: UIView {
+//    private let titleLabel = UILabel()
+//    private let imageView = UIImageView()
+//    private let reviewerNameLabel = UILabel()
+//    private let commentLabel = UILabel()
+//    private let heartContainer = UIView()
+//    private let heartImageView = UIImageView()
+//    private let heartCountLabel = UILabel()
+//    private let ratingContainer = UIStackView()
+//    private let starImageView = UIImageView()
+//    private let ratingNumberLabel = UILabel()
+//    private var starImageViews: [UIImageView] = []
+//    
+//    private var heartCount: Int = 0 {
+//        didSet {
+//            heartCountLabel.text = "\(heartCount)"
+//        }
+//    }
+//    
+//        private var starRating: Int = 0 {
+//                    didSet { updateStars() }
+//        }
+//    
+//    private let mapIconImageView = UIImageView()
+//    
+//    override init(frame: CGRect) {
+//        super.init(frame: frame)
+//        setupView()
+//    }
+//    
+//    required init?(coder: NSCoder) {
+//        fatalError("init(coder:) has not been implemented")
+//    }
+//    
+//    private func setupView() {
+//        // Background setup
+//        let softCreamyWhite = UIColor(red: 1.0, green: 0.973, blue: 0.953, alpha: 1.0)
+//        backgroundColor = softCreamyWhite
+//        layer.cornerRadius = 20
+//        layer.shadowColor = UIColor.black.cgColor
+//        layer.shadowOpacity = 0.08
+//        layer.shadowOffset = CGSize(width: 0, height: 6)
+//        layer.shadowRadius = 10
+//        
+//        // Animation setup
+//        transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+//        UIView.animate(withDuration: 0.4,
+//                      delay: 0,
+//                      usingSpringWithDamping: 0.6,
+//                      initialSpringVelocity: 0.8,
+//                      options: .curveEaseOut,
+//                      animations: {
+//            self.transform = .identity
+//        })
+//        
+//        // Image View setup
+//        imageView.contentMode = .scaleAspectFill
+//        imageView.clipsToBounds = true
+//        imageView.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Heart Container setup
+//        heartContainer.backgroundColor = UIColor.black.withAlphaComponent(0.3)
+//        heartContainer.layer.cornerRadius = 25
+//        heartContainer.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Heart Icon setup
+//        heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.systemRed, renderingMode: .alwaysOriginal)
+//        heartImageView.contentMode = .scaleAspectFit
+//        heartImageView.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Heart Count Label setup
+//        heartCountLabel.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+//        heartCountLabel.textColor = .black
+//        heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Rating Container setup
+//        ratingContainer.axis = .horizontal
+//        ratingContainer.spacing = 4
+//        ratingContainer.alignment = .trailing
+//        ratingContainer.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Star Image setup
+//        let goldenYellow = UIColor(red: 255/255, green: 223/255, blue: 0/255, alpha: 1)
+//        starImageView.image = UIImage(systemName: "star.fill")?.withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
+//        starImageView.contentMode = .scaleAspectFit
+//        starImageView.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Rating Number Label setup
+//        ratingNumberLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+//        ratingNumberLabel.textColor = .black
+//        ratingNumberLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Other labels setup
+//        titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 18) ?? UIFont.systemFont(ofSize: 18, weight: .bold)
+//        titleLabel.textColor = UIColor(Color.customOrange)
+//        titleLabel.numberOfLines = 0
+//        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        reviewerNameLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+//        reviewerNameLabel.textColor = .gray
+//        reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        commentLabel.font = UIFont.systemFont(ofSize: 14)
+//        commentLabel.textColor = .gray
+//        commentLabel.numberOfLines = 0
+//        commentLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        mapIconImageView.image = UIImage(systemName: "mappin")?.withTintColor(.accentColor2, renderingMode: .alwaysOriginal) // A simple map icon
+//        mapIconImageView.contentMode = .scaleAspectFit
+//        mapIconImageView.translatesAutoresizingMaskIntoConstraints = false
+//        mapIconImageView.isUserInteractionEnabled = true
+//        
+//        let stackView = UIStackView()
+//        stackView.axis = .horizontal
+//        stackView.spacing = 8
+//        stackView.translatesAutoresizingMaskIntoConstraints = false
+//                
+//        
+//        stackView.addArrangedSubview(mapIconImageView)
+//        stackView.addArrangedSubview(titleLabel)
+//        
+//        addSubview(stackView)
+//        
+//        // Add subviews
+//        addSubview(imageView)
+//        imageView.addSubview(heartContainer)
+//        heartContainer.addSubview(heartImageView)
+//        addSubview(heartCountLabel)
+//        
+//        ratingContainer.addArrangedSubview(starImageView)
+//        ratingContainer.addArrangedSubview(ratingNumberLabel)
+//        
+//        
+//        
+//        addSubview(titleLabel)
+//        addSubview(reviewerNameLabel)
+//        addSubview(ratingContainer)
+//        addSubview(commentLabel)
+//        
+//        // Add the map icon next to the restaurant name label
+//        addSubview(mapIconImageView)
+//        mapIconImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps)))
+//        
+//        NSLayoutConstraint.activate([
+//            // Image View
+//            imageView.topAnchor.constraint(equalTo: topAnchor),
+//            imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
+//            imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
+//            imageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.67),
+//            
+//            // Heart Container
+//            heartContainer.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 16),
+//            heartContainer.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -16),
+//            heartContainer.widthAnchor.constraint(equalToConstant: 50),
+//            heartContainer.heightAnchor.constraint(equalToConstant: 50),
+//            
+//            // Heart Icon
+//            heartImageView.centerXAnchor.constraint(equalTo: heartContainer.centerXAnchor),
+//            heartImageView.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor),
+//            heartImageView.widthAnchor.constraint(equalToConstant: 30),
+//            heartImageView.heightAnchor.constraint(equalToConstant: 30),
+//            
+//            // Heart Count Label (outside the circle)
+//            heartCountLabel.leadingAnchor.constraint(equalTo: heartContainer.trailingAnchor, constant: 8),
+//            heartCountLabel.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor),
+//            
+//            // Title and Reviewer Name
+//            titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 16),
+//            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+//            titleLabel.trailingAnchor.constraint(equalTo: ratingContainer.leadingAnchor, constant: -8),
+//            
+//            reviewerNameLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+//            reviewerNameLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+//            reviewerNameLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+//            
+//            // Rating Container
+//            //ratingContainer.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+//            ratingContainer.topAnchor.constraint(equalTo: titleLabel.topAnchor), // Ensures alignment with title
+//            ratingContainer.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16),
+//            starImageView.widthAnchor.constraint(equalToConstant: 20),
+//            starImageView.heightAnchor.constraint(equalToConstant: 20),
+//            
+//            // Comment Label
+//            commentLabel.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 16),
+//            commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+//            commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+//            commentLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
+//            
+//            mapIconImageView.leadingAnchor.constraint(equalTo: reviewerNameLabel.trailingAnchor, constant: 8),
+//            mapIconImageView.centerYAnchor.constraint(equalTo: reviewerNameLabel.centerYAnchor),
+//            mapIconImageView.widthAnchor.constraint(equalToConstant: 20),
+//            mapIconImageView.heightAnchor.constraint(equalToConstant: 20),
+//            
+//            stackView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+//            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+//            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16)
+//        ])
+//        
+//        // Maps integration
+//        titleLabel.isUserInteractionEnabled = true
+//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps))
+//        titleLabel.addGestureRecognizer(tapGesture)
+//    }
+//    
+//    @objc private func openInAppleMaps() {
+//        guard let title = titleLabel.text else { return }
+//        
+//        let request = MKLocalSearch.Request()
+//        request.naturalLanguageQuery = title
+//        
+//        let search = MKLocalSearch(request: request)
+//        search.start { response, error in
+//            guard let coordinate = response?.mapItems.first?.placemark.coordinate else { return }
+//            
+//            let placemark = MKPlacemark(coordinate: coordinate)
+//            let mapItem = MKMapItem(placemark: placemark)
+//            mapItem.name = title
+//            mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+//        }
+//    }
+//
+//
+//    
+//    private func updateStars() {
+//            let goldenYellow = UIColor(red: 255/255, green: 223/255, blue: 0/255, alpha: 1) // Custom golden yellow color
+//        let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
+//            let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
+//            
+//            for (index, starImageView) in starImageViews.enumerated() {
+//                starImageView.image = index < starRating ? filledStarImage : emptyStarImage
+//            }
+//        }
+//    
+//
+//
+//    func setDetails(title: String?, image: UIImage?, reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
+//        
+//        
+////        titleLabel.text = title
+////        imageView.image = image
+////
+////        reviewerNameLabel.text = "Reviewer: \(reviewerName)"
+////        ratingLabel.text = "Rating: \(rating)"  // Set this only if used
+////        commentLabel.text = comment
+////
+////        reviewerNameLabel.text = reviewerName
+////        
+////        commentLabel.text = comment
+////        
+////        starRating = star ?? 0
+////        heartCount = heart ?? 0
+//        
+//        titleLabel.text = title
+//                imageView.image = image
+//                reviewerNameLabel.text = reviewerName
+//                ratingNumberLabel.text = "\(rating ?? 0)"
+//                commentLabel.text = comment
+//                heartCount = heart ?? 0
+//
+//    }
+//}
 class CustomPopupView: UIView {
     private let titleLabel = UILabel()
+    private let titleContainer = UIStackView()
     private let imageView = UIImageView()
     private let reviewerNameLabel = UILabel()
     private let commentLabel = UILabel()
@@ -39,9 +301,9 @@ class CustomPopupView: UIView {
     private let heartImageView = UIImageView()
     private let heartCountLabel = UILabel()
     private let ratingContainer = UIStackView()
-    private let starImageView = UIImageView()
-    private let ratingNumberLabel = UILabel()
     private var starImageViews: [UIImageView] = []
+    private let ratingNumberLabel = UILabel()
+    private let mapIconImageView = UIImageView()
     
     private var heartCount: Int = 0 {
         didSet {
@@ -49,11 +311,9 @@ class CustomPopupView: UIView {
         }
     }
     
-        private var starRating: Int = 0 {
-                    didSet { updateStars() }
-        }
-    
-    private let mapIconImageView = UIImageView()
+    private var starRating: Int = 0 {
+        didSet { updateStars() }
+    }
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -65,30 +325,76 @@ class CustomPopupView: UIView {
     }
     
     private func setupView() {
-        // Background setup
-        let softCreamyWhite = UIColor(red: 1.0, green: 0.973, blue: 0.953, alpha: 1.0)
-        backgroundColor = softCreamyWhite
-        layer.cornerRadius = 20
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.08
-        layer.shadowOffset = CGSize(width: 0, height: 6)
-        layer.shadowRadius = 10
+        backgroundColor = .white
+        layer.cornerRadius = 12
+        layer.masksToBounds = true
         
-        // Animation setup
-        transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
-        UIView.animate(withDuration: 0.4,
-                      delay: 0,
-                      usingSpringWithDamping: 0.6,
-                      initialSpringVelocity: 0.8,
-                      options: .curveEaseOut,
-                      animations: {
-            self.transform = .identity
-        })
-        
-        // Image View setup
+        setupSubviews()
+        setupConstraints()
+    }
+    
+    private func setupSubviews() {
+        // Image View
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Title Container
+        titleContainer.axis = .horizontal
+        titleContainer.spacing = 4
+        titleContainer.alignment = .center
+        titleContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Title
+        titleLabel.font = .systemFont(ofSize: 24, weight: .semibold)
+        titleLabel.textColor = UIColor(red: 241/255, green: 90/255, blue: 35/255, alpha: 1)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Map Icon
+        mapIconImageView.image = UIImage(systemName: "mappin")?.withTintColor(.accentColor2, renderingMode: .alwaysOriginal)
+        mapIconImageView.contentMode = .scaleAspectFit
+        mapIconImageView.translatesAutoresizingMaskIntoConstraints = false
+        mapIconImageView.isUserInteractionEnabled = true
+        mapIconImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps)))
+        
+        // Rating Container
+        ratingContainer.axis = .horizontal
+        ratingContainer.spacing = 2
+        ratingContainer.alignment = .center
+        ratingContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Stars
+        let goldenYellow = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
+        for _ in 0..<5 {
+            let starImageView = UIImageView()
+            starImageView.contentMode = .scaleAspectFit
+            starImageView.translatesAutoresizingMaskIntoConstraints = false
+            starImageView.image = UIImage(systemName: "star.fill")?.withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
+            starImageViews.append(starImageView)
+            ratingContainer.addArrangedSubview(starImageView)
+            
+            NSLayoutConstraint.activate([
+                starImageView.widthAnchor.constraint(equalToConstant: 24),
+                starImageView.heightAnchor.constraint(equalToConstant: 24)
+            ])
+        }
+        
+        // Rating Number
+        ratingNumberLabel.font = .systemFont(ofSize: 14)
+        ratingNumberLabel.textColor = .accentColor2
+        ratingNumberLabel.translatesAutoresizingMaskIntoConstraints = false
+        ratingContainer.addArrangedSubview(ratingNumberLabel)
+        
+        // Reviewer Name
+        reviewerNameLabel.font = .systemFont(ofSize: 16, weight: .regular)
+        reviewerNameLabel.textColor = .accentColor2
+        reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Comment
+        commentLabel.font = .systemFont(ofSize: 16)
+        commentLabel.textColor = .gray
+        commentLabel.numberOfLines = 0
+        commentLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Heart Container setup
         heartContainer.backgroundColor = UIColor.black.withAlphaComponent(0.3)
@@ -102,83 +408,52 @@ class CustomPopupView: UIView {
         
         // Heart Count Label setup
         heartCountLabel.font = UIFont.systemFont(ofSize: 14, weight: .bold)
-        heartCountLabel.textColor = .black
+        heartCountLabel.textColor = .white  // Changed to black since it's outside now
         heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Rating Container setup
-        ratingContainer.axis = .horizontal
-        ratingContainer.spacing = 4
-        ratingContainer.alignment = .trailing
-        ratingContainer.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Star Image setup
-        let goldenYellow = UIColor(red: 255/255, green: 223/255, blue: 0/255, alpha: 1)
-        starImageView.image = UIImage(systemName: "star.fill")?.withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
-        starImageView.contentMode = .scaleAspectFit
-        starImageView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Rating Number Label setup
-        ratingNumberLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
-        ratingNumberLabel.textColor = .black
-        ratingNumberLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Other labels setup
-        titleLabel.font = UIFont(name: "HelveticaNeue-Bold", size: 18) ?? UIFont.systemFont(ofSize: 18, weight: .bold)
-        titleLabel.textColor = UIColor(Color.customOrange)
-        titleLabel.numberOfLines = 0
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        reviewerNameLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        reviewerNameLabel.textColor = .gray
-        reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        commentLabel.font = UIFont.systemFont(ofSize: 14)
-        commentLabel.textColor = .gray
-        commentLabel.numberOfLines = 0
-        commentLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        mapIconImageView.image = UIImage(systemName: "mappin")?.withTintColor(.accentColor2, renderingMode: .alwaysOriginal) // A simple map icon
-        mapIconImageView.contentMode = .scaleAspectFit
-        mapIconImageView.translatesAutoresizingMaskIntoConstraints = false
-        mapIconImageView.isUserInteractionEnabled = true
-        
-        let stackView = UIStackView()
-        stackView.axis = .horizontal
-        stackView.spacing = 8
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-                
-        
-        stackView.addArrangedSubview(mapIconImageView)
-        stackView.addArrangedSubview(titleLabel)
-        
-        addSubview(stackView)
-        
+
         // Add subviews
         addSubview(imageView)
-        imageView.addSubview(heartContainer)
-        heartContainer.addSubview(heartImageView)
-        addSubview(heartCountLabel)
-        
-        ratingContainer.addArrangedSubview(starImageView)
-        ratingContainer.addArrangedSubview(ratingNumberLabel)
-        
-        
-        
-        addSubview(titleLabel)
-        addSubview(reviewerNameLabel)
+        addSubview(titleContainer)
+        titleContainer.addArrangedSubview(titleLabel)
+        titleContainer.addArrangedSubview(mapIconImageView)
         addSubview(ratingContainer)
+        addSubview(reviewerNameLabel)
         addSubview(commentLabel)
         
-        // Add the map icon next to the restaurant name label
-        addSubview(mapIconImageView)
-        mapIconImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps)))
-        
+        addSubview(heartContainer)
+        heartContainer.addSubview(heartImageView)
+        heartContainer.addSubview(heartCountLabel)
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
-            // Image View
+            // Image
             imageView.topAnchor.constraint(equalTo: topAnchor),
             imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
             imageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.67),
+            
+            // Title Container
+            titleContainer.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
+            titleContainer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            
+            // Map Icon
+            mapIconImageView.widthAnchor.constraint(equalToConstant: 24),
+            mapIconImageView.heightAnchor.constraint(equalToConstant: 24),
+            
+            // Rating Container
+            ratingContainer.topAnchor.constraint(equalTo: titleContainer.topAnchor),
+            ratingContainer.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            
+            // Reviewer Name
+            reviewerNameLabel.topAnchor.constraint(equalTo: titleContainer.bottomAnchor, constant: 8),
+            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            
+            // Comment
+            commentLabel.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 8),
+            commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            commentLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
             
             // Heart Container
             heartContainer.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 16),
@@ -192,46 +467,10 @@ class CustomPopupView: UIView {
             heartImageView.widthAnchor.constraint(equalToConstant: 30),
             heartImageView.heightAnchor.constraint(equalToConstant: 30),
             
-            // Heart Count Label (outside the circle)
+            // Heart Count Label
             heartCountLabel.leadingAnchor.constraint(equalTo: heartContainer.trailingAnchor, constant: 8),
-            heartCountLabel.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor),
-            
-            // Title and Reviewer Name
-            titleLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 16),
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            titleLabel.trailingAnchor.constraint(equalTo: ratingContainer.leadingAnchor, constant: -8),
-            
-            reviewerNameLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            reviewerNameLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            reviewerNameLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
-            
-            // Rating Container
-            //ratingContainer.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
-            ratingContainer.topAnchor.constraint(equalTo: titleLabel.topAnchor), // Ensures alignment with title
-            ratingContainer.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16),
-            starImageView.widthAnchor.constraint(equalToConstant: 20),
-            starImageView.heightAnchor.constraint(equalToConstant: 20),
-            
-            // Comment Label
-            commentLabel.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 16),
-            commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            commentLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
-            
-            mapIconImageView.leadingAnchor.constraint(equalTo: reviewerNameLabel.trailingAnchor, constant: 8),
-            mapIconImageView.centerYAnchor.constraint(equalTo: reviewerNameLabel.centerYAnchor),
-            mapIconImageView.widthAnchor.constraint(equalToConstant: 20),
-            mapIconImageView.heightAnchor.constraint(equalToConstant: 20),
-            
-            stackView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16)
+            heartCountLabel.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor)
         ])
-        
-        // Maps integration
-        titleLabel.isUserInteractionEnabled = true
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps))
-        titleLabel.addGestureRecognizer(tapGesture)
     }
     
     @objc private func openInAppleMaps() {
@@ -250,52 +489,27 @@ class CustomPopupView: UIView {
             mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
         }
     }
-
-
     
     private func updateStars() {
-            let goldenYellow = UIColor(red: 255/255, green: 223/255, blue: 0/255, alpha: 1) // Custom golden yellow color
+        let goldenYellow = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
         let filledStarImage = UIImage(systemName: "star.fill")?.withTintColor(goldenYellow, renderingMode: .alwaysOriginal)
-            let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
-            
-            for (index, starImageView) in starImageViews.enumerated() {
-                starImageView.image = index < starRating ? filledStarImage : emptyStarImage
-            }
+        let emptyStarImage = UIImage(systemName: "star")?.withTintColor(.lightGray, renderingMode: .alwaysOriginal)
+        
+        for (index, starImageView) in starImageViews.enumerated() {
+            starImageView.image = index < starRating ? filledStarImage : emptyStarImage
         }
+    }
     
-
-
     func setDetails(title: String?, image: UIImage?, reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
-        
-        
-//        titleLabel.text = title
-//        imageView.image = image
-//
-//        reviewerNameLabel.text = "Reviewer: \(reviewerName)"
-//        ratingLabel.text = "Rating: \(rating)"  // Set this only if used
-//        commentLabel.text = comment
-//
-//        reviewerNameLabel.text = reviewerName
-//        
-//        commentLabel.text = comment
-//        
-//        starRating = star ?? 0
-//        heartCount = heart ?? 0
-        
         titleLabel.text = title
-                imageView.image = image
-                reviewerNameLabel.text = reviewerName
-                ratingNumberLabel.text = "\(rating ?? 0)"
-                commentLabel.text = comment
-                heartCount = heart ?? 0
-
+        imageView.image = image
+        reviewerNameLabel.text = "@" + (reviewerName ?? "friend")
+        starRating = rating ?? 0
+        ratingNumberLabel.text = " (\(rating ?? 0))"
+        commentLabel.text = comment
+        heartCount = heart ?? 0
     }
 }
-
-
-
-
-
 // Custom annotation view
 class ImageAnnotationView: MKAnnotationView {
     private var imageView: UIImageView!
@@ -326,7 +540,8 @@ class ImageAnnotationView: MKAnnotationView {
 }
 
 // Map View Model
-class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
+class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, ObservableObject {
+    @Published var isPopupShown: Bool = false
     private let locationManager = CLLocationManager()
     private let map: MKMapView = {
         let map = MKMapView()
@@ -563,7 +778,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     title: post.restaurantName,
                     subtitle: post.review,
                     image: image,
-                    author: user.name,
+                    author: user.username,
                     rating: post.starRating,
                     heartC: post.likes
                 )
@@ -653,6 +868,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         // Set the current popup view for dismissal
         currentPopupView = popupView
+        isPopupShown = true
     }
     
     // Handle tap on the map to dismiss popup
@@ -664,6 +880,9 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 // Remove the popup
                 popupView.removeFromSuperview()
                 currentPopupView = nil
+                DispatchQueue.main.async {
+                    self.isPopupShown = false
+                }
             }
         }
 }
