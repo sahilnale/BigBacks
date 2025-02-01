@@ -92,15 +92,18 @@ struct ProfileView: View {
                                     // Posts Grid
                                     PostGridView(posts: viewModel.posts, columns: columns)
                                         .padding(.horizontal)
-                                    
+                                    Spacer()
                                     // Logout button placed after all posts
                                     LogoutButton {
                                         authViewModel.logout()
                                     }
                                     .padding(.top, 16)
                                     .padding(.horizontal)
-                                    .padding(.bottom, 32) // Add spacing at the end
+                                    .padding(.bottom, 80) // Add spacing at the end
                                 }
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: geometry.size.height - offset, alignment: .top)
+                                .padding(.bottom, 80)
                             }
                             .transition(.opacity)
                         } else {
@@ -126,16 +129,19 @@ struct ProfileView: View {
                         DragGesture()
                             .onChanged { gesture in
                                 let newOffset = offset + gesture.translation.height
-                                if newOffset >= 0 && newOffset <= screenHeight * 0.6 {
-                                    offset = newOffset
+                                            if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.6 {
+                                                offset = newOffset
                                 }
                             }
                             .onEnded { gesture in
                                 withAnimation(.spring()) {
+                                    let upperLimit = screenHeight * 0.08  // Adjust this to control how high it goes
+                                    let lowerLimit = screenHeight * 0.08   // Default lower position
+                                                    
                                     if gesture.predictedEndTranslation.height < 0 {
-                                        offset = 0
+                                        offset = upperLimit
                                     } else {
-                                        offset = screenHeight * 0.5
+                                        offset = lowerLimit
                                     }
                                 }
                             }
@@ -161,7 +167,7 @@ struct PostGridView: View {
     let columns: [GridItem]
     
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 2) {
+        LazyVGrid(columns: columns, spacing: 8) {
             ForEach(posts.reversed(), id: \._id) { post in
                 NavigationLink(destination: PostView(post: post)) {
                     AsyncImage(url: URL(string: post.imageUrl)) { phase in
@@ -261,6 +267,7 @@ struct ProfileHeaderView: View {
             } else {
                 Text(name)
                     .font(.headline)
+                    .padding(.top)
                 Text("@\(username)")
                     .font(.subheadline)
                     .foregroundColor(.gray)

@@ -210,9 +210,49 @@ struct RestaurantCard: View {
                                     .padding(.horizontal)
                                     .background(Color(UIColor.systemGray6))
                                     .cornerRadius(8)
+                                
+                                Text("\(timeAgo(from: comment.timestamp))")
+                                                                   .font(.caption)
+                                                                   .foregroundColor(.gray)
                             }
                         }
                     }
+                    HStack {
+                       TextField("Add a comment...", text: $newCommentText)
+                           .textFieldStyle(DefaultTextFieldStyle())
+                       
+                       Button(action: {
+                           guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                           Task {
+                               do {
+                                   let comment = Comment(
+                                       id: UUID().uuidString,
+                                       commentId: UUID().uuidString,
+                                       userId: Auth.auth().currentUser?.uid ?? "",
+                                       profilePhotoUrl: AuthViewModel.shared.currentUser?.profilePicture ?? "placeholder",
+                                       text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
+                                       timestamp: Date()
+                                   )
+                                   
+                                   let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
+                                   
+                                   await MainActor.run {
+                                       post.comments.append(newComment)
+                                       newCommentText = ""
+                                   }
+                                   print("Comment added successfully.")
+                               } catch {
+                                   print("Failed to add comment: \(error)")
+                               }
+                           }
+                       }) {
+                           Text("Post")
+                               .font(.subheadline)
+                               .foregroundColor(.customOrange)
+                               .padding(.horizontal)
+                       }
+                   }
+                   .padding(.horizontal)
                 }
                 .padding(.bottom)
             }
