@@ -8,7 +8,7 @@ import MapKit
 struct CreatePostView: View {
     @State private var showImagePicker = false
     @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
-    @State private var selectedImage: UIImage? = nil
+    @State private var selectedImages: [UIImage] = []
     @State private var imageLocation: CLLocation? = nil
     @State private var postText: String = ""
     @State private var restaurantName: String = ""
@@ -23,6 +23,7 @@ struct CreatePostView: View {
     @State private var selectedLocationCoordinates: CLLocationCoordinate2D? = nil
     @State private var isUploading = false
     @State private var isLocationManuallySet = false // New state to track manual location updates
+    @State private var photoPickerItems: [PhotosPickerItem] = []
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
     @EnvironmentObject var authViewModel: AuthViewModel // Use A
@@ -33,23 +34,12 @@ struct CreatePostView: View {
         NavigationStack {
             VStack(spacing: 20) {
                 // Image Preview or Placeholder
-                if let image = selectedImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 250)
-                        .cornerRadius(15)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 15)
-                                .stroke(Color.gray, lineWidth: 1)
-                        )
-                        .padding()
-                } else {
+                if selectedImages.isEmpty {
                     RoundedRectangle(cornerRadius: 15)
                         .fill(Color.gray.opacity(0.2))
                         .frame(height: 250)
                         .overlay(
-                            Text("Tap to add an image")
+                            Text("Tap to add images")
                                 .foregroundColor(.gray)
                                 .font(.headline)
                         )
@@ -57,7 +47,48 @@ struct CreatePostView: View {
                             showPhotoOptions = true
                         }
                         .padding()
+                } else {
+                    // Image Preview for Multiple Images
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(selectedImages, id: \.self) { image in
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 100, height: 100)
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.gray, lineWidth: 1)
+                                    )
+                                    .padding(4)
+                            }
+                        }
+                    }
+                    .frame(height: 120)
+                    .padding()
                 }
+                
+                PhotosPicker(
+                        selection: $photoPickerItems,
+                        maxSelectionCount: 5, // Adjust for the max number of images
+                        matching: .images
+                    ) {
+                        Text("Select Images")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                    }
+                    .onChange(of: photoPickerItems) { newItems in
+                        Task {
+                            selectedImages = [] // Reset the selected images
+                            for item in newItems {
+                                if let data = try? await item.loadTransferable(type: Data.self),
+                                   let uiImage = UIImage(data: data) {
+                                    selectedImages.append(uiImage)
+                                }
+                            }
+                        }
+                    }
 
                 // Star Rating
                 HStack {
@@ -155,9 +186,9 @@ struct CreatePostView: View {
                     }) {
                         Text("Post")
                             .font(.headline)
-                            .foregroundColor(postText.isEmpty || selectedImage == nil || isUploading ? .gray : .customOrange)
+                            .foregroundColor(postText.isEmpty || selectedImages.isEmpty || isUploading ? .gray : .customOrange)
                     }
-                    .disabled(postText.isEmpty || selectedImage == nil || isUploading)
+                    .disabled(postText.isEmpty || selectedImages.isEmpty || isUploading)
                 }
             }
             .confirmationDialog("Choose Image Source", isPresented: $showPhotoOptions) {
@@ -175,7 +206,7 @@ struct CreatePostView: View {
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(
                     sourceType: sourceType,
-                    selectedImage: $selectedImage,
+                    selectedImages: $selectedImages,
                     imageLocation: $imageLocation,
                     locationDisplay: $locationDisplay,
                     isLocationManuallySet: $isLocationManuallySet // Pass the binding
@@ -217,68 +248,69 @@ struct CreatePostView: View {
     }
 
     private func postReview() async {
-            guard let image = selectedImage else {
-                print("No image selected.")
+        guard !selectedImages.isEmpty else {
+            print("No images selected.")
+            return
+        }
+
+        isUploading = true
+        do {
+            // Convert images to JPEG data
+            let imageDatas = selectedImages.compactMap { $0.jpegData(compressionQuality: 0.8) }
+            if imageDatas.isEmpty {
+                print("Failed to process images.")
+                isUploading = false
                 return
             }
 
-            isUploading = true
-            do {
-                guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-                    print("Failed to compress image.")
-                    isUploading = false
-                    return
-                }
-
-                if restaurantName.isEmpty || restaurantName == "Location not found" {
-                    restaurantName = locationDisplay
-                }
-
-                let coordinates = selectedLocationCoordinates ?? imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
-                let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
-
-                let reviewContent = reviewText.isEmpty ? postText : reviewText
-
-                // Use AuthViewModel's addPost
-                let newPost = try await authViewModel.addPost(
-                    imageData: imageData,
-                    review: reviewContent,
-                    location: locationString,
-                    restaurantName: restaurantName,
-                    starRating: rating
-                )
-
-                NotificationCenter.default.post(
-                    name: .postAdded,
-                    object: nil,
-                    userInfo: [
-                        "userId": newPost.userId,
-                        "imageData": newPost.imageUrl,
-                        "review": newPost.review,
-                        "location": newPost.location,
-                        "restaurantName": newPost.restaurantName,
-                        "starRating": newPost.starRating
-                    ]
-                )
-
-                print("Post created successfully: \(newPost)")
-                resetPostState()
-                DispatchQueue.main.async {
-                    print("Attempting to dismiss and change tab")
-                    dismiss()
-                    selectedTab = 1
-                    print("Navigation attempted: selectedTab =", selectedTab)
-                }
-            } catch {
-                print("Failed to create post: \(error.localizedDescription)")
+            if restaurantName.isEmpty || restaurantName == "Location not found" {
+                restaurantName = locationDisplay
             }
 
-            isUploading = false
+            let coordinates = selectedLocationCoordinates ?? imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+            let locationString = "\(coordinates.latitude),\(coordinates.longitude)"
+
+            let reviewContent = reviewText.isEmpty ? postText : reviewText
+
+            // Call AuthViewModel's addPost with multiple image data
+            let newPost = try await authViewModel.addPost(
+                imageDatas: imageDatas,
+                review: reviewContent,
+                location: locationString,
+                restaurantName: restaurantName,
+                starRating: rating
+            )
+
+            NotificationCenter.default.post(
+                name: .postAdded,
+                object: nil,
+                userInfo: [
+                    "userId": newPost.userId,
+                    "imageUrls": newPost.imageUrls, // Updated to handle multiple URLs
+                    "review": newPost.review,
+                    "location": newPost.location,
+                    "restaurantName": newPost.restaurantName,
+                    "starRating": newPost.starRating
+                ]
+            )
+
+            print("Post created successfully: \(newPost)")
+            resetPostState()
+            DispatchQueue.main.async {
+                dismiss()
+                selectedTab = 1
+            }
+        } catch {
+            print("Failed to create post: \(error.localizedDescription)")
         }
+
+        isUploading = false
+    }
+
 
 
     private func resetPostState() {
-        selectedImage = nil
+        selectedImages = []
         postText = ""
         reviewText = ""
         rating = 0
@@ -288,7 +320,7 @@ struct CreatePostView: View {
 
     struct ImagePicker: UIViewControllerRepresentable {
         var sourceType: UIImagePickerController.SourceType
-        @Binding var selectedImage: UIImage?
+        @Binding var selectedImages: [UIImage] // Updated to handle multiple images
         @Binding var imageLocation: CLLocation?
         @Binding var locationDisplay: String
         @Binding var isLocationManuallySet: Bool // New binding to track manual location updates
@@ -316,7 +348,8 @@ struct CreatePostView: View {
 
             func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
                 if let image = info[.originalImage] as? UIImage {
-                    parent.selectedImage = image
+                    // Append the selected image to the array
+                    parent.selectedImages.append(image)
                     if !parent.isLocationManuallySet {
                         if let asset = info[.phAsset] as? PHAsset {
                             processAsset(asset)
@@ -372,6 +405,7 @@ struct CreatePostView: View {
             }
         }
     }
+
 
     struct NearbyRestaurantPicker: View {
         @Environment(\.dismiss) var dismiss

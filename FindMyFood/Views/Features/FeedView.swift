@@ -2,6 +2,10 @@ import SwiftUI
 import FirebaseFirestore
 import FirebaseAuth
 
+import SwiftUI
+import FirebaseFirestore
+import FirebaseAuth
+
 struct FeedView: View {
     @State private var posts: [(post: Post, userName: String)] = [] // The array to hold the fetched posts
     @State private var isLoading: Bool = true // To track loading state
@@ -123,10 +127,11 @@ struct FeedView: View {
                             // Parse post data
                             let likes = postData["likes"] as? Int ?? 0
                             let timestamp = postData["timestamp"] as? Timestamp ?? Timestamp(date: Date())
+                            let imageUrls = postData["imageUrls"] as? [String] ?? [] // Updated for multiple images
                             let post = Post(
                                 _id: postDoc.documentID,
                                 userId: userId,
-                                imageUrl: postData["imageUrl"] as? String ?? "",
+                                imageUrls: imageUrls,
                                 timestamp: timestamp,
                                 review: postData["review"] as? String ?? "",
                                 location: postData["location"] as? String ?? "",
@@ -142,14 +147,13 @@ struct FeedView: View {
                     }
 
                     group.notify(queue: .main) {
-                        feed.sort { $0.post.date > $1.post.date }
+                        feed.sort { $0.post.timestamp.dateValue() > $1.post.timestamp.dateValue() }
 
                         self.posts = feed
                         self.isLoading = false
                     }
                 }
         }
-    }//end of Load
-
+    }
 }
 

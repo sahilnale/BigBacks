@@ -427,8 +427,8 @@ struct FriendProfileView: View {
                         Color(.systemBackground)
                             .ignoresSafeArea()
                     }
-                } else if let latestPost = viewModel.posts.last, !latestPost.imageUrl.isEmpty {
-                    AsyncImage(url: URL(string: latestPost.imageUrl)) { image in
+                } else if let latestPost = viewModel.posts.last, let firstImageUrl = latestPost.imageUrls.first, !firstImageUrl.isEmpty {
+                    AsyncImage(url: URL(string: firstImageUrl)) { image in
                         image
                             .resizable()
                             .scaledToFill()
@@ -443,8 +443,8 @@ struct FriendProfileView: View {
                         .ignoresSafeArea()
                 }
             }
-            .ignoresSafeArea() // Ensure the background covers the entire screen
-            
+            .ignoresSafeArea()
+
             // Foreground Sliding Drawer
             GeometryReader { geometry in
                 VStack(spacing: 16) {
@@ -452,18 +452,17 @@ struct FriendProfileView: View {
                         .frame(width: 40, height: 6)
                         .foregroundColor(.gray)
                         .padding(.top, 8)
-                    
+
                     VStack(spacing: 4) {
                         Text(viewModel.name)
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.primary)
-                            .padding(.top, 8)
                         
                         Text("@\(viewModel.username)")
                             .font(.system(size: 16, weight: .regular))
                             .foregroundColor(.gray)
                     }
-                    
+
                     HStack(spacing: 32) {
                         VStack {
                             Text("\(viewModel.posts.count)")
@@ -485,36 +484,24 @@ struct FriendProfileView: View {
                     }
                     .padding(.bottom, 16)
                     
-                    if offset <= geometry.size.height * 0.3 {
-                        ScrollView {
-                            PostGridView(posts: viewModel.posts, columns: columns)
-                                .padding(.horizontal)
-                        }
-                        .transition(.opacity)
-                    } else {
-                        Spacer()
+                    ScrollView {
+                        PostGridView(posts: viewModel.posts, columns: columns)
+                            .padding(.horizontal)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .background(
                     Color(.systemBackground)
-                        .opacity(0.9)
-                        .overlay(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .opacity(0.95)
+                        .cornerRadius(20)
+                        .shadow(radius: 10)
                 )
-                .cornerRadius(20)
-                .shadow(radius: 5)
                 .offset(y: offset)
                 .gesture(
                     DragGesture()
                         .onChanged { gesture in
                             let newOffset = offset + gesture.translation.height
-                            if newOffset >= 0 && newOffset <= screenHeight * 0.6 {
+                            if newOffset >= 0 && newOffset <= screenHeight * 0.7 {
                                 offset = newOffset
                             }
                         }
@@ -528,10 +515,8 @@ struct FriendProfileView: View {
                             }
                         }
                 )
-                .animation(.easeInOut, value: offset)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task {
                 await viewModel.loadFriendProfile(userId: userId)

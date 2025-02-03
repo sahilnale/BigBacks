@@ -26,21 +26,31 @@ struct RestaurantCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Dynamic image from post.imageUrl
-            // Dynamic image from post.imageUrl
+            // Dynamic image from post.imageUrls
             Button(action: {
                 navigateToPost = true
             }) {
-                AsyncImage(url: URL(string: post.imageUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 350, height: 350)
-                        .clipShape(RoundedRectangle(cornerRadius: 15))
-                        .clipped()
-                } placeholder: {
+                if let firstImageUrl = post.imageUrls.first, !firstImageUrl.isEmpty {
+                    AsyncImage(url: URL(string: firstImageUrl)) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 350, height: 350)
+                            .clipShape(RoundedRectangle(cornerRadius: 15))
+                            .clipped()
+                    } placeholder: {
+                        Color.gray.frame(width: 350, height: 350)
+                            .clipShape(RoundedRectangle(cornerRadius: 15))
+                    }
+                } else {
+                    // Placeholder for posts without images
                     Color.gray.frame(width: 350, height: 350)
                         .clipShape(RoundedRectangle(cornerRadius: 15))
+                        .overlay(
+                            Text("No Image")
+                                .foregroundColor(.white)
+                                .font(.headline)
+                        )
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -54,7 +64,7 @@ struct RestaurantCard: View {
                 .hidden()
             )
 
-            // Username without arrow
+            // Username and navigation
             HStack {
                 Button(action: {
                     navigateToProfile = true
@@ -237,6 +247,7 @@ struct RestaurantCard: View {
         }
     }
 }
+
 
 
 func timeAgo(from date: Date) -> String {

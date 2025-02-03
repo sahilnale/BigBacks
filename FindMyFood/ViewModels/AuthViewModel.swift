@@ -398,71 +398,73 @@ class AuthViewModel: ObservableObject {
     }
     
     func addPost(
-            imageData: Data,
-            review: String,
-            location: String,
-            restaurantName: String,
-            starRating: Int
-        ) async throws -> Post {
-            guard let userId = Auth.auth().currentUser?.uid else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not logged in."])
-            }
-            
-            print("in progress")
+        imageDatas: [Data], // Changed to accept an array of images
+        review: String,
+        location: String,
+        restaurantName: String,
+        starRating: Int
+    ) async throws -> Post {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not logged in."])
+        }
 
-            // Step 1: Upload Image to Firebase Storage
+        print("Uploading images...")
+
+        var imageUrls: [String] = []
+
+        // Upload each image and get its URL
+        for imageData in imageDatas {
             let imageRef = Storage.storage().reference().child("posts/\(UUID().uuidString).jpg")
             let metadata = StorageMetadata()
             metadata.contentType = "image/jpeg"
 
-            let uploadTask = try await imageRef.putDataAsync(imageData, metadata: metadata)
+            _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
             let imageUrl = try await imageRef.downloadURL().absoluteString
-            
-            let isoFormatter = ISO8601DateFormatter()
-                isoFormatter.timeZone = TimeZone(abbreviation: "UTC")
-                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                
-
-            // Step 2: Save Post in Firestore
-            let db = Firestore.firestore()
-            let postId = UUID().uuidString
-            let newPost: [String: Any] = [
-                "id": postId,
-                "userId": userId,
-                "imageUrl": imageUrl,
-                "timestamp": FieldValue.serverTimestamp(),
-                "review": review,
-                "location": location,
-                "restaurantName": restaurantName,
-                "starRating": starRating,
-                "likes": 0,
-                "likedBy": [],
-                "comments": []
-            ]
-
-            try await db.collection("posts").document(postId).setData(newPost)
-
-            // Step 3: Update Current User's Posts
-            let userRef = db.collection("users").document(userId)
-            try await userRef.updateData([
-                "posts": FieldValue.arrayUnion([postId])
-            ])
-
-            // Return the created post object
-            return Post(
-                _id: postId,
-                userId: userId,
-                imageUrl: imageUrl,
-                timestamp: Timestamp(date: Date()), // You can fetch the timestamp from Firestore if needed
-                review: review,
-                location: location,
-                restaurantName: restaurantName,
-                likes: 0,
-                likedBy: [],
-                starRating: starRating,
-                comments: []
-            )
+            imageUrls.append(imageUrl)
         }
+
+        print("Images uploaded successfully!")
+
+        // Save Post in Firestore
+        let db = Firestore.firestore()
+        let postId = UUID().uuidString
+        let newPost: [String: Any] = [
+            "id": postId,
+            "userId": userId,
+            "imageUrls": imageUrls, // Store array of image URLs
+            "timestamp": FieldValue.serverTimestamp(),
+            "review": review,
+            "location": location,
+            "restaurantName": restaurantName,
+            "starRating": starRating,
+            "likes": 0,
+            "likedBy": [],
+            "comments": []
+        ]
+
+        try await db.collection("posts").document(postId).setData(newPost)
+
+        // Update Current User's Posts
+        let userRef = db.collection("users").document(userId)
+        try await userRef.updateData([
+            "posts": FieldValue.arrayUnion([postId])
+        ])
+
+        // Return the created post object
+        return Post(
+            _id: postId,
+            userId: userId,
+            imageUrls: imageUrls, // Return the array of URLs
+            timestamp: Timestamp(date: Date()), // You can fetch the timestamp from Firestore if needed
+            review: review,
+            location: location,
+            restaurantName: restaurantName,
+            likes: 0,
+            likedBy: [],
+            starRating: starRating,
+            comments: []
+        )
+    }
     
     func getUserById(friendId: String) async throws -> User? {
         let userDocument = try await Firestore.firestore()
@@ -844,7 +846,7 @@ class AuthViewModel: ObservableObject {
         return Post(
             _id: postDoc.documentID,
             userId: postData["userId"] as? String ?? "",
-            imageUrl: postData["imageUrl"] as? String ?? "",
+            imageUrls: postData["imageUrls"] as? [String] ?? [], // Fetch the array of image URLs
             timestamp: postData["timestamp"] as? Timestamp ?? Timestamp(date: Date()),
             review: postData["review"] as? String ?? "",
             location: postData["location"] as? String ?? "",

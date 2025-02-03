@@ -17,34 +17,54 @@ struct ProfileView: View {
             ZStack {
                 // Background Layer
                 Group {
-                        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
-                            AsyncImage(url: URL(string: profilePicture)) { image in
+                    if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+                        // Show Profile Picture
+                        AsyncImage(url: URL(string: profilePicture)) { phase in
+                            switch phase {
+                            case .empty:
+                                Color.gray.opacity(0.3)
+                                    .ignoresSafeArea()
+                            case .success(let image):
                                 image
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
+                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
                                     .clipped()
-                            } placeholder: {
-                                Color(.systemBackground)
+                            case .failure:
+                                Color.gray.opacity(0.3)
                                     .ignoresSafeArea()
+                            @unknown default:
+                                EmptyView()
                             }
-                        } else if let latestPost = viewModel.posts.last, !latestPost.imageUrl.isEmpty {
-                            AsyncImage(url: URL(string: latestPost.imageUrl)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
-                                    .clipped()
-                            } placeholder: {
-                                Color(.systemBackground)
-                                    .ignoresSafeArea()
-                            }
-                        } else {
-                            Color(.systemBackground)
-                                .ignoresSafeArea()
                         }
+                    } else if let latestPost = viewModel.posts.last,
+                              let firstImageUrl = latestPost.imageUrls.first,
+                              !firstImageUrl.isEmpty {
+                        // Show Latest Post's First Image
+                        AsyncImage(url: URL(string: firstImageUrl)) { phase in
+                            switch phase {
+                            case .empty:
+                                Color.gray.opacity(0.3)
+                                    .ignoresSafeArea()
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+                                    .clipped()
+                            case .failure:
+                                Color.gray.opacity(0.3)
+                                    .ignoresSafeArea()
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    } else {
+                        // Default Background
+                        Color(.systemBackground)
+                            .ignoresSafeArea()
                     }
-                    .ignoresSafeArea() // Ensure the background covers the entire screen
+                }
                 
                 // Foreground Sliding Drawer
                 GeometryReader { geometry in
@@ -146,7 +166,6 @@ struct ProfileView: View {
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
-                    print("Profile Picture URL: \(viewModel.profilePicture ?? "No URL")")
                 }
             }
         }
@@ -164,27 +183,34 @@ struct PostGridView: View {
         LazyVGrid(columns: columns, spacing: 2) {
             ForEach(posts.reversed(), id: \._id) { post in
                 NavigationLink(destination: PostView(post: post)) {
-                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .frame(width: 177, height: 177)
-                                .background(Color.gray.opacity(0.3))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 177, height: 177)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .clipped()
-                        case .failure:
-                            Color.red
-                                .frame(width: 177, height: 177)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        @unknown default:
-                            EmptyView()
+                    if let firstImageUrl = post.imageUrls.first, !firstImageUrl.isEmpty {
+                        AsyncImage(url: URL(string: firstImageUrl)) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .frame(width: 177, height: 177)
+                                    .background(Color.gray.opacity(0.3))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 177, height: 177)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .clipped()
+                            case .failure:
+                                Color.red
+                                    .frame(width: 177, height: 177)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            @unknown default:
+                                EmptyView()
+                            }
                         }
+                    } else {
+                        // Placeholder for posts without images
+                        Color.gray
+                            .frame(width: 177, height: 177)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
             }
@@ -294,31 +320,46 @@ struct PostDetailView: View {
     @State private var isDeleting = false
     @State private var showAlert = false
     @State private var errorMessage: String?
+    @State private var currentImageIndex: Int = 0 // Track the current image index
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AsyncImage(url: URL(string: post.imageUrl)) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .background(Color.gray.opacity(0.3))
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .clipped()
-                    case .failure:
-                        Text("Failed to load image")
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .background(Color.red.opacity(0.3))
-                    @unknown default:
-                        EmptyView()
+                if !post.imageUrls.isEmpty { // Ensure there are images to display
+                    // Instagram-style image carousel
+                    TabView {
+                        ForEach(post.imageUrls, id: \.self) { imageUrl in
+                            AsyncImage(url: URL(string: imageUrl)) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity, minHeight: 300)
+                                        .background(Color.gray.opacity(0.3))
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(maxWidth: .infinity, minHeight: 300)
+                                        .clipped()
+                                case .failure:
+                                    Text("Failed to load image")
+                                        .frame(maxWidth: .infinity, minHeight: 300)
+                                        .background(Color.red.opacity(0.3))
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        }
                     }
+                    .tabViewStyle(PageTabViewStyle()) // Enables horizontal swiping
+                    .frame(height: 300)
+                } else {
+                    Text("No images available")
+                        .frame(maxWidth: .infinity, minHeight: 300)
+                        .background(Color.gray.opacity(0.3))
                 }
                 
+                // Post details (Restaurant name, location, etc.)
                 Text(post.restaurantName)
                     .font(.title)
                     .fontWeight(.bold)
@@ -364,6 +405,7 @@ struct PostDetailView: View {
                         .font(.body)
                         .foregroundColor(.gray)
                 }
+                
                 if authViewModel.currentUser?.id == post.userId {
                     HStack {
                         Spacer()
@@ -392,7 +434,9 @@ struct PostDetailView: View {
         } message: {
             Text("Are you sure you want to delete this post? This action cannot be undone.")
         }
+        
     }
+
 
     private func deletePost() async {
         isDeleting = true
@@ -405,6 +449,7 @@ struct PostDetailView: View {
         isDeleting = false
     }
 }
+
 
 
 // MARK: - Preview
