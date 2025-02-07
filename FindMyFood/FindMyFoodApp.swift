@@ -11,11 +11,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         FirebaseApp.configure()
 
-        // Perform the migration on app launch
-        Task {
-            await migrateImageUrlToImageUrls()
-        }
-
         // Request notification permissions
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -54,36 +49,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
 
         return true
-    }
-
-    private func migrateImageUrlToImageUrls() async {
-        let db = Firestore.firestore()
-        let postsCollection = db.collection("posts")
-
-        do {
-            let snapshot = try await postsCollection.getDocuments()
-            for document in snapshot.documents {
-                var data = document.data()
-
-                // Check if `imageUrls` already exists
-                if data["imageUrls"] == nil {
-                    if let imageUrl = data["imageUrl"] as? String, !imageUrl.isEmpty {
-                        // Migrate `imageUrl` into `imageUrls` array
-                        try await document.reference.updateData([
-                            "imageUrls": [imageUrl]
-                        ])
-                        print("Migrated post \(document.documentID): \(imageUrl) added to imageUrls.")
-                    } else {
-                        print("Skipping post \(document.documentID): No imageUrl found.")
-                    }
-                } else {
-                    print("Skipping post \(document.documentID): imageUrls already exists.")
-                }
-            }
-            print("Migration complete.")
-        } catch {
-            print("Failed to migrate posts: \(error.localizedDescription)")
-        }
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
