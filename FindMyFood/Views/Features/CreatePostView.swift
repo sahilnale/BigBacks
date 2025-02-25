@@ -3,6 +3,7 @@ import PhotosUI
 import CoreLocation
 import Photos
 import MapKit
+import UIKit
 
 struct CreatePostView: View {
     @State private var showImagePicker = false
@@ -20,6 +21,7 @@ struct CreatePostView: View {
     @State private var selectedLocationCoordinates: CLLocationCoordinate2D? = nil
     @State private var isUploading = false
     @State private var isLocationManuallySet = false
+    @State private var isKeyboardVisible = false // Track keyboard visibility
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -28,111 +30,131 @@ struct CreatePostView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                if selectedImages.isEmpty {
-                    // Placeholder for no selected images
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 250)
-                        .overlay(
-                            Text("Tap to add images")
-                                .foregroundColor(.gray)
-                                .font(.headline)
-                        )
-                        .onTapGesture {
-                            showPhotoOptions = true
-                        }
-                        .padding()
-                } else {
-                    // Scrollable preview for selected images
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(selectedImages, id: \.self) { image in
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxHeight: 250)
-                                    .cornerRadius(15)
-                                    .overlay(
+            VStack(spacing: 10) {
+                ScrollView {
+                    VStack(spacing: 10) {
+                        // Image Preview Section
+                        if selectedImages.isEmpty {
+                            RoundedRectangle(cornerRadius: 15)
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(height: isKeyboardVisible ? 150 : 250) // Shrink when typing
+                                .overlay(
+                                    Text("Tap to add images")
+                                        .foregroundColor(.gray)
+                                        .font(.headline)
+                                )
+                                .onTapGesture { showPhotoOptions = true }
+                                .padding()
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack {
+                                    ForEach(selectedImages, id: \.self) { image in
+                                        Image(uiImage: image)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(height: isKeyboardVisible ? 150 : 250) // Shrink while typing
+                                            .cornerRadius(15)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 15)
+                                                    .stroke(Color.gray, lineWidth: 1)
+                                            )
+                                    }
+                                    // Add More Images Button
+                                    Button(action: { showPhotoOptions = true }) {
                                         RoundedRectangle(cornerRadius: 15)
-                                            .stroke(Color.gray, lineWidth: 1)
-                                    )
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(width: 100, height: isKeyboardVisible ? 150 : 250)
+                                            .overlay(
+                                                Text("+ Add")
+                                                    .foregroundColor(.gray)
+                                                    .font(.headline)
+                                            )
+                                    }
+                                }
                             }
-                            // Add "Add More" button
-                            Button(action: {
-                                showPhotoOptions = true
-                            }) {
-                                RoundedRectangle(cornerRadius: 15)
-                                    .fill(Color.gray.opacity(0.2))
-                                    .frame(width: 150, height: 250)
-                                    .overlay(
-                                        Text("+ Add More")
-                                            .foregroundColor(.gray)
-                                            .font(.headline)
-                                    )
-                                    .padding(.trailing, 10)
+                            .frame(height: isKeyboardVisible ? 150 : 250)
+                        }
+
+                        // Star Rating Section
+                        HStack {
+                            ForEach(1...5, id: \.self) { index in
+                                Image(systemName: index <= rating ? "star.fill" : "star")
+                                    .foregroundColor(index <= rating ? .customOrange : .gray)
+                                    .font(.system(size: 20))
+                                    .onTapGesture {
+                                        rating = index
+                                    }
                             }
                         }
-                        .padding([.leading, .top], 10)
-                    }
-                    .frame(height: 250)
-                }
 
-                // Star Rating
-                HStack {
-                    ForEach(1...5, id: \.self) { index in
-                        Image(systemName: index <= rating ? "star.fill" : "star")
-                            .foregroundColor(index <= rating ? .customOrange : .gray)
-                            .font(.system(size: 20))
-                            .onTapGesture {
-                                rating = index
-                            }
-                    }
-                }
-
-                // Location Display
-                HStack {
-                    Image(systemName: "mappin.and.ellipse")
-                        .foregroundColor(.customOrange)
-                        .font(.system(size: 16, weight: .semibold))
-                    
-                    Text(locationDisplay)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color.primary)
-                }
-
-                Button(action: {
-                    showRestaurantPicker = true
-                }) {
-                    Text("Change Location")
-                        .foregroundColor(.blue)
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .sheet(isPresented: $showRestaurantPicker) {
-                    NearbyRestaurantPicker(
-                        userLocation: imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-                        onRestaurantSelected: { name, coordinates in
-                            restaurantName = name
-                            locationDisplay = name
-                            selectedLocationCoordinates = coordinates
-                            showRestaurantPicker = false
-                            isLocationManuallySet = true
+                        // Location Display
+                        HStack {
+                            Image(systemName: "mappin.and.ellipse")
+                                .foregroundColor(.customOrange)
+                                .font(.system(size: 16, weight: .semibold))
+                            
+                            Text(locationDisplay)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color.primary)
                         }
-                    )
+
+                        // Change Location Button
+                        Button(action: { showRestaurantPicker = true }) {
+                            Text("Change Location")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .sheet(isPresented: $showRestaurantPicker) {
+                            NearbyRestaurantPicker(
+                                userLocation: imageLocation?.coordinate ?? customLocation ?? CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+                                onRestaurantSelected: { name, coordinates in
+                                    restaurantName = name
+                                    locationDisplay = name
+                                    selectedLocationCoordinates = coordinates
+                                    showRestaurantPicker = false
+                                    isLocationManuallySet = true
+                                }
+                            )
+                        }
+
+                        // TextEditor for Review
+                        ZStack(alignment: .topLeading) {
+                            if postText.isEmpty {
+                                Text("Write your review here...")
+                                    .foregroundColor(.gray)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 12)
+                                    .allowsHitTesting(false)
+                            }
+
+                            TextEditor(text: $postText)
+                                .padding(8)
+                                .frame(height: 200)
+                                .background(Color.customOrange.opacity(0.1))
+                                .cornerRadius(10)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.customOrange, lineWidth: 1)
+                                )
+                                .scrollContentBackground(.hidden)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                .onAppear {
+                    // Keyboard Listeners
+                    NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
+                        withAnimation {
+                            isKeyboardVisible = true
+                        }
+                    }
+                    NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
+                        withAnimation {
+                            isKeyboardVisible = false
+                        }
+                    }
                 }
 
-                // TextEditor for Review
-                TextEditor(text: $postText)
-                    .padding(8)
-                    .background(Color.customOrange.opacity(0.1))
-                    .cornerRadius(10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.customOrange, lineWidth: 1)
-                    )
-                    .frame(maxWidth: UIScreen.main.bounds.width - 32, maxHeight: 200)
-                    .scrollContentBackground(.hidden)
-                
                 Spacer()
 
                 if isUploading {
@@ -141,9 +163,7 @@ struct CreatePostView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        dismiss()
-                    }) {
+                    Button(action: { dismiss() }) {
                         HStack {
                             Image(systemName: "chevron.backward")
                             Text("Back")
@@ -183,7 +203,12 @@ struct CreatePostView: View {
             }
             .sheet(isPresented: $showImagePicker) {
                 if sourceType == .camera {
-                    CameraPicker(selectedImages: $selectedImages)
+                    CameraPicker(
+                        selectedImages: $selectedImages,
+                        imageLocation: $imageLocation,
+                        locationDisplay: $locationDisplay,
+                        isLocationManuallySet: $isLocationManuallySet
+                    )
                 } else {
                     MultiImagePicker(
                         sourceType: sourceType,
@@ -197,39 +222,6 @@ struct CreatePostView: View {
         }
     }
 
-    private func fetchUserLocation() {
-        guard !isLocationManuallySet else { return }
-        LocationManager.shared.startUpdatingLocation { location in
-            DispatchQueue.main.async {
-                self.imageLocation = location
-                print("Debug: Detected coordinates - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
-                self.reverseGeocode(location)
-            }
-        }
-    }
-
-    private func reverseGeocode(_ location: CLLocation) {
-        guard !isLocationManuallySet else { return }
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { placemarks, error in
-            if let placemark = placemarks?.first {
-                let placeName = placemark.name ?? placemark.locality ?? "Location not found"
-                DispatchQueue.main.async {
-                    if !self.isLocationManuallySet {
-                        self.locationDisplay = placeName
-                        print("Debug: Geocoded location - \(placeName)")
-                    }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    if !self.isLocationManuallySet {
-                        self.locationDisplay = "Location not found"
-                        print("Debug: Geocoding failed - Location not found")
-                    }
-                }
-            }
-        }
-    }
 
     private func postReview() async {
         guard !selectedImages.isEmpty else { return }
@@ -266,6 +258,7 @@ struct CreatePostView: View {
         isUploading = false
     }
 
+
     private func resetPostState() {
         selectedImages = []
         postText = ""
@@ -274,10 +267,50 @@ struct CreatePostView: View {
         locationDisplay = "Location not found"
         isLocationManuallySet = false
     }
+
+
+    private func fetchUserLocation() {
+        guard !isLocationManuallySet else { return }
+        LocationManager.shared.startUpdatingLocation { location in
+            DispatchQueue.main.async {
+                self.imageLocation = location
+                print("Debug: Detected coordinates - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                self.reverseGeocode(location)
+            }
+        }
+    }
+
+    private func reverseGeocode(_ location: CLLocation) {
+        guard !isLocationManuallySet else { return }
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            if let placemark = placemarks?.first {
+                let placeName = placemark.name ?? placemark.locality ?? "Location not found"
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet {
+                        self.locationDisplay = placeName
+                        print("Debug: Geocoded location - \(placeName)")
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet {
+                        self.locationDisplay = "Location not found"
+                        print("Debug: Geocoding failed - Location not found")
+                    }
+                }
+            }
+        }
+    }
 }
 
 struct CameraPicker: UIViewControllerRepresentable {
     @Binding var selectedImages: [UIImage]
+    @Binding var imageLocation: CLLocation?
+    @Binding var locationDisplay: String
+    @Binding var isLocationManuallySet: Bool
+
+    @Environment(\.dismiss) var dismiss
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
@@ -303,9 +336,38 @@ struct CameraPicker: UIViewControllerRepresentable {
             if let image = info[.originalImage] as? UIImage {
                 DispatchQueue.main.async {
                     self.parent.selectedImages.append(image)
+                    if !self.parent.isLocationManuallySet {
+                        self.fetchAssetLocation(from: info)
+                    }
                 }
             }
             picker.dismiss(animated: true)
+        }
+
+        private func fetchAssetLocation(from info: [UIImagePickerController.InfoKey: Any]) {
+            if let asset = info[.phAsset] as? PHAsset, let location = asset.location {
+                DispatchQueue.main.async {
+                    self.parent.imageLocation = location
+                    print("Debug: Camera image location - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                    self.reverseGeocode(location)
+                }
+            }
+        }
+
+        private func reverseGeocode(_ location: CLLocation) {
+            let geocoder = CLGeocoder()
+            geocoder.reverseGeocodeLocation(location) { placemarks, error in
+                if let placemark = placemarks?.first {
+                    let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+                    DispatchQueue.main.async {
+                        self.parent.locationDisplay = locationName
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self.parent.locationDisplay = "Location not found"
+                    }
+                }
+            }
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
@@ -323,75 +385,67 @@ struct MultiImagePicker: UIViewControllerRepresentable {
     @Binding var isLocationManuallySet: Bool
     @Environment(\.dismiss) var dismiss
 
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var config = PHPickerConfiguration()
-        config.selectionLimit = 0 // Allow multiple images
-        config.filter = .images
-        let picker = PHPickerViewController(configuration: config)
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
         picker.delegate = context.coordinator
+        picker.allowsEditing = false
         return picker
     }
 
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
         let parent: MultiImagePicker
 
         init(_ parent: MultiImagePicker) {
             self.parent = parent
         }
 
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            guard !results.isEmpty else {
-                print("Debug: No images were selected.")
-                parent.dismiss()
-                return
-            }
-
-            print("Debug: \(results.count) images selected.")
-            for (index, result) in results.enumerated() {
-                if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
-                    result.itemProvider.loadObject(ofClass: UIImage.self) { (image, error) in
-                        if let uiImage = image as? UIImage {
-                            DispatchQueue.main.async {
-                                self.parent.selectedImages.append(uiImage)
-                                print("Debug: Added image \(index + 1).")
-                            }
-                        }
-                    }
-                }
-
-                // Attempt to load location metadata for the first image
-                if index == 0 && !parent.isLocationManuallySet {
-                    result.itemProvider.loadFileRepresentation(forTypeIdentifier: "public.image") { url, error in
-                        if let fileURL = url {
-                            self.fetchAssetLocation(from: fileURL)
-                        } else {
-                            print("Debug: Unable to load file for location metadata - \(error?.localizedDescription ?? "Unknown error").")
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                DispatchQueue.main.async {
+                    self.parent.selectedImages.append(image)
+                    print("Debug: Added image.")
+                    
+                    // Only extract location metadata for the first image
+                    if !self.parent.isLocationManuallySet {
+                        if let asset = info[.phAsset] as? PHAsset {
+                            self.processAsset(asset)
+                        } else if let fileURL = info[.imageURL] as? URL {
+                            self.fetchAssetFromFileURL(fileURL)
                         }
                     }
                 }
             }
-
-            parent.dismiss()
+            picker.dismiss(animated: true)
         }
 
-        private func fetchAssetLocation(from fileURL: URL) {
-            let result = PHAsset.fetchAssets(withALAssetURLs: [fileURL], options: nil)
-            if let asset = result.firstObject, let location = asset.location {
+        private func processAsset(_ asset: PHAsset) {
+            if let location = asset.location {
                 DispatchQueue.main.async {
                     self.parent.imageLocation = location
-                    print("Debug: Detected image coordinates - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                    print("Debug: Detected image location - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
                     self.reverseGeocode(location)
                 }
             } else {
                 DispatchQueue.main.async {
                     self.parent.locationDisplay = "Location not found"
-                    print("Debug: No location metadata found for the first selected image.")
+                }
+            }
+        }
+
+        private func fetchAssetFromFileURL(_ fileURL: URL) {
+            let result = PHAsset.fetchAssets(withALAssetURLs: [fileURL], options: nil)
+            if let asset = result.firstObject {
+                processAsset(asset)
+            } else {
+                DispatchQueue.main.async {
+                    self.parent.locationDisplay = "Location not found"
                 }
             }
         }
@@ -413,8 +467,13 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                 }
             }
         }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
     }
 }
+
 
 
 
