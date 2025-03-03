@@ -21,7 +21,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                         print("Failed to request authorization: \(error)")
                     } else if granted {
                         print("Authorization granted")
-                        DispatchQueue.main.async {
+                         DispatchQueue.main.async {
                             application.registerForRemoteNotifications()
                         }
                     }

@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		115EC1732D1B8C5C00083388 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 115EC1722D1B8C5C00083388 /* FirebaseMessaging */; };
+		6939E1FD1B0E0584D4371BBF /* Pods_FindMyFood.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3CE51549F1BD410A1AE78E8F /* Pods_FindMyFood.framework */; };
+		C2ECEAE72D50397500201C38 /* SDWebImage in Frameworks */ = {isa = PBXBuildFile; productRef = C2ECEAE62D50397500201C38 /* SDWebImage */; };
+		C2ECEAE92D50397B00201C38 /* SDWebImageMapKit in Frameworks */ = {isa = PBXBuildFile; productRef = C2ECEAE82D50397B00201C38 /* SDWebImageMapKit */; };
 		FC2411772D17DC25009BE065 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FC2411762D17DC25009BE065 /* FirebaseAuth */; };
 		FC2411792D17DC25009BE065 /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = FC2411782D17DC25009BE065 /* FirebaseAuthCombine-Community */; };
 		FC24117B2D17DC25009BE065 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FC24117A2D17DC25009BE065 /* FirebaseCore */; };
@@ -36,9 +39,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3CE51549F1BD410A1AE78E8F /* Pods_FindMyFood.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FindMyFood.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		6E86A1449BBFB4F4119F3F2B /* Pods-FindMyFood.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FindMyFood.debug.xcconfig"; path = "Target Support Files/Pods-FindMyFood/Pods-FindMyFood.debug.xcconfig"; sourceTree = "<group>"; };
 		BAC9741A2CD9AC6300DD929B /* FindMyFood.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FindMyFood.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAC9742A2CD9AC6600DD929B /* FindMyFoodTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FindMyFoodTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAC974342CD9AC6700DD929B /* FindMyFoodUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FindMyFoodUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEBB72FFD479563456575850 /* Pods-FindMyFood.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FindMyFood.release.xcconfig"; path = "Target Support Files/Pods-FindMyFood/Pods-FindMyFood.release.xcconfig"; sourceTree = "<group>"; };
 		FC3F5D262CF3DC65003BA940 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -63,11 +69,15 @@
 		};
 		BAC9742D2CD9AC6700DD929B /* FindMyFoodTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = FindMyFoodTests;
 			sourceTree = "<group>";
 		};
 		BAC974372CD9AC6700DD929B /* FindMyFoodUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = FindMyFoodUITests;
 			sourceTree = "<group>";
 		};
@@ -82,10 +92,13 @@
 				FC3F5D1F2CF3D856003BA940 /* FirebaseFirestore in Frameworks */,
 				FC2411792D17DC25009BE065 /* FirebaseAuthCombine-Community in Frameworks */,
 				FC2411772D17DC25009BE065 /* FirebaseAuth in Frameworks */,
+				C2ECEAE72D50397500201C38 /* SDWebImage in Frameworks */,
 				FC3F5D212CF3D856003BA940 /* FirebaseFirestoreCombine-Community in Frameworks */,
 				FC24117B2D17DC25009BE065 /* FirebaseCore in Frameworks */,
+				C2ECEAE92D50397B00201C38 /* SDWebImageMapKit in Frameworks */,
 				FC3F5D252CF3D856003BA940 /* FirebaseStorageCombine-Community in Frameworks */,
 				FC3F5D232CF3D856003BA940 /* FirebaseStorage in Frameworks */,
+				6939E1FD1B0E0584D4371BBF /* Pods_FindMyFood.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -106,6 +119,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		414D305AA4B56E7CF2CE3901 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				6E86A1449BBFB4F4119F3F2B /* Pods-FindMyFood.debug.xcconfig */,
+				CEBB72FFD479563456575850 /* Pods-FindMyFood.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		B5B8199E6F10BD5B3AEC4EFD /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3CE51549F1BD410A1AE78E8F /* Pods_FindMyFood.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		BAC974112CD9AC6300DD929B = {
 			isa = PBXGroup;
 			children = (
@@ -114,6 +144,8 @@
 				BAC974372CD9AC6700DD929B /* FindMyFoodUITests */,
 				BAC9741B2CD9AC6300DD929B /* Products */,
 				FC3F5D262CF3DC65003BA940 /* GoogleService-Info.plist */,
+				414D305AA4B56E7CF2CE3901 /* Pods */,
+				B5B8199E6F10BD5B3AEC4EFD /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -134,6 +166,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = BAC9743E2CD9AC6700DD929B /* Build configuration list for PBXNativeTarget "FindMyFood" */;
 			buildPhases = (
+				63BA53107CFAB7D39D0E6685 /* [CP] Check Pods Manifest.lock */,
 				BAC974162CD9AC6300DD929B /* Sources */,
 				BAC974172CD9AC6300DD929B /* Frameworks */,
 				BAC974182CD9AC6300DD929B /* Resources */,
@@ -155,6 +188,8 @@
 				FC2411782D17DC25009BE065 /* FirebaseAuthCombine-Community */,
 				FC24117A2D17DC25009BE065 /* FirebaseCore */,
 				115EC1722D1B8C5C00083388 /* FirebaseMessaging */,
+				C2ECEAE62D50397500201C38 /* SDWebImage */,
+				C2ECEAE82D50397B00201C38 /* SDWebImageMapKit */,
 			);
 			productName = FindMyFood;
 			productReference = BAC9741A2CD9AC6300DD929B /* FindMyFood.app */;
@@ -177,8 +212,6 @@
 				BAC9742D2CD9AC6700DD929B /* FindMyFoodTests */,
 			);
 			name = FindMyFoodTests;
-			packageProductDependencies = (
-			);
 			productName = FindMyFoodTests;
 			productReference = BAC9742A2CD9AC6600DD929B /* FindMyFoodTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -200,8 +233,6 @@
 				BAC974372CD9AC6700DD929B /* FindMyFoodUITests */,
 			);
 			name = FindMyFoodUITests;
-			packageProductDependencies = (
-			);
 			productName = FindMyFoodUITests;
 			productReference = BAC974342CD9AC6700DD929B /* FindMyFoodUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -240,6 +271,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				C2ECE7392D4F15AE00201C38 /* XCRemoteSwiftPackageReference "SDWebImage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BAC9741B2CD9AC6300DD929B /* Products */;
@@ -277,6 +309,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		63BA53107CFAB7D39D0E6685 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-FindMyFood-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		BAC974162CD9AC6300DD929B /* Sources */ = {
@@ -437,6 +494,7 @@
 		};
 		BAC9743F2CD9AC6700DD929B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 6E86A1449BBFB4F4119F3F2B /* Pods-FindMyFood.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = orangeColor;
@@ -465,7 +523,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bigback.findmyfood;
+				PRODUCT_BUNDLE_IDENTIFIER = shshsaesofp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -476,6 +534,7 @@
 		};
 		BAC974402CD9AC6700DD929B /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = CEBB72FFD479563456575850 /* Pods-FindMyFood.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = orangeColor;
@@ -504,7 +563,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.bigback.findmyfood;
+				PRODUCT_BUNDLE_IDENTIFIER = shshsaesofp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -623,6 +682,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		C2ECE7392D4F15AE00201C38 /* XCRemoteSwiftPackageReference "SDWebImage" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SDWebImage/SDWebImage.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.20.0;
+			};
+		};
 		FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -638,6 +705,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = FC3F5D1D2CF3D856003BA940 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		C2ECEAE62D50397500201C38 /* SDWebImage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C2ECE7392D4F15AE00201C38 /* XCRemoteSwiftPackageReference "SDWebImage" */;
+			productName = SDWebImage;
+		};
+		C2ECEAE82D50397B00201C38 /* SDWebImageMapKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C2ECE7392D4F15AE00201C38 /* XCRemoteSwiftPackageReference "SDWebImage" */;
+			productName = SDWebImageMapKit;
 		};
 		FC2411762D17DC25009BE065 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
