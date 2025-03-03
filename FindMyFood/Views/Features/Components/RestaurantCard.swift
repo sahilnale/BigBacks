@@ -1,7 +1,5 @@
-
 import SwiftUI
 import FirebaseAuth
-
 
 struct Comment: Encodable, Decodable, Identifiable, Hashable {
     let id: String
@@ -22,6 +20,8 @@ struct RestaurantCard: View {
     @State private var showComments: Bool = false
     @State private var navigateToProfile = false
     @State private var navigateToPost = false
+    @State private var isWishlisted: Bool = false
+// ✅ Per-user wishlisting state
     var userName: String
 
     var body: some View {
@@ -117,6 +117,24 @@ struct RestaurantCard: View {
                             .font(.subheadline)
                             .foregroundColor(Color.primary)
                     }
+                    
+                    Button(action: {
+                        Task {
+                            do {
+                                let userId = Auth.auth().currentUser?.uid ?? ""
+                                let newStatus = try await AuthViewModel.shared.toggleWishlist(postId: post.id, userId: userId)
+                                await MainActor.run {
+                                    self.isWishlisted = newStatus
+                                }
+                            } catch {
+                                print("Failed to update wishlist: \(error)")
+                            }
+                        }
+                    }) {
+                        Image(systemName: isWishlisted ? "checkmark.circle.fill" : "plus.circle")
+                            .foregroundColor(isWishlisted ? .green : .gray)
+                            .font(.title2)
+                    }
 
                     Button(action: {
                         Task {
@@ -191,24 +209,16 @@ struct RestaurantCard: View {
                                     .foregroundColor(Color.accentColor)
                                     .font(.subheadline)
                                     .onAppear {
-                                        if commenterUsernames[comment.userId] == nil {
-                                            Task {
-                                                do {
-                                                    if let commenter = try await AuthViewModel.shared.getUserById(friendId: comment.userId) {
-                                                        await MainActor.run {
-                                                            commenterUsernames[comment.userId] = commenter.username
-                                                        }
-                                                    } else {
-                                                        await MainActor.run {
-                                                            commenterUsernames[comment.userId] = "Unknown user"
-                                                        }
-                                                    }
-                                                } catch {
-                                                    print("Failed to fetch commenter: \(error)")
-                                                    await MainActor.run {
-                                                        commenterUsernames[comment.userId] = "Error"
-                                                    }
-                                                }
+                                        Task {
+                                            let userId = Auth.auth().currentUser?.uid ?? ""
+
+                                            self.likeCount = post.likes // ✅ This will set it from the post
+                                            self.isLiked = post.likedBy.contains(userId) // ✅ Check if the user has liked it already
+
+                                            do {
+                                                self.isWishlisted = try await AuthViewModel.shared.isPostWishlisted(postId: post.id, userId: userId)
+                                            } catch {
+                                                print("Failed to fetch wishlist status: \(error)")
                                             }
                                         }
                                     }
@@ -231,17 +241,18 @@ struct RestaurantCard: View {
         .cornerRadius(10)
         .shadow(color: Color.primary.opacity(0.1), radius: 5)
         .padding(.horizontal)
+        .padding(.horizontal)
         .onAppear {
             Task {
+                let userId = Auth.auth().currentUser?.uid ?? ""
+
+                self.likeCount = post.likes
+                self.isLiked = post.likedBy.contains(userId)
+
                 do {
-                    let updatedPost = try await AuthViewModel.shared.fetchPostDetails(postId: post.id)
-                    await MainActor.run {
-                        self.likeCount = updatedPost.likes
-                        self.isLiked = updatedPost.likedBy.contains(Auth.auth().currentUser?.uid ?? "")
-                        self.post.comments = updatedPost.comments
-                    }
+                    self.isWishlisted = try await AuthViewModel.shared.isPostWishlisted(postId: post.id, userId: userId)
                 } catch {
-                    print("Failed to fetch post details: \(error)")
+                    print("Failed to fetch wishlist status: \(error)")
                 }
             }
         }

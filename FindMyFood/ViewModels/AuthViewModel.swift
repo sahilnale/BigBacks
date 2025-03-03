@@ -1057,8 +1057,97 @@ class AuthViewModel: ObservableObject {
         }
     }
     
+    func toggleWishlist(postId: String, userId: String) async throws -> Bool {
+        let userRef = Firestore.firestore().collection("users").document(userId)
+        let snapshot = try await userRef.getDocument()
+        
+        guard var wishlistedPosts = snapshot.data()?["wishlist"] as? [String] else {
+            try await userRef.setData(["wishlist": [postId]], merge: true)
+            return true
+        }
 
+        if wishlistedPosts.contains(postId) {
+            wishlistedPosts.removeAll { $0 == postId }
+        } else {
+            wishlistedPosts.append(postId)
+        }
 
+        try await userRef.updateData(["wishlist": wishlistedPosts])
+        return wishlistedPosts.contains(postId)
+    }
+    
+    func fetchWishlist() async throws -> [(post: Post, userName: String)] {
+        let db = Firestore.firestore()
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("❌ No user logged in.")
+            return []
+        }
+
+        print("🔍 Fetching wishlist for userId: \(userId)")
+
+        let userDoc = try await db.collection("users").document(userId).getDocument()
+        
+        guard let userData = userDoc.data(),
+              let wishlistIds = userData["wishlist"] as? [String] else {
+            print("⚠️ Wishlist array not found in user document.")
+            return []
+        }
+
+        if wishlistIds.isEmpty {
+            print("⚠️ Wishlist is empty.")
+            return []
+        } else {
+            print("✅ Found \(wishlistIds.count) items in wishlist.")
+        }
+
+        var wishlistPosts: [(post: Post, userName: String)] = []
+
+        for postId in wishlistIds {
+            print("🔄 Fetching post with postId: \(postId)")
+
+            let postDoc = try await db.collection("posts").document(postId).getDocument()
+
+            if let postData = postDoc.data() {
+                let postUserId = postData["userId"] as? String ?? ""
+
+                let userDoc = try await db.collection("users").document(postUserId).getDocument()
+                let username = userDoc.data()?["username"] as? String ?? "Unknown"
+
+                let post = Post(
+                    _id: postDoc.documentID,
+                    userId: postUserId,
+                    imageUrls: postData["imageUrls"] as? [String] ?? [],
+                    timestamp: postData["timestamp"] as? Timestamp ?? Timestamp(date: Date()),
+                    review: postData["review"] as? String ?? "",
+                    location: postData["location"] as? String ?? "0.0,0.0",
+                    restaurantName: postData["restaurantName"] as? String ?? "",
+                    likes: postData["likes"] as? Int ?? 0,
+                    likedBy: postData["likedBy"] as? [String] ?? [],
+                    starRating: postData["starRating"] as? Int ?? 0,
+                    comments: []
+                )
+
+                wishlistPosts.append((post, username))
+                print("✅ Added post '\(post.restaurantName)' by @\(username) to wishlist.")
+            } else {
+                print("❌ Post with ID \(postId) not found.")
+            }
+        }
+
+        print("🏁 Finished fetching wishlist. Total posts: \(wishlistPosts.count)")
+        return wishlistPosts
+    }
+
+    
+    func isPostWishlisted(postId: String, userId: String) async throws -> Bool {
+            let userRef = Firestore.firestore().collection("users").document(userId)
+            let snapshot = try await userRef.getDocument()
+            
+            if let data = snapshot.data(), let wishlistedPosts = data["wishlist"] as? [String] {
+                return wishlistedPosts.contains(postId)
+            }
+            return false
+        }
         
 
 }
