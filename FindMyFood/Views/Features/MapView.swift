@@ -742,7 +742,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             let feed = try await AuthViewModel.shared.fetchPostDetailsFromFeed(userId: userId)
 
             for (post, user) in feed {
-                guard let imageUrl = URL(string: post.imageUrl) else {
+                guard let imageUrl = URL(string: post.imageUrls[0]) else {
                     print("Invalid URL for post: \(post._id)")
                     continue
                 }

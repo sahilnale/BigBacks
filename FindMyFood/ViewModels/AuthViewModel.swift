@@ -398,71 +398,73 @@ class AuthViewModel: ObservableObject {
     }
     
     func addPost(
-            imageData: Data,
-            review: String,
-            location: String,
-            restaurantName: String,
-            starRating: Int
-        ) async throws -> Post {
-            guard let userId = Auth.auth().currentUser?.uid else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not logged in."])
-            }
-            
-            print("in progress")
+        imageDatas: [Data], // Changed to accept an array of images
+        review: String,
+        location: String,
+        restaurantName: String,
+        starRating: Int
+    ) async throws -> Post {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not logged in."])
+        }
 
-            // Step 1: Upload Image to Firebase Storage
+        print("Uploading images...")
+
+        var imageUrls: [String] = []
+
+        // Upload each image and get its URL
+        for imageData in imageDatas {
             let imageRef = Storage.storage().reference().child("posts/\(UUID().uuidString).jpg")
             let metadata = StorageMetadata()
             metadata.contentType = "image/jpeg"
 
-            let uploadTask = try await imageRef.putDataAsync(imageData, metadata: metadata)
+            _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
             let imageUrl = try await imageRef.downloadURL().absoluteString
-            
-            let isoFormatter = ISO8601DateFormatter()
-                isoFormatter.timeZone = TimeZone(abbreviation: "UTC")
-                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                
-
-            // Step 2: Save Post in Firestore
-            let db = Firestore.firestore()
-            let postId = UUID().uuidString
-            let newPost: [String: Any] = [
-                "id": postId,
-                "userId": userId,
-                "imageUrl": imageUrl,
-                "timestamp": FieldValue.serverTimestamp(),
-                "review": review,
-                "location": location,
-                "restaurantName": restaurantName,
-                "starRating": starRating,
-                "likes": 0,
-                "likedBy": [],
-                "comments": []
-            ]
-
-            try await db.collection("posts").document(postId).setData(newPost)
-
-            // Step 3: Update Current User's Posts
-            let userRef = db.collection("users").document(userId)
-            try await userRef.updateData([
-                "posts": FieldValue.arrayUnion([postId])
-            ])
-
-            // Return the created post object
-            return Post(
-                _id: postId,
-                userId: userId,
-                imageUrl: imageUrl,
-                timestamp: Timestamp(date: Date()), // You can fetch the timestamp from Firestore if needed
-                review: review,
-                location: location,
-                restaurantName: restaurantName,
-                likes: 0,
-                likedBy: [],
-                starRating: starRating,
-                comments: []
-            )
+            imageUrls.append(imageUrl)
         }
+
+        print("Images uploaded successfully!")
+
+        // Save Post in Firestore
+        let db = Firestore.firestore()
+        let postId = UUID().uuidString
+        let newPost: [String: Any] = [
+            "id": postId,
+            "userId": userId,
+            "imageUrls": imageUrls, // Store array of image URLs
+            "timestamp": FieldValue.serverTimestamp(),
+            "review": review,
+            "location": location,
+            "restaurantName": restaurantName,
+            "starRating": starRating,
+            "likes": 0,
+            "likedBy": [],
+            "comments": []
+        ]
+
+        try await db.collection("posts").document(postId).setData(newPost)
+
+        // Update Current User's Posts
+        let userRef = db.collection("users").document(userId)
+        try await userRef.updateData([
+            "posts": FieldValue.arrayUnion([postId])
+        ])
+
+        // Return the created post object
+        return Post(
+            _id: postId,
+            userId: userId,
+            imageUrls: imageUrls, // Return the array of URLs
+            timestamp: Timestamp(date: Date()), // You can fetch the timestamp from Firestore if needed
+            review: review,
+            location: location,
+            restaurantName: restaurantName,
+            likes: 0,
+            likedBy: [],
+            starRating: starRating,
+            comments: []
+        )
+    }
     
     func getUserById(friendId: String) async throws -> User? {
         let userDocument = try await Firestore.firestore()
@@ -844,7 +846,7 @@ class AuthViewModel: ObservableObject {
         return Post(
             _id: postDoc.documentID,
             userId: postData["userId"] as? String ?? "",
-            imageUrl: postData["imageUrl"] as? String ?? "",
+            imageUrls: postData["imageUrls"] as? [String] ?? [], // Fetch the array of image URLs
             timestamp: postData["timestamp"] as? Timestamp ?? Timestamp(date: Date()),
             review: postData["review"] as? String ?? "",
             location: postData["location"] as? String ?? "",
@@ -1055,8 +1057,97 @@ class AuthViewModel: ObservableObject {
         }
     }
     
+    func toggleWishlist(postId: String, userId: String) async throws -> Bool {
+        let userRef = Firestore.firestore().collection("users").document(userId)
+        let snapshot = try await userRef.getDocument()
+        
+        guard var wishlistedPosts = snapshot.data()?["wishlist"] as? [String] else {
+            try await userRef.setData(["wishlist": [postId]], merge: true)
+            return true
+        }
 
+        if wishlistedPosts.contains(postId) {
+            wishlistedPosts.removeAll { $0 == postId }
+        } else {
+            wishlistedPosts.append(postId)
+        }
 
+        try await userRef.updateData(["wishlist": wishlistedPosts])
+        return wishlistedPosts.contains(postId)
+    }
+    
+    func fetchWishlist() async throws -> [(post: Post, userName: String)] {
+        let db = Firestore.firestore()
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("❌ No user logged in.")
+            return []
+        }
+
+        print("🔍 Fetching wishlist for userId: \(userId)")
+
+        let userDoc = try await db.collection("users").document(userId).getDocument()
+        
+        guard let userData = userDoc.data(),
+              let wishlistIds = userData["wishlist"] as? [String] else {
+            print("⚠️ Wishlist array not found in user document.")
+            return []
+        }
+
+        if wishlistIds.isEmpty {
+            print("⚠️ Wishlist is empty.")
+            return []
+        } else {
+            print("✅ Found \(wishlistIds.count) items in wishlist.")
+        }
+
+        var wishlistPosts: [(post: Post, userName: String)] = []
+
+        for postId in wishlistIds {
+            print("🔄 Fetching post with postId: \(postId)")
+
+            let postDoc = try await db.collection("posts").document(postId).getDocument()
+
+            if let postData = postDoc.data() {
+                let postUserId = postData["userId"] as? String ?? ""
+
+                let userDoc = try await db.collection("users").document(postUserId).getDocument()
+                let username = userDoc.data()?["username"] as? String ?? "Unknown"
+
+                let post = Post(
+                    _id: postDoc.documentID,
+                    userId: postUserId,
+                    imageUrls: postData["imageUrls"] as? [String] ?? [],
+                    timestamp: postData["timestamp"] as? Timestamp ?? Timestamp(date: Date()),
+                    review: postData["review"] as? String ?? "",
+                    location: postData["location"] as? String ?? "0.0,0.0",
+                    restaurantName: postData["restaurantName"] as? String ?? "",
+                    likes: postData["likes"] as? Int ?? 0,
+                    likedBy: postData["likedBy"] as? [String] ?? [],
+                    starRating: postData["starRating"] as? Int ?? 0,
+                    comments: []
+                )
+
+                wishlistPosts.append((post, username))
+                print("✅ Added post '\(post.restaurantName)' by @\(username) to wishlist.")
+            } else {
+                print("❌ Post with ID \(postId) not found.")
+            }
+        }
+
+        print("🏁 Finished fetching wishlist. Total posts: \(wishlistPosts.count)")
+        return wishlistPosts
+    }
+
+    
+    func isPostWishlisted(postId: String, userId: String) async throws -> Bool {
+            let userRef = Firestore.firestore().collection("users").document(userId)
+            let snapshot = try await userRef.getDocument()
+            
+            if let data = snapshot.data(), let wishlistedPosts = data["wishlist"] as? [String] {
+                return wishlistedPosts.contains(postId)
+            }
+            return false
+        }
         
 
 }

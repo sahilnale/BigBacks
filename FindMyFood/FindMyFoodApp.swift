@@ -4,7 +4,6 @@ import FirebaseMessaging
 import UserNotifications
 import FirebaseAuth
 import FirebaseFirestore
-import FirebaseMessaging
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
 
@@ -132,3 +131,4 @@ struct FindMyFoodApp: App {
         }
     }
 }
+

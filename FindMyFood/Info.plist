@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need access to your location to tag your images with location details</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to fetch location metadata for your images</string>
 	<key>Supported Device Families</key>
 	<array>
 		<string>1</string>

@@ -8,29 +8,40 @@ struct PostView: View {
     @State private var showAlert = false
     @State private var commenterUsernames: [String: String] = [:]
     @State private var errorMessage: String?
+    @State private var currentImageIndex = 0 // To track the currently displayed image
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AsyncImage(url: URL(string: post.imageUrl)) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .background(Color.gray.opacity(0.3))
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .clipped()
-                    case .failure:
-                        Text("Failed to load image")
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .background(Color.red.opacity(0.3))
-                    @unknown default:
-                        EmptyView()
+                if !post.imageUrls.isEmpty {
+                    // Carousel for multiple images
+                    TabView(selection: $currentImageIndex) {
+                        ForEach(post.imageUrls.indices, id: \.self) { index in
+                            AsyncImage(url: URL(string: post.imageUrls[index])) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity, minHeight: 200)
+                                        .background(Color.gray.opacity(0.3))
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(maxWidth: .infinity, minHeight: 200)
+                                        .clipped()
+                                case .failure:
+                                    Text("Failed to load image")
+                                        .frame(maxWidth: .infinity, minHeight: 200)
+                                        .background(Color.red.opacity(0.3))
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                            .tag(index) // Tag each image with its index
+                        }
                     }
+                    .tabViewStyle(PageTabViewStyle()) // Adds page dots at the bottom
+                    .frame(height: 300) // Set the height for the image carousel
                 }
 
                 Text(post.restaurantName)
@@ -175,4 +186,5 @@ struct PostView: View {
         isDeleting = false
     }
 }
+
 

@@ -690,8 +690,8 @@ struct Post: Codable, Identifiable {
     let _id: String
     var id: String { _id }
     let userId: String
-    let imageUrl: String
-    let timestamp: Timestamp // ISO 8601 string
+    let imageUrls: [String]
+    let timestamp: Timestamp
     let review: String
     let location: String
     let restaurantName: String
@@ -699,8 +699,9 @@ struct Post: Codable, Identifiable {
     var likedBy: [String]
     let starRating: Int
     var comments: [Comment]
+
     var date: Date {
-            return timestamp.dateValue() // ✅ Convert Timestamp to Date
+        return timestamp.dateValue() // Helper to convert Timestamp to Date
     }
 }
 

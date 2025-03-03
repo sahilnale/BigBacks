@@ -193,7 +193,7 @@ class ProfileViewModel: ObservableObject {
                 self.name = userData["name"] as? String ?? "Unknown"
                 self.username = userData["username"] as? String ?? "unknown"
                 self.friendsCount = (userData["friends"] as? [String])?.count ?? 0
-                self.profilePicture = userData["profilePicture"] as? String ?? "" // Fetch the profile picture
+                self.profilePicture = userData["profilePicture"] as? String
             }
 
             // Fetch posts
@@ -203,14 +203,17 @@ class ProfileViewModel: ObservableObject {
 
             var fetchedPosts = postsQuerySnapshot.documents.compactMap { document -> Post? in
                 let data = document.data()
-                guard let timestamp = data["timestamp"] as? Timestamp else {
-                    return nil
-                }
+                guard let timestamp = data["timestamp"] as? Timestamp else { return nil }
+
+                let imageUrls = data["imageUrls"] as? [String] ?? {
+                    let singleImageUrl = data["imageUrl"] as? String
+                    return singleImageUrl != nil ? [singleImageUrl!] : []
+                }()
 
                 return Post(
                     _id: document.documentID,
                     userId: data["userId"] as? String ?? "",
-                    imageUrl: data["imageUrl"] as? String ?? "",
+                    imageUrls: imageUrls,
                     timestamp: timestamp,
                     review: data["review"] as? String ?? "",
                     location: data["location"] as? String ?? "",
@@ -223,7 +226,7 @@ class ProfileViewModel: ObservableObject {
             }
 
             DispatchQueue.main.async {
-                fetchedPosts.sort { $0.date < $1.date }
+                fetchedPosts.sort { $0.timestamp.dateValue() < $1.timestamp.dateValue() }
                 self.posts = fetchedPosts
                 self.isLoading = false
             }
