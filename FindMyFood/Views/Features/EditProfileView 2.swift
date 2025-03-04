@@ -8,10 +8,11 @@ import SwiftUI
 
 struct EditProfileView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject var profileViewModel: ProfileViewModel
+    
     @State private var showImagePicker = false
     @State private var selectedImage: UIImage?
-    @State private var name = ""
-    @State private var email = ""
     
     var body: some View {
         NavigationStack {
@@ -25,19 +26,19 @@ struct EditProfileView: View {
                             Image(uiImage: image)
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 120, height: 120)
-                                .clipShape(Circle())
+                                .frame(width: 300, height: 300)
+                                .cornerRadius(10)
                         } else {
-                            AsyncImage(url: URL(string: "YOUR_PROFILE_URL")) { image in
+                            AsyncImage(url: URL(string: authViewModel.currentUser?.profilePicture ?? "")) { image in
                                 image
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(width: 120, height: 120)
-                                    .clipShape(Circle())
+                                    .frame(width: 300, height: 300)
+                                    .cornerRadius(10)
                             } placeholder: {
                                 Image(systemName: "person.circle.fill")
                                     .resizable()
-                                    .frame(width: 120, height: 120)
+                                    .frame(width: 300, height: 300)
                                     .foregroundColor(.gray)
                             }
                         }
@@ -49,35 +50,27 @@ struct EditProfileView: View {
                     }
                 }
                 
-                // Form Fields
-                VStack(spacing: 16) {
-                    TextField("Name", text: $name)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding(.horizontal)
-                    
-                    TextField("Email", text: $email)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding(.horizontal)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                    
-                    Button(action: {
-                        // Save changes action
-                    }) {
+                // Save Button
+                Button(action: saveChanges) {
+                    if authViewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
                         Text("Save Changes")
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.customOrange)
-                            .cornerRadius(10)
                     }
-                    .padding(.horizontal)
                 }
-                .padding(.top, 20)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.customOrange)
+                .cornerRadius(10)
+                .disabled(authViewModel.isLoading || selectedImage == nil)
+                .padding(.horizontal)
+                .opacity(selectedImage == nil ? 0.5 : 1.0)
                 
                 Spacer()
             }
-            .navigationTitle("Edit Profile")
+            .navigationTitle("Edit Profile Picture")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -88,6 +81,38 @@ struct EditProfileView: View {
             }
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(sourceType: .photoLibrary, selectedImage: $selectedImage)
+            }
+            .alert("Profile Update", isPresented: $authViewModel.showError) {
+                Button("OK") {
+                    if authViewModel.error?.contains("successfully") ?? false {
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text(authViewModel.error ?? "Unknown error")
+            }
+        }
+    }
+    
+    private func saveChanges() {
+        guard let userId = authViewModel.currentUser?.id,
+              let imageData = selectedImage?.jpegData(compressionQuality: 0.8) else { return }
+        
+        authViewModel.updateFirestoreUser(
+            userId: userId,
+            name: authViewModel.currentUser?.name ?? "",
+            username: authViewModel.currentUser?.username ?? "",
+            email: authViewModel.currentUser?.email ?? "",
+            profileImageData: imageData
+        ) { success in
+            if success {
+                Task {
+                    // Reload profile data before dismissing
+                    await profileViewModel.loadProfile()
+                    await MainActor.run {
+                        dismiss()
+                    }
+                }
             }
         }
     }

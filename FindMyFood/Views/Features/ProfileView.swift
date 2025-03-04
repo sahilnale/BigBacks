@@ -5,7 +5,7 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
     @State private var showEditProfile = false
 
-    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
+    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.43
     private let screenHeight = UIScreen.main.bounds.height
     
     private let columns = [
@@ -17,54 +17,54 @@ struct ProfileView: View {
         NavigationStack {
             ZStack {
                 // Background Layer
-                Group {
-                    if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
-                        // Show Profile Picture
-                        AsyncImage(url: URL(string: profilePicture)) { phase in
-                            switch phase {
-                            case .empty:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-                                    .clipped()
-                            case .failure:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            @unknown default:
-                                EmptyView()
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    // Profile Picture Layer
+                    Group {
+                        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+                            AsyncImage(url: URL(string: profilePicture)) { phase in
+                                switch phase {
+                                case .empty:
+                                    Color.gray.opacity(0.3)
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                case .failure:
+                                    Color.gray.opacity(0.3)
+                                @unknown default:
+                                    EmptyView()
+                                }
                             }
-                        }
-                    } else if let latestPost = viewModel.posts.last,
-                              let firstImageUrl = latestPost.imageUrls.first,
-                              !firstImageUrl.isEmpty {
-                        // Show Latest Post's First Image
-                        AsyncImage(url: URL(string: firstImageUrl)) { phase in
-                            switch phase {
-                            case .empty:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-                                    .clipped()
-                            case .failure:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            @unknown default:
-                                EmptyView()
+                        } else if let latestPost = viewModel.posts.last,
+                                  let firstImageUrl = latestPost.imageUrls.first,
+                                  !firstImageUrl.isEmpty {
+                            AsyncImage(url: URL(string: firstImageUrl)) { phase in
+                                switch phase {
+                                case .empty:
+                                    Color.gray.opacity(0.3)
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                case .failure:
+                                    Color.gray.opacity(0.3)
+                                @unknown default:
+                                    EmptyView()
+                                }
                             }
+                        } else {
+                            Color.gray.opacity(0.3)
                         }
-                    } else {
-                        // Default Background
-                        Color(.systemBackground)
-                            .ignoresSafeArea()
                     }
+                    .frame(height: screenHeight * 0.5)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                    .ignoresSafeArea(edges: .top)
+                    
+                    Spacer()
                 }
                 
                 // Foreground Sliding Drawer
@@ -145,7 +145,7 @@ struct ProfileView: View {
                         }
                     }
                     .sheet(isPresented: $showEditProfile) {
-                        EditProfileView()
+                        EditProfileView(profileViewModel: viewModel)
                     }
                     .frame(maxWidth: .infinity)
                     .background(
@@ -166,19 +166,16 @@ struct ProfileView: View {
                         DragGesture()
                             .onChanged { gesture in
                                 let newOffset = offset + gesture.translation.height
-                                            if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.6 {
-                                                offset = newOffset
+                                if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.45 {
+                                    offset = newOffset
                                 }
                             }
                             .onEnded { gesture in
                                 withAnimation(.spring()) {
-                                    let upperLimit = screenHeight * 0.08  // Adjust this to control how high it goes
-                                    let lowerLimit = screenHeight * 0.08   // Default lower position
-                                                    
                                     if gesture.predictedEndTranslation.height < 0 {
-                                        offset = upperLimit
+                                        offset = screenHeight * 0.3 // Upper limit
                                     } else {
-                                        offset = lowerLimit
+                                        offset = screenHeight * 0.45 // Lower limit (Changed from 0.5)
                                     }
                                 }
                             }
