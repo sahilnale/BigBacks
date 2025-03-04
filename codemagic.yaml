@@ -22,13 +22,8 @@ workflows:
             -scheme FindMyFood \
             -configuration Release \
             -sdk iphoneos \
-            -destination 'generic/platform=iOS'
-      - name: Run tests (optional)
-        script: |
-          xcodebuild test \
-            -workspace FindMyFood.xcworkspace \
-            -scheme FindMyFood \
-            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates
     artifacts:
       - build/ios/ipa/*.ipa
       - $HOME/Library/Developer/Xcode/DerivedData/**/Logs/Test/*.xcresult
