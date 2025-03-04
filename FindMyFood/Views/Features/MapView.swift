@@ -30,16 +30,64 @@ class ClusterAnnotationView: MKMarkerAnnotationView {
     override var annotation: MKAnnotation? {
         willSet {
             guard let cluster = newValue as? MKClusterAnnotation else { return }
-            
-            // Count of annotations in the cluster
+
             let totalAnnotations = cluster.memberAnnotations.count
-            glyphText = "\(totalAnnotations)" // Show count on the marker
-            
-            // Customize cluster color
-            markerTintColor = .accentColor2
+
+            // Ensure we have a valid annotation image
+            if let latestAnnotation = cluster.memberAnnotations.last as? ImageAnnotation,
+               let latestImage = latestAnnotation.image {
+                
+                // Generate a fresh image for the cluster with the number in the bottom-right
+                let clusterImage = generateClusterImage(baseImage: latestImage, text: "\(totalAnnotations)")
+                image = clusterImage
+            }
+
+            markerTintColor = .clear  // Hide default marker color
+            glyphText = nil           // Prevent any numbers in the middle
+        }
+    }
+
+    private func generateClusterImage(baseImage: UIImage, text: String) -> UIImage {
+        let size = CGSize(width: 50, height: 50)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        
+        return renderer.image { context in
+            // Draw the base image (without any text in the middle)
+            let circlePath = UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+            circlePath.addClip()
+            baseImage.draw(in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+
+            // Create a small black circle in the bottom-right for the number
+            let textBgSize: CGFloat = 20
+            let textBgRect = CGRect(
+                x: size.width - textBgSize - 4, // Right-aligned
+                y: size.height - textBgSize - 4, // Bottom-aligned
+                width: textBgSize,
+                height: textBgSize
+            )
+            let bgPath = UIBezierPath(ovalIn: textBgRect)
+            UIColor.black.withAlphaComponent(0.8).setFill() // Darker for contrast
+            bgPath.fill()
+
+            // Draw the number inside the black circle
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.boldSystemFont(ofSize: 12),
+                .foregroundColor: UIColor.white
+            ]
+            let textSize = text.size(withAttributes: attributes)
+            let textRect = CGRect(
+                x: textBgRect.midX - textSize.width / 2,
+                y: textBgRect.midY - textSize.height / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            text.draw(in: textRect, withAttributes: attributes)
         }
     }
 }
+
+
+
 class CustomPopupView: UIView {
     private let titleLabel = UILabel()
     private let titleContainer = UIStackView()

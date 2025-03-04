@@ -8,10 +8,19 @@ struct WelcomeView: View {
     var body: some View {
         NavigationView {
             VStack(spacing:10) {
-                Text("FindMyFood")
-                    .font(.system(.largeTitle, design: .serif))
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
+                
+                HStack(spacing: 0) {
+                    Image("transparentLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 70, height: 70)
+                    
+                    Text("FindMyFood")
+                        .font(.system(.largeTitle, design: .serif))
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+
+                }
                     .scaleEffect(textScale) // Scale effect for animation
                     .opacity(textOpacity)   // Opacity for fade-in effect
                     .onAppear {
@@ -23,7 +32,6 @@ struct WelcomeView: View {
                         }
                         requestPermissions()
                     }
-                    .padding()
                 
                 NavigationLink(destination: LoginView()) {
                     Text("Login")
