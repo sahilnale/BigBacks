@@ -1,0 +1,41 @@
+workflows:
+  find-my-food-ios:
+    name: Find My Food iOS CI
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      vars:
+        FIREBASE_API_KEY: Encrypted(...) # Add through Codemagic UI
+        AWS_SECRET_KEY: Encrypted(...)
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Install CocoaPods dependencies
+        script: |
+          brew install cocoapods || echo "CocoaPods already installed"
+          pod install
+      - name: Build the app
+        script: |
+          xcodebuild clean build \
+            -workspace FindMyFood.xcworkspace \
+            -scheme FindMyFood \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS'
+      - name: Run tests (optional)
+        script: |
+          xcodebuild test \
+            -workspace FindMyFood.xcworkspace \
+            -scheme FindMyFood \
+            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Logs/Test/*.xcresult
+    publishing:
+      email:
+        recipients:
+          - "your-email@example.com"
