@@ -26,7 +26,8 @@ struct RestaurantCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Dynamic image from post.imageUrls
+            
+            // 1) The main image and profile link
             Button(action: {
                 navigateToPost = true
             }) {
@@ -43,7 +44,6 @@ struct RestaurantCard: View {
                             .clipShape(RoundedRectangle(cornerRadius: 15))
                     }
                 } else {
-                    // Placeholder for posts without images
                     Color.gray.frame(width: 350, height: 350)
                         .clipShape(RoundedRectangle(cornerRadius: 15))
                         .overlay(
@@ -63,8 +63,8 @@ struct RestaurantCard: View {
                 }
                 .hidden()
             )
-
-            // Username and navigation
+            
+            // 2) Username link
             HStack {
                 Button(action: {
                     navigateToProfile = true
@@ -86,193 +86,119 @@ struct RestaurantCard: View {
                 .hidden()
             )
 
-            // Post details and interactions
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: "mappin.and.ellipse")
-                            .foregroundColor(.customOrange)
-                        Text(post.restaurantName)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.primary)
-                    }
-
-                    Text(post.review)
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundColor(Color.secondary)
-                        .lineLimit(isExpanded ? nil : 2)
-                        .onTapGesture {
-                            withAnimation {
-                                isExpanded.toggle()
-                            }
-                        }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                VStack(alignment: .trailing, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.yellow)
-                        Text("\(post.starRating)")
-                            .font(.subheadline)
-                            .foregroundColor(Color.primary)
-                    }
-                    
-                    Button(action: {
-                        Task {
-                            do {
-                                let userId = Auth.auth().currentUser?.uid ?? ""
-                                let newStatus = try await AuthViewModel.shared.toggleWishlist(postId: post.id, userId: userId)
-                                await MainActor.run {
-                                    self.isWishlisted = newStatus
-                                }
-                            } catch {
-                                print("Failed to update wishlist: \(error)")
-                            }
-                        }
-                    }) {
-                        Image(systemName: isWishlisted ? "checkmark.circle.fill" : "plus.circle")
-                            .foregroundColor(isWishlisted ? .green : .gray)
-                            .font(.title2)
-                    }
-
-                    Button(action: {
-                        Task {
-                            do {
-                                let result = try await AuthViewModel.shared.toggleLike(
-                                    postId: post.id,
-                                    userId: Auth.auth().currentUser?.uid ?? "",
-                                    isCurrentlyLiked: isLiked
-                                )
-                                await MainActor.run {
-                                    self.likeCount = result.newLikeCount
-                                    self.isLiked = result.isLiked
-                                }
-                            } catch {
-                                print("Failed to toggle like: \(error)")
-                            }
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: isLiked ? "heart.fill" : "heart")
-                                .foregroundColor(isLiked ? .red : .gray)
-                                .scaleEffect(isLiked ? 1.2 : 1.0)
-                                .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.5), value: isLiked)
-
-                            Text("\(likeCount) likes")
-                                .font(.subheadline)
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
+            // 3) Restaurant name + star rating on the same row
+            HStack {
+                Image(systemName: "mappin.and.ellipse")
+                    .foregroundColor(.customOrange)
+                
+                Text(post.restaurantName)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.primary)
+                
+                Spacer()
+                
+                // Star rating
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(.yellow)
+                    Text("\(post.starRating)")
+                        .font(.subheadline)
+                        .foregroundColor(Color.primary)
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 8)
 
-            // Comments section
-            Button(action: {
-                withAnimation {
-                    showComments.toggle()
+            // 4) Review text
+            Text(post.review)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(Color.secondary)
+                .lineLimit(isExpanded ? nil : 2)
+                .onTapGesture {
+                    withAnimation {
+                        isExpanded.toggle()
+                    }
                 }
-            }) {
-                HStack {
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
+            // 5) Comments, Likes, and Bookmark on one row
+            HStack {
+                // Comments button (left)
+                Button(action: {
+                    withAnimation {
+                        showComments.toggle()
+                    }
+                }) {
                     Text("Comments (\(post.comments.count))")
                         .font(.subheadline)
                         .foregroundColor(.customOrange)
                 }
-            }
-            .buttonStyle(PlainButtonStyle())
-            .padding(.leading)
-            .padding(.bottom)
 
-            if showComments {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(post.comments) { comment in
-                        HStack(alignment: .top) {
-                            AsyncImage(url: URL(string: comment.profilePhotoUrl)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 25, height: 25)
-                                    .clipShape(Circle())
-                                    .padding(.leading)
-                            } placeholder: {
-                                Circle()
-                                    .fill(Color.gray)
-                                    .frame(width: 25, height: 25)
-                                    .padding(.leading)
+                Spacer()
+                
+                // Likes button
+                Button(action: {
+                    Task {
+                        do {
+                            let result = try await AuthViewModel.shared.toggleLike(
+                                postId: post.id,
+                                userId: Auth.auth().currentUser?.uid ?? "",
+                                isCurrentlyLiked: isLiked
+                            )
+                            await MainActor.run {
+                                self.likeCount = result.newLikeCount
+                                self.isLiked = result.isLiked
                             }
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("@\(commenterUsernames[comment.userId] ?? "Loading...")")
-                                    .foregroundColor(Color.accentColor)
-                                    .font(.subheadline)
-                                    .onAppear {
-                                        Task {
-                                            let userId = Auth.auth().currentUser?.uid ?? ""
-
-                                            self.likeCount = post.likes // ✅ This will set it from the post
-                                            self.isLiked = post.likedBy.contains(userId) // ✅ Check if the user has liked it already
-
-                                            do {
-                                                self.isWishlisted = try await AuthViewModel.shared.isPostWishlisted(postId: post.id, userId: userId)
-                                            } catch {
-                                                print("Failed to fetch wishlist status: \(error)")
-                                            }
-                                        }
-                                    }
-
-                                Text(comment.text)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal)
-                                    .background(Color(UIColor.systemGray6))
-                                    .cornerRadius(8)
-                                
-                                Text("\(timeAgo(from: comment.timestamp))")
-                                                                   .font(.caption)
-                                                                   .foregroundColor(.gray)
-                            }
+                        } catch {
+                            print("Failed to toggle like: \(error)")
                         }
                     }
-                    HStack {
-                       TextField("Add a comment...", text: $newCommentText)
-                           .textFieldStyle(DefaultTextFieldStyle())
-                       
-                       Button(action: {
-                           guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                           Task {
-                               do {
-                                   let comment = Comment(
-                                       id: UUID().uuidString,
-                                       commentId: UUID().uuidString,
-                                       userId: Auth.auth().currentUser?.uid ?? "",
-                                       profilePhotoUrl: AuthViewModel.shared.currentUser?.profilePicture ?? "placeholder",
-                                       text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
-                                       timestamp: Date()
-                                   )
-                                   
-                                   let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
-                                   
-                                   await MainActor.run {
-                                       post.comments.append(newComment)
-                                       newCommentText = ""
-                                   }
-                                   print("Comment added successfully.")
-                               } catch {
-                                   print("Failed to add comment: \(error)")
-                               }
-                           }
-                       }) {
-                           Text("Post")
-                               .font(.subheadline)
-                               .foregroundColor(.customOrange)
-                               .padding(.horizontal)
-                       }
-                   }
-                   .padding(.horizontal)
+                }) {
+                    HStack(spacing: 4) {  // <-- Adjust spacing here (e.g., 2 or 4)
+                        Image(systemName: isLiked ? "heart.fill" : "heart")
+                            .foregroundColor(isLiked ? .red : .gray)
+                            .font(.subheadline)    // Ensure consistent font size
+                            .scaleEffect(isLiked ? 1.2 : 1.0)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0.5),
+                                       value: isLiked)
+                        
+                        Text("\(likeCount)")
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                // Bookmark button
+                Button(action: {
+                    Task {
+                        do {
+                            let userId = Auth.auth().currentUser?.uid ?? ""
+                            let newStatus = try await AuthViewModel.shared.toggleWishlist(
+                                postId: post.id,
+                                userId: userId
+                            )
+                            await MainActor.run {
+                                self.isWishlisted = newStatus
+                            }
+                        } catch {
+                            print("Failed to update wishlist: \(error)")
+                        }
+                    }
+                }) {
+                    Image(systemName: isWishlisted ? "bookmark.fill" : "bookmark")
+                        .foregroundColor(isWishlisted ? .accentColor : .gray)
+                        .font(.subheadline)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
+
+            // 6) Show/hide comments section
+            if showComments {
+                VStack(alignment: .leading, spacing: 8) {
+                    // ... your existing comment list code ...
+                    // ... including the TextField for adding a comment ...
                 }
                 .padding(.bottom)
             }
@@ -281,22 +207,21 @@ struct RestaurantCard: View {
         .cornerRadius(10)
         .shadow(color: Color.primary.opacity(0.1), radius: 5)
         .padding(.horizontal)
-        .padding(.horizontal)
         .onAppear {
             Task {
                 let userId = Auth.auth().currentUser?.uid ?? ""
-
                 self.likeCount = post.likes
                 self.isLiked = post.likedBy.contains(userId)
-
                 do {
-                    self.isWishlisted = try await AuthViewModel.shared.isPostWishlisted(postId: post.id, userId: userId)
+                    self.isWishlisted = try await AuthViewModel.shared
+                        .isPostWishlisted(postId: post.id, userId: userId)
                 } catch {
                     print("Failed to fetch wishlist status: \(error)")
                 }
             }
         }
     }
+
 }
 
 

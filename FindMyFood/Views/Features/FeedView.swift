@@ -30,11 +30,11 @@ struct FeedView: View {
                     headerView()
                     
                     tabPicker()
-                        .padding(.bottom, 12) // More space below tabs
+                        .padding(.bottom, 12)
                     
                     if selectedTab == .feed {
                         sortMenu()
-                            .padding(.bottom, 12) // More space below the sort menu
+                            .padding(.bottom, 12)
                     }
                     
                     Color.gray.opacity(0.1)
@@ -44,23 +44,55 @@ struct FeedView: View {
                         switch selectedTab {
                         case .feed:
                             feedContentView()
-                                .padding(.top, 12) // Extra space before posts
+                                .padding(.top, 12)
                         case .wishlist:
                             WishlistView()
                                 .padding(.top, 12)
                         }
                     }
-                    .background(Color.white)
+                    // Use system background so dark mode is supported.
+                    .background(Color(.systemBackground))
                 }
             }
             .edgesIgnoringSafeArea(.top)
             .onAppear {
                 if posts.isEmpty { loadFeed() }
             }
+            // Dynamic re-sorting when sortOption changes:
+            .onChange(of: sortOption) { newOption in
+                if newOption == .distance {
+                    if let userLocation = userLocation {
+                        self.posts.sort { (a, b) in
+                            let coordsA = a.post.location.split(separator: ",").compactMap { Double($0) }
+                            let coordsB = b.post.location.split(separator: ",").compactMap { Double($0) }
+                            guard coordsA.count == 2, coordsB.count == 2 else { return false }
+                            let locationA = CLLocation(latitude: coordsA[0], longitude: coordsA[1])
+                            let locationB = CLLocation(latitude: coordsB[0], longitude: coordsB[1])
+                            return locationA.distance(from: userLocation) < locationB.distance(from: userLocation)
+                        }
+                    } else {
+                        fetchUserLocation()
+                    }
+                } else {
+                    self.posts.sort { (a, b) in
+                        switch newOption {
+                        case .mostRecent:
+                            return a.post.timestamp.dateValue() > b.post.timestamp.dateValue()
+                        case .rating:
+                            return a.post.starRating > b.post.starRating
+                        case .popularity:
+                            return a.post.likes > b.post.likes
+                        default:
+                            return true
+                        }
+                    }
+                }
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
     }
 
+    // MARK: - Header View
     private func headerView() -> some View {
         HStack {
             Image("transparentLogo")
@@ -74,12 +106,13 @@ struct FeedView: View {
                 .foregroundColor(.white)
             Spacer()
         }
-        .padding(.top, 50) // Extra space at the top
-        .padding(.bottom, 20) // More space below header
+        .padding(.top, 50)
+        .padding(.bottom, 20)
         .frame(maxWidth: .infinity)
         .background(Color.accentColor.opacity(0.8))
     }
 
+    // MARK: - Tab Picker
     private func tabPicker() -> some View {
         Picker("Select", selection: $selectedTab) {
             ForEach(Tab.allCases, id: \.self) { tab in
@@ -90,9 +123,11 @@ struct FeedView: View {
         .padding(.top, 12)
         .padding(.horizontal)
         .padding(.bottom, 8)
-        .background(Color.white)
+        // Use system background for dark mode
+        .background(Color(.systemBackground))
     }
 
+    // MARK: - Sort Menu
     private func sortMenu() -> some View {
         HStack {
             Menu {
@@ -115,9 +150,11 @@ struct FeedView: View {
         }
         .padding(.leading)
         .padding(.bottom, 8)
-        .background(Color.white)
+        // Use system background for dark mode
+        .background(Color(.systemBackground))
     }
 
+    // MARK: - Fetch User Location
     private func fetchUserLocation() {
         LocationManager.shared.startUpdatingLocation { location in
             self.userLocation = location
@@ -125,6 +162,7 @@ struct FeedView: View {
         }
     }
 
+    // MARK: - Feed Content
     private func feedContentView() -> some View {
         VStack(spacing: 0) {
             if isLoading && posts.isEmpty {
@@ -152,6 +190,7 @@ struct FeedView: View {
         }
     }
 
+    // MARK: - Load Feed
     private func loadFeed() {
         isLoading = true
         errorMessage = nil
@@ -214,7 +253,7 @@ struct FeedView: View {
                         }
                     }
 
-                    group.notify(queue: .main, execute: {
+                    group.notify(queue: .main) {
                         self.posts = feed.sorted { (a: (post: Post, userName: String), b: (post: Post, userName: String)) in
                             switch sortOption {
                             case .mostRecent:
@@ -234,7 +273,7 @@ struct FeedView: View {
                                 let distanceB = locationB.distance(from: userLocation)
                                 
                                 return distanceA < distanceB
-
+                                
                             case .rating:
                                 return a.post.starRating > b.post.starRating
                             case .popularity:
@@ -242,11 +281,12 @@ struct FeedView: View {
                             }
                         }
                         self.isLoading = false
-                    })
+                    }
                 }
         }
     }
 }
+
 
 
 
@@ -292,6 +332,7 @@ struct WishlistView: View {
         }
     }
 }
+
 
 
 extension Notification.Name {
