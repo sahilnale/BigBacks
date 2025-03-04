@@ -4,181 +4,178 @@ struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
     @State private var showEditProfile = false
-
-    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
-    private let screenHeight = UIScreen.main.bounds.height
     
+    // How high the sheet can go from the top (60 = 60pts down from top).
+    private let topLimit: CGFloat = 60
+    // Sheet can go as low as 90% of the screen height MINUS safe area insets.
+    private let bottomLimitFactor: CGFloat = 0.9
+    
+    // Starting offset for the sheet (40% down the screen).
+    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.4
+    
+    // Two-column grid with minimal spacing
     private let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible())
+        GridItem(.flexible(), spacing: 2),
+        GridItem(.flexible(), spacing: 2)
     ]
     
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background Layer
-                Group {
-                    if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
-                        // Show Profile Picture
-                        AsyncImage(url: URL(string: profilePicture)) { phase in
-                            switch phase {
-                            case .empty:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-                                    .clipped()
-                            case .failure:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            @unknown default:
-                                EmptyView()
-                            }
-                        }
-                    } else if let latestPost = viewModel.posts.last,
-                              let firstImageUrl = latestPost.imageUrls.first,
-                              !firstImageUrl.isEmpty {
-                        // Show Latest Post's First Image
-                        AsyncImage(url: URL(string: firstImageUrl)) { phase in
-                            switch phase {
-                            case .empty:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-                                    .clipped()
-                            case .failure:
-                                Color.gray.opacity(0.3)
-                                    .ignoresSafeArea()
-                            @unknown default:
-                                EmptyView()
-                            }
-                        }
-                    } else {
-                        // Default Background
-                        Color(.systemBackground)
-                            .ignoresSafeArea()
-                    }
-                }
                 
-                // Foreground Sliding Drawer
+                // MARK: - Background
+                backgroundView()
+                    // Optional overlay for text contrast
+                    .overlay(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.black.opacity(0.3),
+                                Color.clear
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .ignoresSafeArea()
+                
+                // MARK: - Sliding Sheet
                 GeometryReader { geometry in
-                    VStack(spacing: 16) {
-                        Capsule()
-                            .frame(width: 40, height: 6)
-                            .foregroundColor(.gray)
-                            .padding(.top, 8)
-                        HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        showEditProfile = true
-                                    }) {
-                                        Image(systemName: "pencil")
-                                            .foregroundColor(.customOrange)
-                                            .font(.system(size: 20))
-                                    }
-                                    .padding(.top, 8)
-                                    .padding(.trailing, 20)
-                                }
+                    
+                    // 1) Safe area–aware bottom limit
+                    let safeAreaBottom = geometry.safeAreaInsets.bottom
+                    let screenHeight = geometry.size.height
+                    let bottomLimit = screenHeight * bottomLimitFactor - safeAreaBottom
+                    
+                    VStack(spacing: 0) {
                         
-                        VStack(spacing: 4) {
+                        // Grab handle
+                        Capsule()
+                            .frame(width: 50, height: 5)
+                            .foregroundColor(.gray.opacity(0.8))
+                            .padding(.top, 10)
+                        
+                        // Edit button (top-right)
+                        HStack {
+                            Spacer()
+                            Button(action: { showEditProfile = true }) {
+                                Image(systemName: "pencil")
+                                    .foregroundColor(.customOrange)
+                                    .font(.system(size: 20))
+                            }
+                            .padding(.top, 4)
+                            .padding(.trailing, 20)
+                        }
+                        
+                        // MARK: - Profile Info
+                        VStack(spacing: 6) {
+                            profileAvatarView()
+                            
                             Text(viewModel.name)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.primary)
-                                .padding(.top, 8)
+                                .font(.system(size: 22, weight: .bold))
                             
                             Text("@\(viewModel.username)")
-                                .font(.system(size: 16, weight: .regular))
+                                .font(.system(size: 15))
                                 .foregroundColor(.gray)
                             
-                        }
-                        
-                        HStack(spacing: 32) {
-                            VStack {
-                                Text("\(viewModel.posts.count)")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.primary)
-                                Text("Posts")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                            }
-                            
-                            VStack {
-                                Text("\(viewModel.friendsCount)")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.primary)
-                                Text("Friends")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding(.bottom, 16)
-                        
-                        if offset <= geometry.size.height * 0.3 {
-                            ScrollView {
+                            // Stats
+                            HStack(spacing: 40) {
                                 VStack {
-                                    // Posts Grid
-                                    PostGridView(posts: viewModel.posts, columns: columns)
-                                        .padding(.horizontal)
-                                    Spacer()
-                                    // Logout button placed after all posts
-                                    LogoutButton {
-                                        authViewModel.logout()
-                                    }
-                                    .padding(.top, 16)
-                                    .padding(.horizontal)
-                                    .padding(.bottom, 80) // Add spacing at the end
+                                    Text("\(viewModel.posts.count)")
+                                        .font(.system(size: 18, weight: .bold))
+                                    Text("Posts")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.gray)
                                 }
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: geometry.size.height - offset, alignment: .top)
-                                .padding(.bottom, 80)
+                                VStack {
+                                    Text("\(viewModel.friendsCount)")
+                                        .font(.system(size: 18, weight: .bold))
+                                    Text("Friends")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.gray)
+                                }
                             }
-                            .transition(.opacity)
-                        } else {
-                            Spacer()
+                            .padding(.top, 4)
+                            .padding(.bottom, 10)
+                        }
+                        .padding(.bottom, 6)
+                        
+                        // MARK: - 2-Column Grid + Logout
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                // Minimal 2-column grid
+                                LazyVGrid(columns: columns, spacing: 2) {
+                                    ForEach(viewModel.posts.reversed(), id: \._id) { post in
+                                        NavigationLink(destination: PostView(post: post)) {
+                                            if let firstImageUrl = post.imageUrls.first, !firstImageUrl.isEmpty {
+                                                // Show post image
+                                                AsyncImage(url: URL(string: firstImageUrl)) { phase in
+                                                    switch phase {
+                                                    case .empty:
+                                                        ProgressView()
+                                                            .frame(maxWidth: .infinity, minHeight: 150)
+                                                            .background(Color.gray.opacity(0.3))
+                                                    case .success(let image):
+                                                        image
+                                                            .resizable()
+                                                            .scaledToFill()
+                                                            .frame(maxWidth: .infinity, minHeight: 150)
+                                                            .clipped()
+                                                    case .failure:
+                                                        Color.gray
+                                                            .frame(maxWidth: .infinity, minHeight: 150)
+                                                    @unknown default:
+                                                        EmptyView()
+                                                    }
+                                                }
+                                            } else {
+                                                // Placeholder if no image
+                                                Color.gray
+                                                    .frame(maxWidth: .infinity, minHeight: 150)
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Logout at bottom
+                                LogoutButton {
+                                    authViewModel.logout()
+                                }
+                                .padding(.top, 16)
+                                .padding(.horizontal)
+                                .padding(.bottom, 40)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
                     }
+                    // Show Edit Profile
                     .sheet(isPresented: $showEditProfile) {
                         EditProfileView()
                     }
-                    .frame(maxWidth: .infinity)
+                    // Sheet background
                     .background(
                         Color(.systemBackground)
-                            .opacity(0.9)
-                            .overlay(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
+                            .opacity(0.95)
                     )
                     .cornerRadius(20)
                     .shadow(radius: 5)
+                    
+                    // 2) Apply offset + gesture with clamping
                     .offset(y: offset)
                     .gesture(
                         DragGesture()
                             .onChanged { gesture in
                                 let newOffset = offset + gesture.translation.height
-                                            if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.6 {
-                                                offset = newOffset
-                                }
+                                // Hard clamp so it can’t vanish below bottomLimit or above topLimit
+                                offset = max(topLimit, min(newOffset, bottomLimit))
                             }
-                            .onEnded { gesture in
+                            .onEnded { _ in
                                 withAnimation(.spring()) {
-                                    let upperLimit = screenHeight * 0.08  // Adjust this to control how high it goes
-                                    let lowerLimit = screenHeight * 0.08   // Default lower position
-                                                    
-                                    if gesture.predictedEndTranslation.height < 0 {
-                                        offset = upperLimit
+                                    let midpoint = (topLimit + bottomLimit) / 2
+                                    // Snap to top if above midpoint, else bottom
+                                    if offset < midpoint {
+                                        offset = topLimit
                                     } else {
-                                        offset = lowerLimit
+                                        offset = bottomLimit
                                     }
                                 }
                             }
@@ -193,7 +190,85 @@ struct ProfileView: View {
             }
         }
     }
+    
+    // MARK: - Avatar
+    @ViewBuilder
+    private func profileAvatarView() -> some View {
+        if let pic = viewModel.profilePicture, !pic.isEmpty {
+            AsyncImage(url: URL(string: pic)) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .frame(width: 80, height: 80)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                case .failure:
+                    Image(systemName: "person.circle.fill")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 80, height: 80)
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .overlay(Circle().stroke(Color.customOrange, lineWidth: 2))
+        } else {
+            Image(systemName: "person.circle.fill")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 80, height: 80)
+                .overlay(Circle().stroke(Color.customOrange, lineWidth: 2))
+        }
+    }
+    
+    // MARK: - Background
+    @ViewBuilder
+    private func backgroundView() -> some View {
+        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+            // Show Profile Picture
+            AsyncImage(url: URL(string: profilePicture)) { phase in
+                switch phase {
+                case .empty:
+                    Color.gray.opacity(0.3)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                case .failure:
+                    Color.gray.opacity(0.3)
+                @unknown default:
+                    EmptyView()
+                }
+            }
+        } else if let latestPost = viewModel.posts.last,
+                  let firstImageUrl = latestPost.imageUrls.first,
+                  !firstImageUrl.isEmpty {
+            // Show last post image
+            AsyncImage(url: URL(string: firstImageUrl)) { phase in
+                switch phase {
+                case .empty:
+                    Color.gray.opacity(0.3)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                case .failure:
+                    Color.gray.opacity(0.3)
+                @unknown default:
+                    EmptyView()
+                }
+            }
+        } else {
+            // Fallback background
+            Color(.systemBackground)
+        }
+    }
 }
+
 
 
 
@@ -242,7 +317,6 @@ struct PostGridView: View {
     }
 }
 
-
 struct ProfileView_Previews: PreviewProvider {
     static var previews: some View {
         ProfileView()
@@ -250,9 +324,7 @@ struct ProfileView_Previews: PreviewProvider {
     }
 }
 
-
-
-// MARK: - Image Picker Component
+// MARK: - Image Picker
 struct ImagePicker: UIViewControllerRepresentable {
     var sourceType: UIImagePickerController.SourceType
     @Binding var selectedImage: UIImage?
@@ -291,8 +363,7 @@ struct ImagePicker: UIViewControllerRepresentable {
     }
 }
 
-
-// MARK: - Profile Header
+// MARK: - ProfileHeaderView
 struct ProfileHeaderView: View {
     let name: String
     let username: String
@@ -318,7 +389,6 @@ struct ProfileHeaderView: View {
         }
     }
 }
-
 
 // MARK: - Logout Button
 struct LogoutButton: View {
@@ -471,6 +541,27 @@ struct PostDetailView: View {
             errorMessage = error.localizedDescription
         }
         isDeleting = false
+    }
+}
+
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+    
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
+    }
+}
+
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
     }
 }
 

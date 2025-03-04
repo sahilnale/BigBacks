@@ -272,18 +272,16 @@ class AuthViewModel: ObservableObject {
     }
 
 
-
-    
     func login(email: String, password: String, completion: @escaping (Bool) -> Void) {
         isLoading = true
         Task {
             do {
                 let result = try await Auth.auth().signIn(withEmail: email, password: password)
                 let userId = result.user.uid
-                
+
                 let db = Firestore.firestore()
                 let userDoc = try await db.collection("users").document(userId).getDocument()
-                
+
                 if let data = userDoc.data(),
                    let name = data["name"] as? String,
                    let username = data["username"] as? String {
@@ -299,7 +297,7 @@ class AuthViewModel: ObservableObject {
                         profilePicture: data["profilePicture"] as? String,
                         loggedIn: true
                     )
-                    
+
                     await MainActor.run {
                         self.currentUser = user
                         self.isLoading = false
@@ -311,11 +309,14 @@ class AuthViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
+                    self.error = error.localizedDescription
+                    self.showError = true
                     completion(false)
                 }
             }
         }
     }
+
     
     func resetPassword(email: String, completion: @escaping (Bool) -> Void) {
         isLoading = true
