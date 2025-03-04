@@ -5,8 +5,6 @@ workflows:
     environment:
       xcode: latest
       vars:
-        FIREBASE_API_KEY: Encrypted(...) # Add through Codemagic UI
-        AWS_SECRET_KEY: Encrypted(...)
     triggering:
       events:
         - push
