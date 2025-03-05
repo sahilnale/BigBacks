@@ -26,7 +26,7 @@ class ImageAnnotation: NSObject, MKAnnotation {
     }
 }
 // Custom cluster annotation view
-class ClusterAnnotationView: MKMarkerAnnotationView {
+class ClusterAnnotationView: MKAnnotationView {
     override var annotation: MKAnnotation? {
         willSet {
             guard let cluster = newValue as? MKClusterAnnotation else { return }
@@ -42,22 +42,24 @@ class ClusterAnnotationView: MKMarkerAnnotationView {
                 image = clusterImage
             }
 
-            markerTintColor = .clear  // Hide default marker color
-            glyphText = nil           // Prevent any numbers in the middle
+//            markerTintColor = .clear  // Hide default marker color
+//            glyphText = nil           // Prevent numbers in the middle
+//            displayPriority = .defaultLow // Ensures MapKit doesn't override our custom image
+
         }
     }
 
     private func generateClusterImage(baseImage: UIImage, text: String) -> UIImage {
         let size = CGSize(width: 50, height: 50)
         let renderer = UIGraphicsImageRenderer(size: size)
-        
+
         return renderer.image { context in
             // Draw the base image (without any text in the middle)
             let circlePath = UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: size.width, height: size.height))
             circlePath.addClip()
             baseImage.draw(in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
-
-            // Create a small black circle in the bottom-right for the number
+            
+            // Create a **solid black background** for the number
             let textBgSize: CGFloat = 20
             let textBgRect = CGRect(
                 x: size.width - textBgSize - 4, // Right-aligned
@@ -66,13 +68,13 @@ class ClusterAnnotationView: MKMarkerAnnotationView {
                 height: textBgSize
             )
             let bgPath = UIBezierPath(ovalIn: textBgRect)
-            UIColor.black.withAlphaComponent(0.8).setFill() // Darker for contrast
+            UIColor.black.setFill() // **Solid black background**
             bgPath.fill()
 
             // Draw the number inside the black circle
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.boldSystemFont(ofSize: 12),
-                .foregroundColor: UIColor.white
+                .foregroundColor: UIColor.white // White text for contrast
             ]
             let textSize = text.size(withAttributes: attributes)
             let textRect = CGRect(
@@ -84,6 +86,8 @@ class ClusterAnnotationView: MKMarkerAnnotationView {
             text.draw(in: textRect, withAttributes: attributes)
         }
     }
+
+
 }
 
 
