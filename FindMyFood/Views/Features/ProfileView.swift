@@ -5,7 +5,7 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel(authViewModel: AuthViewModel())
     @State private var showEditProfile = false
 
-    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.43
+    @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
     private let screenHeight = UIScreen.main.bounds.height
     
     private let columns = [
@@ -16,56 +16,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background Layer
-                Color(.systemBackground)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Profile Picture Layer
-                    Group {
-                        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
-                            AsyncImage(url: URL(string: profilePicture)) { phase in
-                                switch phase {
-                                case .empty:
-                                    Color.gray.opacity(0.3)
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                case .failure:
-                                    Color.gray.opacity(0.3)
-                                @unknown default:
-                                    EmptyView()
-                                }
-                            }
-                        } else if let latestPost = viewModel.posts.last,
-                                  let firstImageUrl = latestPost.imageUrls.first,
-                                  !firstImageUrl.isEmpty {
-                            AsyncImage(url: URL(string: firstImageUrl)) { phase in
-                                switch phase {
-                                case .empty:
-                                    Color.gray.opacity(0.3)
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                case .failure:
-                                    Color.gray.opacity(0.3)
-                                @unknown default:
-                                    EmptyView()
-                                }
-                            }
-                        } else {
-                            Color.gray.opacity(0.3)
-                        }
-                    }
-                    .frame(height: screenHeight * 0.5)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    .ignoresSafeArea(edges: .top)
-                    
-                    Spacer()
-                }
+                profileBackground
                 
                 // Foreground Sliding Drawer
                 GeometryReader { geometry in
@@ -74,18 +25,19 @@ struct ProfileView: View {
                             .frame(width: 40, height: 6)
                             .foregroundColor(.gray)
                             .padding(.top, 8)
+                        
                         HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        showEditProfile = true
-                                    }) {
-                                        Image(systemName: "pencil")
-                                            .foregroundColor(.customOrange)
-                                            .font(.system(size: 20))
-                                    }
-                                    .padding(.top, 8)
-                                    .padding(.trailing, 20)
-                                }
+                            Spacer()
+                            Button(action: {
+                                showEditProfile = true
+                            }) {
+                                Image(systemName: "pencil")
+                                    .foregroundColor(.customOrange)
+                                    .font(.system(size: 20))
+                            }
+                            .padding(.top, 8)
+                            .padding(.trailing, 20)
+                        }
                         
                         VStack(spacing: 4) {
                             Text(viewModel.name)
@@ -96,7 +48,6 @@ struct ProfileView: View {
                             Text("@\(viewModel.username)")
                                 .font(.system(size: 16, weight: .regular))
                                 .foregroundColor(.gray)
-                            
                         }
                         
                         HStack(spacing: 32) {
@@ -123,17 +74,17 @@ struct ProfileView: View {
                         if offset <= geometry.size.height * 0.3 {
                             ScrollView {
                                 VStack {
-                                    // Posts Grid
                                     PostGridView(posts: viewModel.posts, columns: columns)
                                         .padding(.horizontal)
+                                    
                                     Spacer()
-                                    // Logout button placed after all posts
+                                    
                                     LogoutButton {
                                         authViewModel.logout()
                                     }
                                     .padding(.top, 16)
                                     .padding(.horizontal)
-                                    .padding(.bottom, 80) // Add spacing at the end
+                                    .padding(.bottom, 80)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .frame(minHeight: geometry.size.height - offset, alignment: .top)
@@ -166,16 +117,19 @@ struct ProfileView: View {
                         DragGesture()
                             .onChanged { gesture in
                                 let newOffset = offset + gesture.translation.height
-                                if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.45 {
+                                if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.6 {
                                     offset = newOffset
                                 }
                             }
                             .onEnded { gesture in
                                 withAnimation(.spring()) {
+                                    let upperLimit = screenHeight * 0.08
+                                    let lowerLimit = screenHeight * 0.08
+                                    
                                     if gesture.predictedEndTranslation.height < 0 {
-                                        offset = screenHeight * 0.3 // Upper limit
+                                        offset = upperLimit
                                     } else {
-                                        offset = screenHeight * 0.45 // Lower limit (Changed from 0.5)
+                                        offset = lowerLimit
                                     }
                                 }
                             }
@@ -186,11 +140,45 @@ struct ProfileView: View {
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
+                    print("Profile Picture URL: \(viewModel.profilePicture ?? "No URL")")
                 }
             }
         }
     }
+    
+    // MARK: - Background View
+    @ViewBuilder
+    private var profileBackground: some View {
+        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+            AsyncImage(url: URL(string: profilePicture)) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+                    .clipped()
+            } placeholder: {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+            }
+        } else if let latestPost = viewModel.posts.last, !latestPost.imageUrls.isEmpty {
+            AsyncImage(url: URL(string: latestPost.imageUrls[0])) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+                    .clipped()
+            } placeholder: {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+            }
+        } else {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+        }
+    }
 }
+
+
 
 
 
@@ -203,34 +191,27 @@ struct PostGridView: View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(posts.reversed(), id: \._id) { post in
                 NavigationLink(destination: PostView(post: post)) {
-                    if let firstImageUrl = post.imageUrls.first, !firstImageUrl.isEmpty {
-                        AsyncImage(url: URL(string: firstImageUrl)) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                                    .frame(width: 177, height: 177)
-                                    .background(Color.gray.opacity(0.3))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 177, height: 177)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    .clipped()
-                            case .failure:
-                                Color.red
-                                    .frame(width: 177, height: 177)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            @unknown default:
-                                EmptyView()
-                            }
+                    AsyncImage(url: URL(string: post.imageUrls[0])) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 177, height: 177)
+                                .background(Color.gray.opacity(0.3))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 177, height: 177)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipped()
+                        case .failure:
+                            Color.red
+                                .frame(width: 177, height: 177)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        @unknown default:
+                            EmptyView()
                         }
-                    } else {
-                        // Placeholder for posts without images
-                        Color.gray
-                            .frame(width: 177, height: 177)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
             }
@@ -341,46 +322,31 @@ struct PostDetailView: View {
     @State private var isDeleting = false
     @State private var showAlert = false
     @State private var errorMessage: String?
-    @State private var currentImageIndex: Int = 0 // Track the current image index
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if !post.imageUrls.isEmpty { // Ensure there are images to display
-                    // Instagram-style image carousel
-                    TabView {
-                        ForEach(post.imageUrls, id: \.self) { imageUrl in
-                            AsyncImage(url: URL(string: imageUrl)) { phase in
-                                switch phase {
-                                case .empty:
-                                    ProgressView()
-                                        .frame(maxWidth: .infinity, minHeight: 300)
-                                        .background(Color.gray.opacity(0.3))
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(maxWidth: .infinity, minHeight: 300)
-                                        .clipped()
-                                case .failure:
-                                    Text("Failed to load image")
-                                        .frame(maxWidth: .infinity, minHeight: 300)
-                                        .background(Color.red.opacity(0.3))
-                                @unknown default:
-                                    EmptyView()
-                                }
-                            }
-                        }
+                AsyncImage(url: URL(string: post.imageUrls[0])) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                            .background(Color.gray.opacity(0.3))
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                            .clipped()
+                    case .failure:
+                        Text("Failed to load image")
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                            .background(Color.red.opacity(0.3))
+                    @unknown default:
+                        EmptyView()
                     }
-                    .tabViewStyle(PageTabViewStyle()) // Enables horizontal swiping
-                    .frame(height: 300)
-                } else {
-                    Text("No images available")
-                        .frame(maxWidth: .infinity, minHeight: 300)
-                        .background(Color.gray.opacity(0.3))
                 }
                 
-                // Post details (Restaurant name, location, etc.)
                 Text(post.restaurantName)
                     .font(.title)
                     .fontWeight(.bold)
@@ -426,7 +392,6 @@ struct PostDetailView: View {
                         .font(.body)
                         .foregroundColor(.gray)
                 }
-                
                 if authViewModel.currentUser?.id == post.userId {
                     HStack {
                         Spacer()
@@ -455,9 +420,7 @@ struct PostDetailView: View {
         } message: {
             Text("Are you sure you want to delete this post? This action cannot be undone.")
         }
-        
     }
-
 
     private func deletePost() async {
         isDeleting = true
@@ -470,7 +433,6 @@ struct PostDetailView: View {
         isDeleting = false
     }
 }
-
 
 
 // MARK: - Preview
