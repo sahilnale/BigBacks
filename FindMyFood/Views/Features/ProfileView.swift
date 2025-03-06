@@ -7,174 +7,182 @@ struct ProfileView: View {
 
     @State private var offset: CGFloat = UIScreen.main.bounds.height * 0.5
     private let screenHeight = UIScreen.main.bounds.height
-    
-    private let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
     
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background Layer
-                Group {
-                        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
-                            AsyncImage(url: URL(string: profilePicture)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
-                                    .clipped()
-                            } placeholder: {
-                                Color(.systemBackground)
-                                    .ignoresSafeArea()
-                            }
-                        } else if let latestPost = viewModel.posts.last, !latestPost.imageUrl.isEmpty {
-                            AsyncImage(url: URL(string: latestPost.imageUrl)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) // Ensure full-screen coverage
-                                    .clipped()
-                            } placeholder: {
-                                Color(.systemBackground)
-                                    .ignoresSafeArea()
-                            }
-                        } else {
-                            Color(.systemBackground)
-                                .ignoresSafeArea()
-                        }
-                    }
-                    .ignoresSafeArea() // Ensure the background covers the entire screen
+                profileBackground
                 
-                // Foreground Sliding Drawer
                 GeometryReader { geometry in
                     VStack(spacing: 16) {
-                        Capsule()
-                            .frame(width: 40, height: 6)
-                            .foregroundColor(.gray)
-                            .padding(.top, 8)
-                        HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        showEditProfile = true
-                                    }) {
-                                        Image(systemName: "pencil")
-                                            .foregroundColor(.customOrange)
-                                            .font(.system(size: 20))
-                                    }
-                                    .padding(.top, 8)
-                                    .padding(.trailing, 20)
-                                }
-                        
-                        VStack(spacing: 4) {
-                            Text(viewModel.name)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.primary)
-                                .padding(.top, 8)
-                            
-                            Text("@\(viewModel.username)")
-                                .font(.system(size: 16, weight: .regular))
-                                .foregroundColor(.gray)
-                            
-                        }
-                        
-                        HStack(spacing: 32) {
-                            VStack {
-                                Text("\(viewModel.posts.count)")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.primary)
-                                Text("Posts")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                            }
-                            
-                            VStack {
-                                Text("\(viewModel.friendsCount)")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.primary)
-                                Text("Friends")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding(.bottom, 16)
+                        profileHeader
+                        profileStats
                         
                         if offset <= geometry.size.height * 0.3 {
-                            ScrollView {
-                                VStack {
-                                    // Posts Grid
-                                    PostGridView(posts: viewModel.posts, columns: columns)
-                                        .padding(.horizontal)
-                                    Spacer()
-                                    // Logout button placed after all posts
-                                    LogoutButton {
-                                        authViewModel.logout()
-                                    }
-                                    .padding(.top, 16)
-                                    .padding(.horizontal)
-                                    .padding(.bottom, 80) // Add spacing at the end
-                                }
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: geometry.size.height - offset, alignment: .top)
-                                .padding(.bottom, 80)
-                            }
-                            .transition(.opacity)
+                            profileContent(geometry: geometry)
                         } else {
                             Spacer()
                         }
                     }
                     .sheet(isPresented: $showEditProfile) {
-                        EditProfileView()
+                        EditProfileView(profileViewModel: viewModel)
                     }
                     .frame(maxWidth: .infinity)
-                    .background(
-                        Color(.systemBackground)
-                            .opacity(0.9)
-                            .overlay(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    )
+                    .background(backgroundOverlay)
                     .cornerRadius(20)
                     .shadow(radius: 5)
                     .offset(y: offset)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { gesture in
-                                let newOffset = offset + gesture.translation.height
-                                            if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.6 {
-                                                offset = newOffset
-                                }
-                            }
-                            .onEnded { gesture in
-                                withAnimation(.spring()) {
-                                    let upperLimit = screenHeight * 0.08  // Adjust this to control how high it goes
-                                    let lowerLimit = screenHeight * 0.08   // Default lower position
-                                                    
-                                    if gesture.predictedEndTranslation.height < 0 {
-                                        offset = upperLimit
-                                    } else {
-                                        offset = lowerLimit
-                                    }
-                                }
-                            }
-                    )
+                    .gesture(dragGesture)
                     .animation(.easeInOut, value: offset)
                 }
             }
             .onAppear {
                 Task {
                     await viewModel.loadProfile()
-                    print("Profile Picture URL: \(viewModel.profilePicture ?? "No URL")")
                 }
             }
         }
     }
+    
+    private var profileHeader: some View {
+        VStack {
+            Capsule()
+                .frame(width: 40, height: 6)
+                .foregroundColor(.gray)
+                .padding(.top, 8)
+            
+            HStack {
+                Spacer()
+                Button(action: { showEditProfile = true }) {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.customOrange)
+                        .font(.system(size: 20))
+                }
+                .padding(.top, 8)
+                .padding(.trailing, 20)
+            }
+        }
+    }
+
+    private var profileStats: some View {
+        VStack(spacing: 4) {
+            Text(viewModel.name)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.primary)
+                .padding(.top, 8)
+            
+            Text("@\(viewModel.username)")
+                .font(.system(size: 16, weight: .regular))
+                .foregroundColor(.gray)
+            
+            HStack(spacing: 32) {
+                statView(title: "Posts", count: viewModel.posts.count)
+                statView(title: "Friends", count: viewModel.friendsCount)
+            }
+            .padding(.bottom, 16)
+        }
+    }
+    
+    private func statView(title: String, count: Int) -> some View {
+        VStack {
+            Text("\(count)")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.primary)
+            Text(title)
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
+        }
+    }
+
+    private func profileContent(geometry: GeometryProxy) -> some View {
+        ScrollView {
+            VStack {
+                PostGridView(posts: viewModel.posts, columns: columns)
+                    .padding(.horizontal)
+                
+                Spacer()
+                
+                LogoutButton {
+                    authViewModel.logout()
+                }
+                .padding(.top, 16)
+                .padding(.horizontal)
+                .padding(.bottom, 80)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: geometry.size.height - offset, alignment: .top)
+            .padding(.bottom, 80)
+        }
+        .transition(.opacity)
+    }
+
+    private var backgroundOverlay: some View {
+        Color(.systemBackground)
+            .opacity(0.9)
+            .overlay(
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.black.opacity(0.2)]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+    }
+    
+    private var dragGesture: some Gesture {
+        DragGesture()
+            .onChanged { gesture in
+                let newOffset = offset + gesture.translation.height
+                if newOffset >= screenHeight * 0.3 && newOffset <= screenHeight * 0.6 {
+                    offset = newOffset
+                }
+            }
+            .onEnded { gesture in
+                withAnimation(.spring()) {
+                    let upperLimit = screenHeight * 0.08
+                    let lowerLimit = screenHeight * 0.08
+                    
+                    if gesture.predictedEndTranslation.height < 0 {
+                        offset = upperLimit
+                    } else {
+                        offset = lowerLimit
+                    }
+                }
+            }
+    }
+
+    // MARK: - Background View
+    @ViewBuilder
+    private var profileBackground: some View {
+        if let profilePicture = viewModel.profilePicture, !profilePicture.isEmpty {
+            AsyncImage(url: URL(string: profilePicture)) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+                    .clipped()
+            } placeholder: {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+            }
+        } else if let latestPost = viewModel.posts.last, !latestPost.imageUrls.isEmpty {
+            AsyncImage(url: URL(string: latestPost.imageUrls[0])) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+                    .clipped()
+            } placeholder: {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+            }
+        } else {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+        }
+    }
 }
+
 
 
 
@@ -187,7 +195,7 @@ struct PostGridView: View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(posts.reversed(), id: \._id) { post in
                 NavigationLink(destination: PostView(post: post)) {
-                    AsyncImage(url: URL(string: post.imageUrl)) { phase in
+                    AsyncImage(url: URL(string: post.imageUrls[0])) { phase in
                         switch phase {
                         case .empty:
                             ProgressView()
@@ -322,7 +330,7 @@ struct PostDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AsyncImage(url: URL(string: post.imageUrl)) { phase in
+                AsyncImage(url: URL(string: post.imageUrls[0])) { phase in
                     switch phase {
                     case .empty:
                         ProgressView()

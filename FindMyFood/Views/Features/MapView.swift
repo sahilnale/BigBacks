@@ -10,21 +10,23 @@ class ImageAnnotation: NSObject, MKAnnotation {
     var coordinate: CLLocationCoordinate2D
     var title: String?
     var subtitle: String?
-    var image: UIImage?
+    var imageUrls: [String] // Change to an array
+    var images: [UIImage] = [] // Store downloaded images
     var author: String?
     var rating: Int?
     var heartC: Int?
     
-    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, image: UIImage?, author: String?, rating: Int?, heartC: Int?) {
+    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, imageUrls: [String], author: String?, rating: Int?, heartC: Int?) {
         self.coordinate = coordinate
         self.title = title
         self.subtitle = subtitle
-        self.image = image
+        self.imageUrls = imageUrls
         self.author = author
         self.rating = rating
         self.heartC = heartC
     }
 }
+
 // Custom cluster annotation view
 class ClusterAnnotationView: MKAnnotationView {
     override var annotation: MKAnnotation? {
@@ -35,7 +37,8 @@ class ClusterAnnotationView: MKAnnotationView {
 
             // Ensure we have a valid annotation image
             if let latestAnnotation = cluster.memberAnnotations.last as? ImageAnnotation,
-               let latestImage = latestAnnotation.image {
+               let latestImage = latestAnnotation.images.first { // Pick the first image
+
                 
                 // Generate a fresh image for the cluster with the number in the bottom-right
                 let clusterImage = generateClusterImage(baseImage: latestImage, text: "\(totalAnnotations)")
@@ -105,6 +108,9 @@ class CustomPopupView: UIView {
     private var starImageViews: [UIImageView] = []
     private let ratingNumberLabel = UILabel()
     private let mapIconImageView = UIImageView()
+    private let scrollView = UIScrollView()
+        private let pageControl = UIPageControl()
+        private var imageViews: [UIImageView] = []
     
     private var heartCount: Int = 0 {
         didSet {
@@ -135,6 +141,33 @@ class CustomPopupView: UIView {
     }
     
     private func setupSubviews() {
+        
+        backgroundColor = .white
+                layer.cornerRadius = 12
+                layer.masksToBounds = true
+                
+                scrollView.isPagingEnabled = true
+                scrollView.showsHorizontalScrollIndicator = false
+                scrollView.delegate = self
+                
+                pageControl.hidesForSinglePage = true
+                pageControl.currentPage = 0
+
+                addSubview(scrollView)
+                addSubview(pageControl)
+                
+                scrollView.translatesAutoresizingMaskIntoConstraints = false
+                pageControl.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+                    scrollView.topAnchor.constraint(equalTo: topAnchor),
+                    scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                    scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                    scrollView.heightAnchor.constraint(equalToConstant: 200),
+
+                    pageControl.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 8),
+                    pageControl.centerXAnchor.constraint(equalTo: centerXAnchor)
+                ])
         // Image View
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
@@ -179,6 +212,7 @@ class CustomPopupView: UIView {
                 starImageView.heightAnchor.constraint(equalToConstant: 24)
             ])
         }
+        
         
         // Rating Number
         ratingNumberLabel.font = .systemFont(ofSize: 14)
@@ -300,14 +334,39 @@ class CustomPopupView: UIView {
         }
     }
     
-    func setDetails(title: String?, image: UIImage?, reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
+    func setDetails(title: String?, images: [UIImage], reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
         titleLabel.text = title
-        imageView.image = image
         reviewerNameLabel.text = "@" + (reviewerName ?? "friend")
         starRating = rating ?? 0
         ratingNumberLabel.text = " (\(rating ?? 0))"
         commentLabel.text = comment
         heartCount = heart ?? 0
+        
+        // Remove old images before adding new ones
+        scrollView.subviews.forEach { $0.removeFromSuperview() }
+
+        // Update page control
+        pageControl.numberOfPages = images.count
+        pageControl.currentPage = 0
+
+        // Set up image scroll view
+        for (index, image) in images.enumerated() {
+            let imageView = UIImageView(image: image)
+            imageView.contentMode = .scaleAspectFill
+            imageView.clipsToBounds = true
+            imageView.frame = CGRect(x: CGFloat(index) * bounds.width, y: 0, width: bounds.width, height: 200)
+            scrollView.addSubview(imageView)
+        }
+
+        scrollView.contentSize = CGSize(width: bounds.width * CGFloat(images.count), height: 200)
+    }
+
+}
+
+extension CustomPopupView: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let pageIndex = round(scrollView.contentOffset.x / bounds.width)
+        pageControl.currentPage = Int(pageIndex)
     }
 }
 // Custom annotation view with clustering support
@@ -480,7 +539,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         Task {
             guard let userInfo = notification.userInfo,
                   let author = userInfo["userId"] as? String,
-                  let imageIdentifier = userInfo["imageData"] as? String,
+                  let imageIdentifiers = userInfo["imageData"] as? [String],
                   let review = userInfo["review"] as? String,
                   let coordinate = userInfo["location"] as? String,
                   let title = userInfo["restaurantName"] as? String,
@@ -490,26 +549,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 return
             }
             
-            guard let imageUrl = URL(string: imageIdentifier) else {
-                print("Invalid URL for post:")
-                return
-            }
             
-            // Load the image asynchronously
-            let image: UIImage? = await withCheckedContinuation { continuation in
-                URLSession.shared.dataTask(with: imageUrl) { data, _, error in
-                    if let data = data, let fetchedImage = UIImage(data: data) {
-                        continuation.resume(returning: fetchedImage)
-                    } else {
-                        print("Failed to fetch image for post:), error:")
-                        continuation.resume(returning: nil)
-                    }
-                }.resume()
-            }
-            
-            guard let image = image else {
-                return
-            }
             
             // Parse the coordinate
             let components = coordinate.split(separator: ",")
@@ -522,7 +562,8 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             let coordinateC = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
             
             print("About to add")
-            addUserAnnotation(coordinate_in: coordinateC, title_in: title, review: review, image_in: image, author_in: author, rating_in: rating, heartC_in: likes)
+            addUserAnnotation(coordinate_in: coordinateC, title_in: title, review: review, image_in: imageIdentifiers, author_in: author, rating_in: rating, heartC_in: likes)
+
             print("Done")
         }
     }
@@ -531,7 +572,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         coordinate_in: CLLocationCoordinate2D,
         title_in: String,
         review: String,
-        image_in: UIImage,
+        image_in: [String],
         author_in: String,
         rating_in: Int,
         heartC_in: Int
@@ -540,7 +581,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             coordinate: coordinate_in,
             title: title_in,
             subtitle: review,
-            image: image_in,
+            imageUrls: image_in,
             author: author_in,
             rating: rating_in,
             heartC: heartC_in
@@ -567,62 +608,62 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             for (post, user) in feed {
                 let annotationID = post._id
                 
-                
                 if addedAnnotationIDs.contains(annotationID) {
                     continue
                 }
-                
                 addedAnnotationIDs.insert(annotationID)
-                guard let imageUrl = URL(string: post.imageUrl) else {
-                    print("Invalid URL for post: \(post._id)")
-                    continue
+
+                let imageUrls = post.imageUrls // Use the array
+                var images: [UIImage] = []
+
+                for imageUrlString in imageUrls {
+                    guard let imageUrl = URL(string: imageUrlString) else { continue }
+
+                    let image: UIImage? = await withCheckedContinuation { continuation in
+                        URLSession.shared.dataTask(with: imageUrl) { data, _, error in
+                            if let data = data, let fetchedImage = UIImage(data: data) {
+                                continuation.resume(returning: fetchedImage)
+                            } else {
+                                continuation.resume(returning: nil)
+                            }
+                        }.resume()
+                    }
+
+                    if let image = image {
+                        images.append(image)
+                    }
                 }
-                
-                
-                
-                // Load the image asynchronously
-                let image: UIImage? = await withCheckedContinuation { continuation in
-                    URLSession.shared.dataTask(with: imageUrl) { data, _, error in
-                        if let data = data, let fetchedImage = UIImage(data: data) {
-                            continuation.resume(returning: fetchedImage)
-                        } else {
-                            print("Failed to fetch image for post: \(post._id), error: \(String(describing: error))")
-                            continuation.resume(returning: nil)
-                        }
-                    }.resume()
-                }
-                guard let image = image else { continue }
-                // Parse the location
+
+                guard !images.isEmpty else { continue }
+
                 let locationComponents = post.location.split(separator: ",")
                 guard locationComponents.count == 2,
                       let latitude = Double(locationComponents[0]),
                       let longitude = Double(locationComponents[1]) else {
-                    print("Invalid location format for post: \(post._id)")
                     continue
                 }
                 let annotationCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                // Create annotation
+
                 let annotation = ImageAnnotation(
                     coordinate: annotationCoordinate,
                     title: post.restaurantName,
                     subtitle: post.review,
-                    image: image,
+                    imageUrls: imageUrls,
                     author: user.username,
                     rating: post.starRating,
                     heartC: post.likes
                 )
-                // Add annotation to the map
+                annotation.images = images
+
                 DispatchQueue.main.async {
                     self.map.addAnnotation(annotation)
-                    //                            if self.map.annotations.count % 10 == 0 {  // Every 10 annotations, refresh the clustering
-                    //                                    self.configureMapClustering()
-                    //                                }
                 }
             }
         } catch {
             print("Error fetching post details: \(error)")
         }
     }
+
     
     // CLLocationManagerDelegate methods
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -701,7 +742,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 annotationView?.clusteringIdentifier = "imageCluster"
                 
             }
-            annotationView?.image = imageAnnotation.image
+            annotationView?.image = imageAnnotation.images.first
             
             // Make sure these properties are set consistently
             annotationView?.collisionMode = .rectangle
@@ -805,7 +846,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                         itemContainer.layer.borderColor = UIColor.lightGray.cgColor
                         itemContainer.backgroundColor = UIColor(white: 0.95, alpha: 1.0)
 
-                        let imageView = UIImageView(image: imageAnnotation.image)
+                        let imageView = UIImageView(image: imageAnnotation.images.first)
                         imageView.contentMode = .scaleAspectFill
                         imageView.layer.cornerRadius = 8
                         imageView.clipsToBounds = true
@@ -887,22 +928,23 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         else if let annotation = view.annotation as? ImageAnnotation {
             // Your existing code for handling individual annotations...
             currentPopupView?.removeFromSuperview()
-            let popupView = CustomPopupView()
-            popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 300, width: 350, height: 600)
-            popupView.layer.cornerRadius = 10
-            popupView.layer.masksToBounds = true
+                    let popupView = CustomPopupView()
+                    popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 300, width: 350, height: 600)
+                    popupView.layer.cornerRadius = 10
+                    popupView.layer.masksToBounds = true
             popupView.setDetails(
-                title: annotation.title ?? "Restaurant Name",
-                image: annotation.image,
+                title: annotation.title,
+                images: annotation.images, // ✅ Correct: Pass the entire array of images
                 reviewerName: annotation.author,
                 rating: annotation.rating,
                 comment: annotation.subtitle,
                 star: annotation.rating,
                 heart: annotation.heartC
             )
-            map.addSubview(popupView)
-            currentPopupView = popupView
-            isPopupShown = true
+
+                    map.addSubview(popupView)
+                    currentPopupView = popupView
+                    isPopupShown = true
         }
     }
     

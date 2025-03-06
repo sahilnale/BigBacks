@@ -690,7 +690,7 @@ struct Post: Codable, Identifiable {
     let _id: String
     var id: String { _id }
     let userId: String
-    let imageUrl: String
+    let imageUrls: [String]
     let timestamp: Timestamp // ISO 8601 string
     let review: String
     let location: String
