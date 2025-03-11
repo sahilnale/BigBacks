@@ -93,9 +93,8 @@ class ClusterAnnotationView: MKAnnotationView {
     }
 }
 
-
-
 class CustomPopupView: UIView {
+    // Original variable names preserved
     private let titleLabel = UILabel()
     private let titleContainer = UIStackView()
     private let imageView = UIImageView()
@@ -109,8 +108,8 @@ class CustomPopupView: UIView {
     private let ratingNumberLabel = UILabel()
     private let mapIconImageView = UIImageView()
     private let scrollView = UIScrollView()
-        private let pageControl = UIPageControl()
-        private var imageViews: [UIImageView] = []
+    private let pageControl = UIPageControl()
+    private var imageViews: [UIImageView] = []
     
     private var heartCount: Int = 0 {
         didSet {
@@ -133,43 +132,40 @@ class CustomPopupView: UIView {
     
     private func setupView() {
         backgroundColor = .white
-        layer.cornerRadius = 12
+        layer.cornerRadius = 16
         layer.masksToBounds = true
         
-        
+        // Add subtle shadow
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOffset = CGSize(width: 0, height: 3)
+        layer.shadowRadius = 10
+        layer.shadowOpacity = 0.1
         
         setupSubviews()
         setupConstraints()
     }
     
     private func setupSubviews() {
-        
         backgroundColor = .white
-                layer.cornerRadius = 12
-                layer.masksToBounds = true
-                
-                scrollView.isPagingEnabled = true
-                scrollView.showsHorizontalScrollIndicator = false
-                scrollView.delegate = self
-                
-                pageControl.hidesForSinglePage = true
-                pageControl.currentPage = 0
-
-                addSubview(scrollView)
-                addSubview(pageControl)
-                
-                scrollView.translatesAutoresizingMaskIntoConstraints = false
-                pageControl.translatesAutoresizingMaskIntoConstraints = false
+        layer.cornerRadius = 16
+        layer.masksToBounds = true
         
-        NSLayoutConstraint.activate([
-                    scrollView.topAnchor.constraint(equalTo: topAnchor),
-                    scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-                    scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-                    scrollView.heightAnchor.constraint(equalToConstant: 200),
+        // ScrollView setup
+        scrollView.isPagingEnabled = true
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.delegate = self
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // PageControl setup
+        pageControl.hidesForSinglePage = true
+        pageControl.currentPage = 0
+        pageControl.pageIndicatorTintColor = UIColor.lightGray
+        pageControl.currentPageIndicatorTintColor = UIColor(red: 241/255, green: 90/255, blue: 35/255, alpha: 1)
+        pageControl.translatesAutoresizingMaskIntoConstraints = false
 
-                    pageControl.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 8),
-                    pageControl.centerXAnchor.constraint(equalTo: centerXAnchor)
-                ])
+        addSubview(scrollView)
+        addSubview(pageControl)
+        
         // Image View
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
@@ -177,34 +173,34 @@ class CustomPopupView: UIView {
         
         // Title Container
         titleContainer.axis = .horizontal
-        titleContainer.spacing = 4
+        titleContainer.spacing = 8
         titleContainer.alignment = .center
         titleContainer.translatesAutoresizingMaskIntoConstraints = false
         
         // Title
-                 titleLabel.font = .systemFont(ofSize: 24, weight: .semibold)
-                 titleLabel.textColor = UIColor(red: 241/255, green: 90/255, blue: 35/255, alpha: 1)
-                 titleLabel.translatesAutoresizingMaskIntoConstraints = false
-                 titleLabel.adjustsFontSizeToFitWidth = true
-                 titleLabel.minimumScaleFactor = 0.5 // Will scale down to 50% of original size if needed
-                 titleLabel.lineBreakMode = .byTruncatingTail
-         
-                 // Map Icon
-                 mapIconImageView.image = UIImage(systemName: "mappin")?.withTintColor(.accentColor2, renderingMode: .alwaysOriginal)
-                 mapIconImageView.contentMode = .scaleAspectFit
-                 mapIconImageView.translatesAutoresizingMaskIntoConstraints = false
-                 mapIconImageView.isUserInteractionEnabled = true
-                 mapIconImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps)))
-         
-                 // Rating Container
-                 ratingContainer.axis = .horizontal
-                 ratingContainer.spacing = 2
-                 ratingContainer.alignment = .center
-                 ratingContainer.translatesAutoresizingMaskIntoConstraints = false
-                 ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-                 ratingContainer.layer.cornerRadius = 12
-                 ratingContainer.layoutMargins = UIEdgeInsets(top: 4, left: 6, bottom: 4, right: 6)
-                 ratingContainer.isLayoutMarginsRelativeArrangement = true
+        titleLabel.font = .systemFont(ofSize: 22, weight: .bold)
+        titleLabel.textColor = UIColor(red: 241/255, green: 90/255, blue: 35/255, alpha: 1)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.adjustsFontSizeToFitWidth = true
+        titleLabel.minimumScaleFactor = 0.7
+        titleLabel.lineBreakMode = .byTruncatingTail
+        
+        // Map Icon
+        mapIconImageView.image = UIImage(systemName: "mappin.circle.fill")?.withTintColor(UIColor(red: 241/255, green: 90/255, blue: 35/255, alpha: 1), renderingMode: .alwaysOriginal)
+        mapIconImageView.contentMode = .scaleAspectFit
+        mapIconImageView.translatesAutoresizingMaskIntoConstraints = false
+        mapIconImageView.isUserInteractionEnabled = true
+        mapIconImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openInAppleMaps)))
+        
+        // Rating Container
+        ratingContainer.axis = .horizontal
+        ratingContainer.spacing = 4
+        ratingContainer.alignment = .center
+        ratingContainer.translatesAutoresizingMaskIntoConstraints = false
+        ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.3)
+        ratingContainer.layer.cornerRadius = 12
+        ratingContainer.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+        ratingContainer.isLayoutMarginsRelativeArrangement = true
         
         // Stars
         let goldenYellow = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
@@ -222,102 +218,106 @@ class CustomPopupView: UIView {
             ])
         }
         
-        
-        // Rating Number
-        //ratingNumberLabel.font = .systemFont(ofSize: 14)
-        //ratingNumberLabel.textColor = .accentColor2
-        //ratingNumberLabel.translatesAutoresizingMaskIntoConstraints = false
-        //ratingContainer.addArrangedSubview(ratingNumberLabel)
-        
         // Reviewer Name
-                reviewerNameLabel.font = .systemFont(ofSize: 16, weight: .regular)
-                reviewerNameLabel.textColor = .accentColor2
-                reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
-                
-                // Comment
-                commentLabel.font = .systemFont(ofSize: 16)
-                commentLabel.textColor = .gray
-                commentLabel.numberOfLines = 0
-                commentLabel.translatesAutoresizingMaskIntoConstraints = false
-                
-                // Heart Container setup
-                heartContainer.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-                heartContainer.layer.cornerRadius = 25
-                heartContainer.translatesAutoresizingMaskIntoConstraints = false
-                
-                // Heart Icon setup
-                heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.systemRed, renderingMode: .alwaysOriginal)
-                heartImageView.contentMode = .scaleAspectFit
-                heartImageView.translatesAutoresizingMaskIntoConstraints = false
-                
-                // Heart Count Label setup
-                heartCountLabel.font = UIFont.systemFont(ofSize: 14, weight: .bold)
-                heartCountLabel.textColor = .white
-                heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
+        reviewerNameLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        reviewerNameLabel.textColor = .gray
+        reviewerNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Comment
+        commentLabel.font = .systemFont(ofSize: 16, weight: .regular)
+        commentLabel.textColor = .darkGray
+        commentLabel.numberOfLines = 0
+        commentLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Heart Container setup
+        heartContainer.backgroundColor = UIColor.black.withAlphaComponent(0.3)
+        heartContainer.layer.cornerRadius = 25
+        heartContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Heart Icon setup
+        heartImageView.image = UIImage(systemName: "heart.fill")?.withTintColor(.systemRed, renderingMode: .alwaysOriginal)
+        heartImageView.contentMode = .scaleAspectFit
+        heartImageView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Heart Count Label setup
+        heartCountLabel.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+        heartCountLabel.textColor = .white
+        heartCountLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // Add subviews
-                addSubview(imageView)
-                addSubview(heartContainer)
-                heartContainer.addSubview(heartImageView)
-                heartContainer.addSubview(heartCountLabel)
-                
-                // Add the rating container on top of the image
-                addSubview(ratingContainer)
-                
-                addSubview(titleContainer)
-                titleContainer.addArrangedSubview(mapIconImageView)
-                titleContainer.addArrangedSubview(titleLabel)
-                addSubview(reviewerNameLabel)
-                addSubview(commentLabel)
+        addSubview(imageView)
+        addSubview(heartContainer)
+        heartContainer.addSubview(heartImageView)
+        heartContainer.addSubview(heartCountLabel)
+        
+        // Add the rating container on top of the image
+        addSubview(ratingContainer)
+        
+        addSubview(titleContainer)
+        titleContainer.addArrangedSubview(titleLabel)
+        titleContainer.addArrangedSubview(mapIconImageView)
+        addSubview(reviewerNameLabel)
+        addSubview(commentLabel)
     }
     
     private func setupConstraints() {
         NSLayoutConstraint.activate([
+            // ScrollView
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.67),
+            
+            // PageControl
+            pageControl.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -10),
+            pageControl.centerXAnchor.constraint(equalTo: centerXAnchor),
+            
             // Image
-                        imageView.topAnchor.constraint(equalTo: topAnchor),
-                        imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
-                        imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
-                        imageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.67),
-                        
-                        // Rating Container - now positioned on the bottom right corner of the image
-                        ratingContainer.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -16),
-                        ratingContainer.trailingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: -16),
-                        
-                        // Title Container
-                        titleContainer.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
-                        titleContainer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-                        titleContainer.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            imageView.topAnchor.constraint(equalTo: topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            imageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.67),
+            
+            // Rating Container
+            ratingContainer.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -16),
+            ratingContainer.trailingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: -16),
+            
+            // Title Container
+            titleContainer.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 16),
+            titleContainer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            titleContainer.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
             
             // Map Icon
-                        mapIconImageView.widthAnchor.constraint(equalToConstant: 24),
-                        mapIconImageView.heightAnchor.constraint(equalToConstant: 24),
-                        
-                        // Reviewer Name
-                        reviewerNameLabel.topAnchor.constraint(equalTo: titleContainer.bottomAnchor, constant: 8),
-                        reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-                        
-                        // Comment
-                        commentLabel.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 8),
-                        commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-                        commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-                        commentLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
-                        
-                        // Heart Container - kept at bottom left of the image
-                        heartContainer.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 16),
-                        heartContainer.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -16),
-                        heartContainer.widthAnchor.constraint(equalToConstant: 50),
-                        heartContainer.heightAnchor.constraint(equalToConstant: 50),
-                        
-                        // Heart Icon
-                        heartImageView.centerXAnchor.constraint(equalTo: heartContainer.centerXAnchor),
-                        heartImageView.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor),
-                        heartImageView.widthAnchor.constraint(equalToConstant: 30),
-                        heartImageView.heightAnchor.constraint(equalToConstant: 30),
-                        
-                        // Heart Count Label
-                        heartCountLabel.leadingAnchor.constraint(equalTo: heartContainer.trailingAnchor, constant: 8),
-                        heartCountLabel.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor)
-                    ])
+            mapIconImageView.widthAnchor.constraint(equalToConstant: 24),
+            mapIconImageView.heightAnchor.constraint(equalToConstant: 24),
+            
+            // Reviewer Name
+            reviewerNameLabel.topAnchor.constraint(equalTo: titleContainer.bottomAnchor, constant: 12),
+            reviewerNameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            reviewerNameLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            
+            // Comment
+            commentLabel.topAnchor.constraint(equalTo: reviewerNameLabel.bottomAnchor, constant: 8),
+            commentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            commentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            commentLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -16),
+            
+            // Heart Container
+            heartContainer.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 16),
+            heartContainer.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -16),
+            heartContainer.widthAnchor.constraint(equalToConstant: 50),
+            heartContainer.heightAnchor.constraint(equalToConstant: 50),
+            
+            // Heart Icon
+            heartImageView.centerXAnchor.constraint(equalTo: heartContainer.centerXAnchor),
+            heartImageView.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor),
+            heartImageView.widthAnchor.constraint(equalToConstant: 30),
+            heartImageView.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Heart Count Label
+            heartCountLabel.leadingAnchor.constraint(equalTo: heartContainer.trailingAnchor, constant: 8),
+            heartCountLabel.centerYAnchor.constraint(equalTo: heartContainer.centerYAnchor)
+        ])
     }
     
     @objc private func openInAppleMaps() {
@@ -350,30 +350,52 @@ class CustomPopupView: UIView {
     func setDetails(title: String?, images: [UIImage], reviewerName: String?, rating: Int?, comment: String?, star: Int?, heart: Int?) {
         titleLabel.text = title
         reviewerNameLabel.text = "@" + (reviewerName ?? "friend")
-        starRating = rating ?? 0
-        //ratingNumberLabel.text = " (\(rating ?? 0))"
+        starRating = star ?? rating ?? 0
         commentLabel.text = comment
         heartCount = heart ?? 0
         
         // Remove old images before adding new ones
         scrollView.subviews.forEach { $0.removeFromSuperview() }
+        imageViews.removeAll()
 
         // Update page control
         pageControl.numberOfPages = images.count
         pageControl.currentPage = 0
 
+        // Image height (2/3 of the popup height)
+        let imageHeight = bounds.height * 0.67
+        
         // Set up image scroll view
         for (index, image) in images.enumerated() {
             let imageView = UIImageView(image: image)
             imageView.contentMode = .scaleAspectFill
             imageView.clipsToBounds = true
-            imageView.frame = CGRect(x: CGFloat(index) * bounds.width, y: 0, width: bounds.width, height: 200)
-            scrollView.addSubview(imageView)
+            
+            // Add gradient overlay for better readability
+            let gradientLayer = CAGradientLayer()
+            gradientLayer.colors = [
+                UIColor.black.withAlphaComponent(0.0).cgColor,
+                UIColor.black.withAlphaComponent(0.3).cgColor
+            ]
+            gradientLayer.locations = [0.7, 1.0]
+            gradientLayer.frame = CGRect(x: 0, y: 0, width: bounds.width, height: imageHeight)
+            
+            let overlayView = UIView(frame: CGRect(x: 0, y: 0, width: bounds.width, height: imageHeight))
+            overlayView.layer.addSublayer(gradientLayer)
+            
+            let containerView = UIView(frame: CGRect(x: CGFloat(index) * bounds.width, y: 0, width: bounds.width, height: imageHeight))
+            containerView.addSubview(imageView)
+            containerView.addSubview(overlayView)
+            
+            imageView.frame = containerView.bounds
+            overlayView.frame = containerView.bounds
+            
+            scrollView.addSubview(containerView)
+            imageViews.append(imageView)
         }
 
-        scrollView.contentSize = CGSize(width: bounds.width * CGFloat(images.count), height: 200)
+        scrollView.contentSize = CGSize(width: bounds.width * CGFloat(images.count), height: imageHeight)
     }
-
 }
 
 extension CustomPopupView: UIScrollViewDelegate {
@@ -382,6 +404,64 @@ extension CustomPopupView: UIScrollViewDelegate {
         pageControl.currentPage = Int(pageIndex)
     }
 }
+// MARK: - ViewModel
+struct RestaurantReviewViewModel {
+    let restaurantName: String
+    let images: [UIImage]
+    let rating: Int
+    let username: String
+    let userImage: UIImage?
+    let reviewText: String
+    let likeCount: Int
+    
+    init(restaurantName: String,
+         images: [UIImage],
+         rating: Int,
+         username: String,
+         userImage: UIImage? = nil,
+         reviewText: String,
+         likeCount: Int = 0) {
+        self.restaurantName = restaurantName
+        self.images = images
+        self.rating = rating
+        self.username = username
+        self.userImage = userImage
+        self.reviewText = reviewText
+        self.likeCount = likeCount
+    }
+}
+
+// Usage Example:
+//
+// let viewModel = RestaurantReviewViewModel(
+//     restaurantName: "Sisterita",
+//     images: [UIImage(named: "restaurant1")!, UIImage(named: "restaurant2")!],
+//     rating: 5,
+//     username: "@ridhima",
+//     reviewText: "what an underrated spot near fidi cute little cafe",
+//     likeCount: 42
+// )
+//
+// let card = CustomPopupView(frame: CGRect(x: 0, y: 0, width: 375, height: 500))
+// card.configure(with: viewModel)
+// view.addSubview(card)
+
+// Usage Example:
+//
+// let viewModel = RestaurantReviewViewModel(
+//     restaurantName: "Sisterita",
+//     images: [UIImage(named: "restaurant1")!, UIImage(named: "restaurant2")!],
+//     rating: 5,
+//     username: "@ridhima",
+//     reviewText: "what an underrated spot near fidi cute little cafe",
+//     likeCount: 42
+// )
+//
+// let card = CustomPopupView(frame: CGRect(x: 0, y: 0, width: 375, height: 500))
+// card.configure(with: viewModel)
+// view.addSubview(card)
+
+
 // Custom annotation view with clustering support
 class ImageAnnotationView: MKAnnotationView {
     private var imageView: UIImageView!
@@ -861,37 +941,84 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         else if let annotation = view.annotation as? ImageAnnotation {
             // Your existing code for handling individual annotations...
             currentPopupView?.removeFromSuperview()
+            let dimmingView = UIView(frame: map.bounds)
+               dimmingView.backgroundColor = UIColor.black
+               dimmingView.alpha = 0.0 // Start transparent
+               dimmingView.tag = 999 // Tag for easy identification
+               
+               // Add tap gesture to dismiss when tapping outside
+               let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
+               dimmingView.addGestureRecognizer(tapGesture)
             let popupView = CustomPopupView()
-            popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 300, width: 350, height: 600)
+            let popupWidth: CGFloat = 350
+            let popupHeight: CGFloat = 600
+            
+            // Calculate center position relative to the map's bounds
+            let centerX = map.bounds.midX - (popupWidth / 2)
+            let centerY = map.bounds.midY - (popupHeight / 2)
+            
+            // Set the frame using the calculated center position
+            popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
             popupView.layer.cornerRadius = 10
             popupView.layer.masksToBounds = true
             popupView.setDetails(
                 title: annotation.title,
-                images: annotation.images, // ✅ Correct: Pass the entire array of images
+                images: annotation.images, 
                 reviewerName: annotation.author,
                 rating: annotation.rating,
                 comment: annotation.subtitle,
                 star: annotation.rating,
                 heart: annotation.heartC
             )
-            
+            map.addSubview(dimmingView)
             map.addSubview(popupView)
             currentPopupView = popupView
+            UIView.animate(withDuration: 0.3) {
+                       dimmingView.alpha = 0.5 // Adjust opacity as needed
+                   }
             isPopupShown = true
         }
     }
     
     // Handle tap on the map to dismiss popup
+//    @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
+//        let touchPoint = recognizer.location(in: map)
+//        
+//        // Check if the touch is outside the current popup view
+//        if let popupView = currentPopupView, !popupView.frame.contains(touchPoint) {
+//            // Remove the popup
+//            popupView.removeFromSuperview()
+//            currentPopupView = nil
+//            DispatchQueue.main.async {
+//                self.isPopupShown = false
+//            }
+//        }
+//    }
+    
     @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
         let touchPoint = recognizer.location(in: map)
         
         // Check if the touch is outside the current popup view
         if let popupView = currentPopupView, !popupView.frame.contains(touchPoint) {
-            // Remove the popup
-            popupView.removeFromSuperview()
-            currentPopupView = nil
-            DispatchQueue.main.async {
-                self.isPopupShown = false
+            // Find and remove the dimming view
+            if let dimmingView = map.viewWithTag(999) {
+                // Animate fade-out of dimming view
+                UIView.animate(withDuration: 0.3, animations: {
+                    dimmingView.alpha = 0.0
+                    // Optional: also animate the popup fade-out
+                    popupView.alpha = 0.0
+                }, completion: { _ in
+                    // Remove views when animation completes
+                    dimmingView.removeFromSuperview()
+                    popupView.removeFromSuperview()
+                    self.currentPopupView = nil
+                    self.isPopupShown = false
+                })
+            } else {
+                // Fallback if no dimming view found
+                popupView.removeFromSuperview()
+                currentPopupView = nil
+                isPopupShown = false
             }
         }
     }
