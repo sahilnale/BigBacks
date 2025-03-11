@@ -315,9 +315,193 @@ struct LogoutButton: View {
     }
 }
 
+
+
+//import SwiftUI
+//
+//struct PostDetailView: View {
+//    @ObservedObject private var authViewModel = AuthViewModel.shared
+//    var post: Post
+//    @Environment(\.dismiss) var dismiss
+//    @State private var isDeleting = false
+//    @State private var showAlert = false
+//    @State private var errorMessage: String?
+//
+//    var body: some View {
+//        ScrollView {
+//            
+//
+//            VStack(spacing: 16) {
+//                // Image Section
+//                ZStack(alignment: .topTrailing) {
+//                    Text("Updated View!") // Add this temporarily
+//                    AsyncImage(url: URL(string: post.imageUrls[0])) { phase in
+//                        switch phase {
+//                        case .empty:
+//                            ProgressView()
+//                                .frame(height: 280)
+//                                .frame(maxWidth: .infinity)
+//                                .background(Color.gray.opacity(0.3))
+//                                .cornerRadius(12)
+//                        case .success(let image):
+//                            image
+//                                .resizable()
+//                                .scaledToFill()
+//                                .frame(height: 280)
+//                                .frame(maxWidth: .infinity)
+//                                .clipped()
+//                                .cornerRadius(12)
+//                        case .failure:
+//                            Color.red.opacity(0.3)
+//                                .frame(height: 280)
+//                                .frame(maxWidth: .infinity)
+//                                .cornerRadius(12)
+//                        @unknown default:
+//                            EmptyView()
+//                        }
+//                    }
+//                }
+//                .padding(.horizontal)
+//
+//                // Restaurant Name & Location
+//                VStack(alignment: .leading, spacing: 4) {
+//                    Text(post.restaurantName)
+//                        .font(.title2)
+//                        .fontWeight(.bold)
+//                    
+//                    HStack {
+//                        Image(systemName: "mappin.and.ellipse")
+//                            .foregroundColor(.blue)
+//                        Text(post.location)
+//                            .font(.subheadline)
+//                            .foregroundColor(.gray)
+//                    }
+//                }
+//                .padding(.horizontal)
+//
+//                // Rating Section
+//                HStack {
+//                    ForEach(0..<5) { star in
+//                        Image(systemName: star < post.starRating ? "star.fill" : "star")
+//                            .foregroundColor(star < post.starRating ? .yellow : .gray.opacity(0.5))
+//                            .font(.system(size: 18))
+//                    }
+//                }
+//                .padding(.horizontal)
+//
+//                // Review Section
+//                VStack(alignment: .leading, spacing: 8) {
+//                    Text("Review")
+//                        .font(.headline)
+//                        .foregroundColor(.primary)
+//                    
+//                    Text(post.review)
+//                        .font(.body)
+//                        .foregroundColor(.secondary)
+//                        .multilineTextAlignment(.leading)
+//                        .padding(.top, 2)
+//                }
+//                .padding()
+//                .background(Color(UIColor.systemBackground))
+//                .cornerRadius(12)
+//                .shadow(radius: 3)
+//                .padding(.horizontal)
+//
+//                // Likes Section
+//                HStack {
+//                    Image(systemName: "heart.fill")
+//                        .foregroundColor(.red)
+//                    Text("\(post.likes) likes")
+//                        .font(.subheadline)
+//                        .foregroundColor(.gray)
+//                }
+//                .padding(.horizontal)
+//
+//                // Comments Section
+//                VStack(alignment: .leading, spacing: 8) {
+//                    Text("HELLOOSss")
+//                        .font(.headline)
+//                        .foregroundColor(.primary)
+//                    
+//                    if post.comments.isEmpty {
+//                        Text("No comments yet.")
+//                            .font(.body)
+//                            .foregroundColor(.gray)
+//                    } else {
+//                        ForEach(post.comments, id: \.self) { comment in
+//                            HStack {
+//                                Image(systemName: "bubble.right.fill")
+//                                    .foregroundColor(.gray)
+//                                Text(comment.text) // Assuming `text` is the correct property
+//                                    .font(.body)
+//                                    .foregroundColor(.secondary)
+//                            }
+//                            .padding(.vertical, 4)
+//                        }
+//                    }
+//                }
+//                .padding()
+//                .background(Color(UIColor.systemBackground))
+//                .cornerRadius(12)
+//                .shadow(radius: 3)
+//                .padding(.horizontal)
+//
+//                // Delete Post Button (if user is owner)
+//                if authViewModel.currentUser?.id == post.userId {
+//                    Button(action: {
+//                        showAlert = true
+//                    }) {
+//                        HStack {
+//                            Image(systemName: "trash.fill")
+//                                .foregroundColor(.white)
+//                            Text("Delete IT NOWWW")
+//                                .fontWeight(.bold)
+//                        }
+//                        .frame(maxWidth: .infinity)
+//                        .padding()
+//                        .background(Color.red)
+//                        .foregroundColor(.white)
+//                        .cornerRadius(12)
+//                        .shadow(radius: 3)
+//                    }
+//                    .padding(.horizontal)
+//                    .padding(.top, 10)
+//                }
+//            }
+//            .padding(.top)
+//            
+//        }
+//        .navigationTitle("Post Details")
+//        .navigationBarTitleDisplayMode(.inline)
+//        .alert("Delete ITTT NOWW", isPresented: $showAlert) {
+//            Button("Cancel", role: .cancel) {}
+//            Button("Delete", role: .destructive) {
+//                Task {
+//                    await deletePost()
+//                }
+//            }
+//        } message: {
+//            Text("Are you sure you want to delete this post? This action cannot be undone.")
+//        }
+//    }
+//
+//    private func deletePost() async {
+//        isDeleting = true
+//        do {
+//            try await AuthViewModel.shared.deletePost(postId: post.id)
+//            dismiss()
+//        } catch {
+//            errorMessage = error.localizedDescription
+//        }
+//        isDeleting = false
+//    }
+//}
+
+import SwiftUI
+
 struct PostDetailView: View {
     @ObservedObject private var authViewModel = AuthViewModel.shared
-    var post: Post // Pass the entire `Post` object
+    var post: Post
     @Environment(\.dismiss) var dismiss
     @State private var isDeleting = false
     @State private var showAlert = false
@@ -325,88 +509,149 @@ struct PostDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                AsyncImage(url: URL(string: post.imageUrls[0])) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .background(Color.gray.opacity(0.3))
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .clipped()
-                    case .failure:
-                        Text("Failed to load image")
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                            .background(Color.red.opacity(0.3))
-                    @unknown default:
-                        EmptyView()
+            VStack(spacing: 20) {
+                // Image Section
+                ZStack(alignment: .topTrailing) {
+                    AsyncImage(url: URL(string: post.imageUrls.first ?? "")) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(height: 300)
+                                .frame(maxWidth: .infinity)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(15)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(height: 300)
+                                .frame(maxWidth: .infinity)
+                                .clipped()
+                                .cornerRadius(15)
+                        case .failure:
+                            Color.red.opacity(0.3)
+                                .frame(height: 300)
+                                .frame(maxWidth: .infinity)
+                                .cornerRadius(15)
+                        @unknown default:
+                            EmptyView()
+                        }
                     }
                 }
-                
-                Text(post.restaurantName)
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                HStack {
-                    Image(systemName: "mappin.and.ellipse")
-                    Text(post.location)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                .padding(.horizontal)
+
+                // Restaurant Name & Location
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(post.restaurantName)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+
+                    HStack {
+                        Image(systemName: "mappin.and.ellipse")
+                            .foregroundColor(.blue)
+                        Text(post.location)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                    }
                 }
-                
+                .padding(.horizontal)
+
+                // Rating Section
                 HStack {
                     ForEach(0..<5) { star in
                         Image(systemName: star < post.starRating ? "star.fill" : "star")
-                            .foregroundColor(star < post.starRating ? .yellow : .gray)
+                            .foregroundColor(star < post.starRating ? .yellow : .gray.opacity(0.4))
+                            .font(.system(size: 20))
                     }
                 }
-                
-                Text("Review")
-                    .font(.headline)
-                Text(post.review)
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                
-                HStack {
+                .padding(.horizontal)
+
+                // Review Section
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Review")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text(post.review)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .padding(.top, 2)
+                }
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(15)
+                .shadow(radius: 3)
+                .padding(.horizontal)
+
+                // Likes Section
+                HStack(spacing: 5) {
                     Image(systemName: "heart.fill")
                         .foregroundColor(.red)
                     Text("\(post.likes) likes")
                         .font(.subheadline)
-                }
-                
-                if !post.comments.isEmpty {
-                    Text("Comments")
-                        .font(.headline)
-                    
-                    ForEach(post.comments, id: \.self) { comment in
-                        Text("• \(comment)")
-                            .font(.body)
-                            .padding(.vertical, 2)
-                    }
-                } else {
-                    Text("No comments yet.")
-                        .font(.body)
                         .foregroundColor(.gray)
                 }
-                if authViewModel.currentUser?.id == post.userId {
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            showAlert = true
-                        }) {
-                            Text("Delete Post")
-                                .foregroundColor(.customOrange)
+                .padding(.horizontal)
+
+                // Comments Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Comments")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    if post.comments.isEmpty {
+                        Text("No comments yet.")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .padding(.vertical, 4)
+                    } else {
+                        ForEach(post.comments, id: \.self) { comment in
+                            HStack(alignment: .top) {
+                                Image(systemName: "bubble.right.fill")
+                                    .foregroundColor(.gray)
+                                    .padding(.top, 2)
+                                VStack(alignment: .leading) {
+                                    Text(comment.text) // Assuming `text` is the correct property
+                                        .font(.body)
+                                        .foregroundColor(.secondary)
+                                        .padding(8)
+                                        .background(Color(UIColor.systemGray6))
+                                        .cornerRadius(10)
+                                }
+                            }
                         }
-                        Spacer()
                     }
-                    .padding()
+                }
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(15)
+                .shadow(radius: 3)
+                .padding(.horizontal)
+
+                // Delete Post Button (if user is owner)
+                if authViewModel.currentUser?.id == post.userId {
+                    Button(action: {
+                        showAlert = true
+                    }) {
+                        HStack {
+                            Image(systemName: "trash.fill")
+                            Text("Delete THAT Post")
+                                .fontWeight(.bold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .shadow(radius: 3)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 10)
                 }
             }
-            .padding()
+            .padding(.top)
         }
         .navigationTitle("Post Details")
         .navigationBarTitleDisplayMode(.inline)
@@ -435,8 +680,4 @@ struct PostDetailView: View {
 }
 
 
-// MARK: - Preview
-#Preview {
-    ProfileView()
-        .environmentObject(AuthViewModel())
-}
+
