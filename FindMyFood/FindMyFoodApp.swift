@@ -110,7 +110,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 }
 
-
 @main
 struct FindMyFoodApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
