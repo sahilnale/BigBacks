@@ -29,26 +29,28 @@ class ImageAnnotation: NSObject, MKAnnotation {
 
 // Custom cluster annotation view
 class ClusterAnnotationView: MKAnnotationView {
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        self.collisionMode = .circle
+        self.displayPriority = .defaultHigh
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     override var annotation: MKAnnotation? {
-        willSet {
-            guard let cluster = newValue as? MKClusterAnnotation else { return }
-
-            let totalAnnotations = cluster.memberAnnotations.count
-
-            // Ensure we have a valid annotation image
+        didSet {
+            guard let cluster = annotation as? MKClusterAnnotation else { return }
+            
             if let latestAnnotation = cluster.memberAnnotations.last as? ImageAnnotation,
-               let latestImage = latestAnnotation.images.first { // Pick the first image
-
-                
-                // Generate a fresh image for the cluster with the number in the bottom-right
-                let clusterImage = generateClusterImage(baseImage: latestImage, text: "\(totalAnnotations)")
-                image = clusterImage
+               let latestImage = latestAnnotation.images.first {
+                let clusterImage = generateClusterImage(
+                    baseImage: latestImage,
+                    text: "\(cluster.memberAnnotations.count)"
+                )
+                self.image = clusterImage
             }
-
-//            markerTintColor = .clear  // Hide default marker color
-//            glyphText = nil           // Prevent numbers in the middle
-//            displayPriority = .defaultLow // Ensures MapKit doesn't override our custom image
-
         }
     }
 
@@ -62,22 +64,22 @@ class ClusterAnnotationView: MKAnnotationView {
             circlePath.addClip()
             baseImage.draw(in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
             
-            // Create a **solid black background** for the number
+            // Create a solid black background for the number
             let textBgSize: CGFloat = 20
             let textBgRect = CGRect(
-                x: size.width - textBgSize - 4, // Right-aligned
-                y: size.height - textBgSize - 4, // Bottom-aligned
+                x: size.width - textBgSize - 4,
+                y: size.height - textBgSize - 4,
                 width: textBgSize,
                 height: textBgSize
             )
             let bgPath = UIBezierPath(ovalIn: textBgRect)
-            UIColor.black.setFill() // **Solid black background**
+            UIColor.black.setFill()
             bgPath.fill()
 
             // Draw the number inside the black circle
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.boldSystemFont(ofSize: 12),
-                .foregroundColor: UIColor.white // White text for contrast
+                .foregroundColor: UIColor.white
             ]
             let textSize = text.size(withAttributes: attributes)
             let textRect = CGRect(
@@ -89,8 +91,6 @@ class ClusterAnnotationView: MKAnnotationView {
             text.draw(in: textRect, withAttributes: attributes)
         }
     }
-
-
 }
 
 
@@ -390,41 +390,34 @@ class ImageAnnotationView: MKAnnotationView {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         
         self.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
-        self.imageView = UIImageView(frame: CGRect(x: 0, y: 0, width: 50, height: 50))
+        self.imageView = UIImageView(frame: self.bounds)
         self.imageView.contentMode = .scaleAspectFill
         self.imageView.layer.cornerRadius = 25
         self.imageView.layer.masksToBounds = true
         self.addSubview(self.imageView)
         
-        // Enable clustering
-        self.clusteringIdentifier = "imageCluster" //supposendly imageCluster
+        self.clusteringIdentifier = "imageCluster"
+        self.collisionMode = .circle
+        self.displayPriority = .defaultHigh
         
-        
-        // Set a smaller collision bounding rectangle to encourage clustering
-            // This will make the annotations cluster more aggressively
-            self.collisionMode = .circle
-            
-            // Set display priority to encourage clustering
-            self.displayPriority = .defaultHigh
-        
-        // Add a border to make the image stand out
         self.layer.borderWidth = 2
         self.layer.borderColor = UIColor.white.cgColor
         self.layer.cornerRadius = 25
         self.layer.masksToBounds = true
     }
     
-    override var image: UIImage? {
-        get {
-            return self.imageView.image
-        }
-        set {
-            self.imageView.image = newValue
-        }
-    }
-    
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    override var image: UIImage? {
+        get { return self.imageView.image }
+        set { self.imageView.image = newValue }
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        self.imageView.image = nil
     }
 }
 // Map View Model
@@ -576,7 +569,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             
             print("About to add")
             addUserAnnotation(coordinate_in: coordinateC, title_in: title, review: review, image_in: imageIdentifiers, author_in: author, rating_in: rating, heartC_in: likes)
-
+            
             print("Done")
         }
     }
@@ -625,13 +618,13 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     continue
                 }
                 addedAnnotationIDs.insert(annotationID)
-
+                
                 let imageUrls = post.imageUrls // Use the array
                 var images: [UIImage] = []
-
+                
                 for imageUrlString in imageUrls {
                     guard let imageUrl = URL(string: imageUrlString) else { continue }
-
+                    
                     let image: UIImage? = await withCheckedContinuation { continuation in
                         URLSession.shared.dataTask(with: imageUrl) { data, _, error in
                             if let data = data, let fetchedImage = UIImage(data: data) {
@@ -641,14 +634,14 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                             }
                         }.resume()
                     }
-
+                    
                     if let image = image {
                         images.append(image)
                     }
                 }
-
+                
                 guard !images.isEmpty else { continue }
-
+                
                 let locationComponents = post.location.split(separator: ",")
                 guard locationComponents.count == 2,
                       let latitude = Double(locationComponents[0]),
@@ -656,7 +649,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     continue
                 }
                 let annotationCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-
+                
                 let annotation = ImageAnnotation(
                     coordinate: annotationCoordinate,
                     title: post.restaurantName,
@@ -667,7 +660,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     heartC: post.likes
                 )
                 annotation.images = images
-
+                
                 DispatchQueue.main.async {
                     self.map.addAnnotation(annotation)
                 }
@@ -676,7 +669,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             print("Error fetching post details: \(error)")
         }
     }
-
+    
     
     // CLLocationManagerDelegate methods
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -693,37 +686,9 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     }
     static var lastZoom: Double = 0
     func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-        // After a significant zoom change, force redisplay of clusters
-        // This helps ensure clusters reappear when zooming out
-        
-        // Get the current zoom level (approximate)
-        let span = mapView.region.span
-        let currentZoom = (span.latitudeDelta + span.longitudeDelta) / 2
-        // Store this as a static or instance property to track zoom changes
-        // This is a simplified approach - you can make this more sophisticated
-        let zoomThreshold: Double = 0.05 // Adjust based on your needs
-        
-        // If zoom has changed significantly
-        if abs(currentZoom - Self.lastZoom) > zoomThreshold {
-            Self.lastZoom = currentZoom
-            
-            // Force the map to recalculate annotations after a small delay
-            // This helps with clusters reappearing when zooming out
-            
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                // This subtle trick forces MapKit to reconsider clustering without removing annotations
-                for annotation in mapView.annotations where annotation is ImageAnnotation {
-                    if let annotationView = mapView.view(for: annotation) as? ImageAnnotationView {
-                        annotationView.clusteringIdentifier = nil
-                        annotationView.clusteringIdentifier = "imageCluster"
-                    }
-                }
-            }
-        }
+        // Remove the zoom handling completely since it's causing KVO issues
+        // MapKit will handle clustering automatically
     }
-    
-    //
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Failed to get location: \(error.localizedDescription)")
@@ -818,133 +783,132 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     
     
-    
     // Show popup when annotation is selected
     
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         if let cluster = view.annotation as? MKClusterAnnotation {
-                let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .alert)
-
-                // Increase the size of the popup
-                let popupView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 400)) //height is 400
-                popupView.backgroundColor = .white
-                popupView.layer.cornerRadius = 12
-                popupView.layer.masksToBounds = true
-
-                let titleLabel = UILabel()
-                titleLabel.text = "Restaurants"
-                titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
-                titleLabel.textColor = .accentColor2
-                titleLabel.textAlignment = .center
-                titleLabel.translatesAutoresizingMaskIntoConstraints = false
-
-                let scrollView = UIScrollView()
-                scrollView.translatesAutoresizingMaskIntoConstraints = false
-                scrollView.showsVerticalScrollIndicator = true
-
-                let contentStackView = UIStackView()
-                contentStackView.axis = .vertical
-                contentStackView.alignment = .fill
-                contentStackView.spacing = 10
-                contentStackView.translatesAutoresizingMaskIntoConstraints = false
-
-                var annotationMap: [UIView: ImageAnnotation] = [:]
-
-                for annotation in cluster.memberAnnotations {
-                    if let imageAnnotation = annotation as? ImageAnnotation {
-                        let itemContainer = UIView()
-                        itemContainer.translatesAutoresizingMaskIntoConstraints = false
-                        itemContainer.layer.cornerRadius = 8
-                        itemContainer.layer.borderWidth = 1
-                        itemContainer.layer.borderColor = UIColor.lightGray.cgColor
-                        itemContainer.backgroundColor = UIColor(white: 0.95, alpha: 1.0)
-
-                        let imageView = UIImageView(image: imageAnnotation.images.first)
-                        imageView.contentMode = .scaleAspectFill
-                        imageView.layer.cornerRadius = 8
-                        imageView.clipsToBounds = true
-                        imageView.translatesAutoresizingMaskIntoConstraints = false
-
-                        let nameLabel = UILabel()
-                        nameLabel.text = imageAnnotation.title
-                        nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-                        nameLabel.textColor = .darkGray
-                        nameLabel.textAlignment = .center
-                        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-
-                        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(showAnnotationPopup(_:)))
-                        itemContainer.addGestureRecognizer(tapGesture)
-                        itemContainer.isUserInteractionEnabled = true
-
-                        annotationMap[itemContainer] = imageAnnotation
-
-                        itemContainer.addSubview(imageView)
-                        itemContainer.addSubview(nameLabel)
-
-                        NSLayoutConstraint.activate([
-                            imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
-                            imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-                            imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-                            imageView.heightAnchor.constraint(equalToConstant: 120),
-
-                            nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 5),
-                            nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-                            nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-                            nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor)
-                        ])
-
-                        contentStackView.addArrangedSubview(itemContainer)
-                    }
+            let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .alert)
+            
+            // Increase the size of the popup
+            let popupView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 400)) //height is 400
+            popupView.backgroundColor = .white
+            popupView.layer.cornerRadius = 12
+            popupView.layer.masksToBounds = true
+            
+            let titleLabel = UILabel()
+            titleLabel.text = "Restaurants"
+            titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
+            titleLabel.textColor = .accentColor2
+            titleLabel.textAlignment = .center
+            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            
+            let scrollView = UIScrollView()
+            scrollView.translatesAutoresizingMaskIntoConstraints = false
+            scrollView.showsVerticalScrollIndicator = true
+            
+            let contentStackView = UIStackView()
+            contentStackView.axis = .vertical
+            contentStackView.alignment = .fill
+            contentStackView.spacing = 10
+            contentStackView.translatesAutoresizingMaskIntoConstraints = false
+            
+            var annotationMap: [UIView: ImageAnnotation] = [:]
+            
+            for annotation in cluster.memberAnnotations {
+                if let imageAnnotation = annotation as? ImageAnnotation {
+                    let itemContainer = UIView()
+                    itemContainer.translatesAutoresizingMaskIntoConstraints = false
+                    itemContainer.layer.cornerRadius = 8
+                    itemContainer.layer.borderWidth = 1
+                    itemContainer.layer.borderColor = UIColor.lightGray.cgColor
+                    itemContainer.backgroundColor = UIColor(white: 0.95, alpha: 1.0)
+                    
+                    let imageView = UIImageView(image: imageAnnotation.images.first)
+                    imageView.contentMode = .scaleAspectFill
+                    imageView.layer.cornerRadius = 8
+                    imageView.clipsToBounds = true
+                    imageView.translatesAutoresizingMaskIntoConstraints = false
+                    
+                    let nameLabel = UILabel()
+                    nameLabel.text = imageAnnotation.title
+                    nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+                    nameLabel.textColor = .darkGray
+                    nameLabel.textAlignment = .center
+                    nameLabel.translatesAutoresizingMaskIntoConstraints = false
+                    
+                    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(showAnnotationPopup(_:)))
+                    itemContainer.addGestureRecognizer(tapGesture)
+                    itemContainer.isUserInteractionEnabled = true
+                    
+                    annotationMap[itemContainer] = imageAnnotation
+                    
+                    itemContainer.addSubview(imageView)
+                    itemContainer.addSubview(nameLabel)
+                    
+                    NSLayoutConstraint.activate([
+                        imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
+                        imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+                        imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+                        imageView.heightAnchor.constraint(equalToConstant: 120),
+                        
+                        nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 5),
+                        nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+                        nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+                        nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor)
+                    ])
+                    
+                    contentStackView.addArrangedSubview(itemContainer)
                 }
-
-                scrollView.addSubview(contentStackView)
-                popupView.addSubview(titleLabel)
-                popupView.addSubview(scrollView)
-
-                NSLayoutConstraint.activate([
-                    titleLabel.topAnchor.constraint(equalTo: popupView.topAnchor, constant: 10),
-                    titleLabel.centerXAnchor.constraint(equalTo: popupView.centerXAnchor),
-
-                    scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
-                    scrollView.leadingAnchor.constraint(equalTo: popupView.leadingAnchor, constant: 10),
-                    scrollView.trailingAnchor.constraint(equalTo: popupView.trailingAnchor, constant: -10),
-                    scrollView.bottomAnchor.constraint(equalTo: popupView.bottomAnchor, constant: -10),
-
-                    contentStackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-                    contentStackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-                    contentStackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-                    contentStackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-                    contentStackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
-                ])
-
-                let alertControllerHeight = NSLayoutConstraint(
-                    item: alertController.view!,
-                    attribute: .height,
-                    relatedBy: .equal,
-                    toItem: nil,
-                    attribute: .notAnAttribute,
-                    multiplier: 1,
-                    constant: 450
-                )
-                alertController.view.addConstraint(alertControllerHeight)
-
-                alertController.view.addSubview(popupView)
-                alertController.addAction(UIAlertAction(title: "Close", style: .cancel, handler: nil))
-
-                self.present(alertController, animated: true, completion: nil)
-
-                mapView.deselectAnnotation(cluster, animated: true)
-
-                objc_setAssociatedObject(alertController, &annotationMapKey, annotationMap, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            }
+            
+            scrollView.addSubview(contentStackView)
+            popupView.addSubview(titleLabel)
+            popupView.addSubview(scrollView)
+            
+            NSLayoutConstraint.activate([
+                titleLabel.topAnchor.constraint(equalTo: popupView.topAnchor, constant: 10),
+                titleLabel.centerXAnchor.constraint(equalTo: popupView.centerXAnchor),
+                
+                scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
+                scrollView.leadingAnchor.constraint(equalTo: popupView.leadingAnchor, constant: 10),
+                scrollView.trailingAnchor.constraint(equalTo: popupView.trailingAnchor, constant: -10),
+                scrollView.bottomAnchor.constraint(equalTo: popupView.bottomAnchor, constant: -10),
+                
+                contentStackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+                contentStackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+                contentStackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+                contentStackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+                contentStackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+            ])
+            
+            let alertControllerHeight = NSLayoutConstraint(
+                item: alertController.view!,
+                attribute: .height,
+                relatedBy: .equal,
+                toItem: nil,
+                attribute: .notAnAttribute,
+                multiplier: 1,
+                constant: 450
+            )
+            alertController.view.addConstraint(alertControllerHeight)
+            
+            alertController.view.addSubview(popupView)
+            alertController.addAction(UIAlertAction(title: "Close", style: .cancel, handler: nil))
+            
+            self.present(alertController, animated: true, completion: nil)
+            
+            mapView.deselectAnnotation(cluster, animated: true)
+            
+            objc_setAssociatedObject(alertController, &annotationMapKey, annotationMap, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
         // Rest of your existing code for regular annotations
         else if let annotation = view.annotation as? ImageAnnotation {
             // Your existing code for handling individual annotations...
             currentPopupView?.removeFromSuperview()
-                    let popupView = CustomPopupView()
-                    popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 300, width: 350, height: 600)
-                    popupView.layer.cornerRadius = 10
-                    popupView.layer.masksToBounds = true
+            let popupView = CustomPopupView()
+            popupView.frame = CGRect(x: map.bounds.midX - 170, y: map.bounds.midY - 300, width: 350, height: 600)
+            popupView.layer.cornerRadius = 10
+            popupView.layer.masksToBounds = true
             popupView.setDetails(
                 title: annotation.title,
                 images: annotation.images, // ✅ Correct: Pass the entire array of images
@@ -954,10 +918,10 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 star: annotation.rating,
                 heart: annotation.heartC
             )
-
-                    map.addSubview(popupView)
-                    currentPopupView = popupView
-                    isPopupShown = true
+            
+            map.addSubview(popupView)
+            currentPopupView = popupView
+            isPopupShown = true
         }
     }
     
@@ -979,57 +943,74 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     @objc func showAnnotationPopup(_ sender: UITapGestureRecognizer) {
         guard let view = sender.view,
-                  let topVC = self.presentedViewController as? UIAlertController,
-                  let annotationMap = objc_getAssociatedObject(topVC, &annotationMapKey) as? [UIView: ImageAnnotation],
-                  let annotation = annotationMap[view] else {
-                print("🚨 Annotation not found in cluster!")
-                return
-            }
-
-            print("✅ Clicked on annotation: \(annotation.title ?? "Unknown")")
-
-            // Close the cluster popup
-            topVC.dismiss(animated: true) {
-                // Deselect the cluster annotation
-                self.map.deselectAnnotation(topVC as? MKClusterAnnotation, animated: false)
-
-                // Select the actual annotation after a slight delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    print("✅ Selecting annotation: \(annotation.title ?? "Unknown")")
-                    self.map.selectAnnotation(annotation, animated: true)
-                }
+              let topVC = self.presentedViewController as? UIAlertController,
+              let annotationMap = objc_getAssociatedObject(topVC, &annotationMapKey) as? [UIView: ImageAnnotation],
+              let annotation = annotationMap[view] else {
+            print("🚨 Annotation not found in cluster!")
+            return
+        }
+        
+        print("✅ Clicked on annotation: \(annotation.title ?? "Unknown")")
+        
+        // Close the cluster popup
+        topVC.dismiss(animated: true) { [weak self] in
+            guard let self = self else { return }
+            
+            // Instead of trying to deselect the cluster annotation, just add a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // Create a new annotation view for the selected annotation
+                let newAnnotation = ImageAnnotation(
+                    coordinate: annotation.coordinate,
+                    title: annotation.title,
+                    subtitle: annotation.subtitle,
+                    imageUrls: annotation.imageUrls,
+                    author: annotation.author,
+                    rating: annotation.rating,
+                    heartC: annotation.heartC
+                )
+                newAnnotation.images = annotation.images
+                
+                // Add and select the new annotation
+                self.map.addAnnotation(newAnnotation)
+                self.map.selectAnnotation(newAnnotation, animated: true)
+                
+                // Center the map on the selected annotation
+                let region = MKCoordinateRegion(
+                    center: newAnnotation.coordinate,
+                    latitudinalMeters: 500,
+                    longitudinalMeters: 500
+                )
+                self.map.setRegion(region, animated: true)
             }
         }
     }
+}
 
+// Move these extensions outside the class
+extension MKMapView {
+    func annotationsWithinRect(in rect: MKMapRect) -> [MKAnnotation] {
+        var annotationsInRect: [MKAnnotation] = []
         
-        // Utility extension for MKMapView
-        extension MKMapView {
-            func annotationsWithinRect(in rect: MKMapRect) -> [MKAnnotation] {
-                var annotationsInRect: [MKAnnotation] = []
-                
-                for annotation in self.annotations {
-                    let point = MKMapPoint(annotation.coordinate)
-                    if rect.contains(point) {
-                        annotationsInRect.append(annotation)
-                    }
-                }
-                return annotationsInRect
+        for annotation in self.annotations {
+            let point = MKMapPoint(annotation.coordinate)
+            if rect.contains(point) {
+                annotationsInRect.append(annotation)
             }
         }
-        //        extension Notification.Name {
-        //            static let postAdded = Notification.Name("postAdded")
-        //        }
-        // SwiftUI wrapper for the MapViewModel
-        struct MapView: UIViewControllerRepresentable {
-            let viewModel: MapViewModel
-            func makeUIViewController(context: Context) -> MapViewModel {
-                return viewModel
-            }
-            func updateUIViewController(_ uiViewController: MapViewModel, context: Context) {
-                // Handle any updates to the view controller here
-            }
-        }
-    
+        return annotationsInRect
+    }
+}
 
+// Move the SwiftUI wrapper outside the class
+struct MapView: UIViewControllerRepresentable {
+    let viewModel: MapViewModel
+    
+    func makeUIViewController(context: Context) -> MapViewModel {
+        return viewModel
+    }
+    
+    func updateUIViewController(_ uiViewController: MapViewModel, context: Context) {
+        // Handle any updates to the view controller here
+    }
+}
 
