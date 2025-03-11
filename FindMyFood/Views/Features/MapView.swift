@@ -351,8 +351,15 @@ class ImageAnnotation: NSObject, MKAnnotation {
 class ClusterAnnotationView: MKAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
-        self.collisionMode = .circle
+        self.collisionMode = .rectangle
         self.displayPriority = .defaultHigh
+        self.frame = CGRect(x: 0, y: 0, width: 65, height: 65)
+        
+        // Add a distinctive border
+        self.layer.borderWidth = 3
+        self.layer.borderColor = UIColor.white.cgColor
+        self.layer.cornerRadius = 12
+        self.layer.masksToBounds = true
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -375,30 +382,71 @@ class ClusterAnnotationView: MKAnnotationView {
     }
 
     private func generateClusterImage(baseImage: UIImage, text: String) -> UIImage {
-        let size = CGSize(width: 50, height: 50)
+        let size = CGSize(width: 65, height: 65)
         let renderer = UIGraphicsImageRenderer(size: size)
 
         return renderer.image { context in
-            // Draw the base image (without any text in the middle)
-            let circlePath = UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: size.width, height: size.height))
-            circlePath.addClip()
-            baseImage.draw(in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+            // Draw the base image with proper aspect ratio (cropped, not squished)
+            let squarePath = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: size.width, height: size.height), cornerRadius: 12)
+            context.cgContext.saveGState()
+            squarePath.addClip()
             
-            // Create a solid black background for the number
-            let textBgSize: CGFloat = 20
+            // Calculate proper drawing rect to ensure image fills the entire area
+            let imageSize = baseImage.size
+            var drawRect = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+            
+            // Determine scale factor to ensure the image completely fills the annotation
+            let imageAspect = imageSize.width / imageSize.height
+            let targetAspect = size.width / size.height
+            
+            if imageAspect > targetAspect {
+                // Image is wider than target - scale based on height and crop width
+                let scaledWidth = size.height * imageAspect
+                let xOffset = (size.width - scaledWidth) / 2
+                drawRect = CGRect(x: xOffset, y: 0, width: scaledWidth, height: size.height)
+            } else {
+                // Image is taller than target or same aspect - scale based on width and crop height
+                let scaledHeight = size.width / imageAspect
+                let yOffset = (size.height - scaledHeight) / 2
+                drawRect = CGRect(x: 0, y: yOffset, width: size.width, height: scaledHeight)
+            }
+            
+            // Draw the image with proper aspect ratio
+            baseImage.draw(in: drawRect)
+            context.cgContext.restoreGState()
+            
+            // Create a solid black background for the number that will be drawn on top
+            // Adjust size and position for better proportions
+            let textBgSize: CGFloat = 22
             let textBgRect = CGRect(
-                x: size.width - textBgSize - 4,
-                y: size.height - textBgSize - 4,
+                x: size.width - textBgSize - 6,
+                y: size.height - textBgSize - 6,
                 width: textBgSize,
                 height: textBgSize
             )
+            
+            // Draw a shadow for the badge to make it stand out
+            context.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 3, color: UIColor.black.withAlphaComponent(0.5).cgColor)
+            
+            // Draw the black circle with a white border
             let bgPath = UIBezierPath(ovalIn: textBgRect)
             UIColor.black.setFill()
             bgPath.fill()
+            
+            // Clear the shadow for the border and text
+            context.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            
+            // Add a small white border around the count indicator
+            let borderPath = UIBezierPath(ovalIn: textBgRect)
+            borderPath.lineWidth = 1.5
+            UIColor.white.setStroke()
+            borderPath.stroke()
 
             // Draw the number inside the black circle
+            // Adjust font size based on the number of digits
+            let fontSize: CGFloat = text.count > 2 ? 11 : 13
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.boldSystemFont(ofSize: 12),
+                .font: UIFont.boldSystemFont(ofSize: fontSize),
                 .foregroundColor: UIColor.white
             ]
             let textSize = text.size(withAttributes: attributes)
@@ -789,21 +837,22 @@ class ImageAnnotationView: MKAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         
-        self.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
+        self.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
         self.imageView = UIImageView(frame: self.bounds)
         self.imageView.contentMode = .scaleAspectFill
-        self.imageView.layer.cornerRadius = 25
+        self.imageView.clipsToBounds = true
+        self.imageView.layer.cornerRadius = 12
         self.imageView.layer.masksToBounds = true
         self.addSubview(self.imageView)
         
         // Set clustering identifier only once during initialization
         self.clusteringIdentifier = "imageCluster"
-        self.collisionMode = .circle
+        self.collisionMode = .rectangle
         self.displayPriority = .defaultHigh
         
         self.layer.borderWidth = 2
         self.layer.borderColor = UIColor.white.cgColor
-        self.layer.cornerRadius = 25
+        self.layer.cornerRadius = 12
         self.layer.masksToBounds = true
     }
     
@@ -1141,295 +1190,122 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     // Show popup when annotation is selected
     
-//    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-//        if let cluster = view.annotation as? MKClusterAnnotation {
-//            let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .alert)
-//            
-//            // Increase the size of the popup
-//            let popupView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 400)) //height is 400
-//            popupView.backgroundColor = .white
-//            popupView.layer.cornerRadius = 12
-//            popupView.layer.masksToBounds = true
-//            
-//            let titleLabel = UILabel()
-//            titleLabel.text = "Restaurants"
-//            titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
-//            titleLabel.textColor = .accentColor2
-//            titleLabel.textAlignment = .center
-//            titleLabel.translatesAutoresizingMaskIntoConstraints = false
-//            
-//            let scrollView = UIScrollView()
-//            scrollView.translatesAutoresizingMaskIntoConstraints = false
-//            scrollView.showsVerticalScrollIndicator = true
-//            
-//            let contentStackView = UIStackView()
-//            contentStackView.axis = .vertical
-//            contentStackView.alignment = .fill
-//            contentStackView.spacing = 10
-//            contentStackView.translatesAutoresizingMaskIntoConstraints = false
-//            
-//            var annotationMap: [UIView: ImageAnnotation] = [:]
-//            
-//            for annotation in cluster.memberAnnotations {
-//                if let imageAnnotation = annotation as? ImageAnnotation {
-//                    let itemContainer = UIView()
-//                    itemContainer.translatesAutoresizingMaskIntoConstraints = false
-//                    itemContainer.layer.cornerRadius = 8
-//                    itemContainer.layer.borderWidth = 1
-//                    itemContainer.layer.borderColor = UIColor.lightGray.cgColor
-//                    itemContainer.backgroundColor = UIColor(white: 0.95, alpha: 1.0)
-//                    
-//                    let imageView = UIImageView(image: imageAnnotation.images.first)
-//                    imageView.contentMode = .scaleAspectFill
-//                    imageView.layer.cornerRadius = 8
-//                    imageView.clipsToBounds = true
-//                    imageView.translatesAutoresizingMaskIntoConstraints = false
-//                    
-//                    let nameLabel = UILabel()
-//                    nameLabel.text = imageAnnotation.title
-//                    nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-//                    nameLabel.textColor = .darkGray
-//                    nameLabel.textAlignment = .center
-//                    nameLabel.translatesAutoresizingMaskIntoConstraints = false
-//                    
-//                    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(showAnnotationPopup(_:)))
-//                    itemContainer.addGestureRecognizer(tapGesture)
-//                    itemContainer.isUserInteractionEnabled = true
-//                    
-//                    annotationMap[itemContainer] = imageAnnotation
-//                    
-//                    itemContainer.addSubview(imageView)
-//                    itemContainer.addSubview(nameLabel)
-//                    
-//                    NSLayoutConstraint.activate([
-//                        imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
-//                        imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-//                        imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-//                        imageView.heightAnchor.constraint(equalToConstant: 120),
-//                        
-//                        nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 5),
-//                        nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-//                        nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-//                        nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor)
-//                    ])
-//                    
-//                    contentStackView.addArrangedSubview(itemContainer)
-//                }
-//            }
-//            
-//            scrollView.addSubview(contentStackView)
-//            popupView.addSubview(titleLabel)
-//            popupView.addSubview(scrollView)
-//            
-//            NSLayoutConstraint.activate([
-//                titleLabel.topAnchor.constraint(equalTo: popupView.topAnchor, constant: 10),
-//                titleLabel.centerXAnchor.constraint(equalTo: popupView.centerXAnchor),
-//                
-//                scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
-//                scrollView.leadingAnchor.constraint(equalTo: popupView.leadingAnchor, constant: 10),
-//                scrollView.trailingAnchor.constraint(equalTo: popupView.trailingAnchor, constant: -10),
-//                scrollView.bottomAnchor.constraint(equalTo: popupView.bottomAnchor, constant: -10),
-//                
-//                contentStackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-//                contentStackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-//                contentStackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-//                contentStackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-//                contentStackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
-//            ])
-//            
-//            let alertControllerHeight = NSLayoutConstraint(
-//                item: alertController.view!,
-//                attribute: .height,
-//                relatedBy: .equal,
-//                toItem: nil,
-//                attribute: .notAnAttribute,
-//                multiplier: 1,
-//                constant: 450
-//            )
-//            alertController.view.addConstraint(alertControllerHeight)
-//            
-//            alertController.view.addSubview(popupView)
-//            alertController.addAction(UIAlertAction(title: "Close", style: .cancel, handler: nil))
-//            
-//            self.present(alertController, animated: true, completion: nil)
-//            
-//            mapView.deselectAnnotation(cluster, animated: true)
-//            
-//            objc_setAssociatedObject(alertController, &annotationMapKey, annotationMap, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-//        }
-//        // Rest of your existing code for regular annotations
-//        else if let annotation = view.annotation as? ImageAnnotation {
-//            // Your existing code for handling individual annotations...
-//            currentPopupView?.removeFromSuperview()
-//            let dimmingView = UIView(frame: map.bounds)
-//               dimmingView.backgroundColor = UIColor.black
-//               dimmingView.alpha = 0.0 // Start transparent
-//               dimmingView.tag = 999 // Tag for easy identification
-//               
-//               // Add tap gesture to dismiss when tapping outside
-//               let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
-//               dimmingView.addGestureRecognizer(tapGesture)
-//            let popupView = CustomPopupView()
-//            let popupWidth: CGFloat = 350
-//            let popupHeight: CGFloat = 600
-//            
-//            // Calculate center position relative to the map's bounds
-//            let centerX = map.bounds.midX - (popupWidth / 2)
-//            let centerY = map.bounds.midY - (popupHeight / 2)
-//            
-//            // Set the frame using the calculated center position
-//            popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
-//            popupView.layer.cornerRadius = 10
-//            popupView.layer.masksToBounds = true
-//            popupView.setDetails(
-//                title: annotation.title,
-//                images: annotation.images, 
-//                reviewerName: annotation.author,
-//                rating: annotation.rating,
-//                comment: annotation.subtitle,
-//                star: annotation.rating,
-//                heart: annotation.heartC
-//            )
-//            map.addSubview(dimmingView)
-//            map.addSubview(popupView)
-//            currentPopupView = popupView
-//            UIView.animate(withDuration: 0.3) {
-//                       dimmingView.alpha = 0.5 // Adjust opacity as needed
-//                   }
-//            isPopupShown = true
-//        }
-//    }
-    
-        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-            if let cluster = view.annotation as? MKClusterAnnotation {
-                // Deselect the cluster annotation
-                mapView.deselectAnnotation(cluster, animated: true)
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        if let cluster = view.annotation as? MKClusterAnnotation {
+            // Deselect the cluster annotation
+            mapView.deselectAnnotation(cluster, animated: true)
+            
+            // Extract ImageAnnotations from the cluster
+            let imageAnnotations = cluster.memberAnnotations.compactMap { $0 as? ImageAnnotation }
+            
+            // Create and show the modern popup
+            let popupVC = RestaurantClusterPopupViewController(annotations: imageAnnotations) { [weak self] selectedAnnotation in
+                guard let self = self else { return }
                 
-                // Extract ImageAnnotations from the cluster
-                let imageAnnotations = cluster.memberAnnotations.compactMap { $0 as? ImageAnnotation }
-                
-                // Create and show the modern popup
-                let popupVC = RestaurantClusterPopupViewController(annotations: imageAnnotations) { [weak self] selectedAnnotation in
-                    guard let self = self else { return }
-                    
-                    // Center the map on the selected annotation
-                    let region = MKCoordinateRegion(
-                        center: selectedAnnotation.coordinate,
-                        latitudinalMeters: 500,
-                        longitudinalMeters: 500
-                    )
-                    self.map.setRegion(region, animated: true)
-                    
-                    // Create the CustomPopupView directly instead of selecting the annotation
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        // Remove any existing popup
-                        self.currentPopupView?.removeFromSuperview()
-                        if let dimmingView = self.map.viewWithTag(999) {
-                            dimmingView.removeFromSuperview()
-                        }
-                        
-                        // Create dimming view
-                        let dimmingView = UIView(frame: self.map.bounds)
-                        dimmingView.backgroundColor = UIColor.black
-                        dimmingView.alpha = 0.0
-                        dimmingView.tag = 999
-                        
-                        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(self.handleMapTap(_:)))
-                        dimmingView.addGestureRecognizer(tapGesture)
-                        
-                        // Create popup view
-                        let popupView = CustomPopupView()
-                        let popupWidth: CGFloat = 350
-                        let popupHeight: CGFloat = 600
-                        
-                        let centerX = self.map.bounds.midX - (popupWidth / 2)
-                        let centerY = self.map.bounds.midY - (popupHeight / 2)
-                        
-                        popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
-                        popupView.layer.cornerRadius = 10
-                        popupView.layer.masksToBounds = true
-                        popupView.setDetails(
-                            title: selectedAnnotation.title,
-                            images: selectedAnnotation.images,
-                            reviewerName: selectedAnnotation.author,
-                            rating: selectedAnnotation.rating,
-                            comment: selectedAnnotation.subtitle,
-                            star: selectedAnnotation.rating,
-                            heart: selectedAnnotation.heartC
-                        )
-                        
-                        self.map.addSubview(dimmingView)
-                        self.map.addSubview(popupView)
-                        self.currentPopupView = popupView
-                        
-                        UIView.animate(withDuration: 0.3) {
-                            dimmingView.alpha = 0.5
-                        }
-                        
-                        self.isPopupShown = true
-                    }
-                }
-                
-                present(popupVC, animated: true)
-            }
-            else if let annotation = view.annotation as? ImageAnnotation {
-                // Your existing code for handling individual annotations...
-                currentPopupView?.removeFromSuperview()
-                let dimmingView = UIView(frame: map.bounds)
-                dimmingView.backgroundColor = UIColor.black
-                dimmingView.alpha = 0.0
-                dimmingView.tag = 999
-                
-                let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
-                dimmingView.addGestureRecognizer(tapGesture)
-                
-                let popupView = CustomPopupView()
-                let popupWidth: CGFloat = 350
-                let popupHeight: CGFloat = 600
-                
-                let centerX = map.bounds.midX - (popupWidth / 2)
-                let centerY = map.bounds.midY - (popupHeight / 2)
-                
-                popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
-                popupView.layer.cornerRadius = 10
-                popupView.layer.masksToBounds = true
-                popupView.setDetails(
-                    title: annotation.title,
-                    images: annotation.images,
-                    reviewerName: annotation.author,
-                    rating: annotation.rating,
-                    comment: annotation.subtitle,
-                    star: annotation.rating,
-                    heart: annotation.heartC
+                // Center the map on the selected annotation
+                let region = MKCoordinateRegion(
+                    center: selectedAnnotation.coordinate,
+                    latitudinalMeters: 500,
+                    longitudinalMeters: 500
                 )
+                self.map.setRegion(region, animated: true)
                 
-                map.addSubview(dimmingView)
-                map.addSubview(popupView)
-                currentPopupView = popupView
-                
-                UIView.animate(withDuration: 0.3) {
-                    dimmingView.alpha = 0.5
+                // Create the CustomPopupView directly instead of selecting the annotation
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    // Remove any existing popup
+                    self.currentPopupView?.removeFromSuperview()
+                    if let dimmingView = self.map.viewWithTag(999) {
+                        dimmingView.removeFromSuperview()
+                    }
+                    
+                    // Create dimming view
+                    let dimmingView = UIView(frame: self.map.bounds)
+                    dimmingView.backgroundColor = UIColor.black
+                    dimmingView.alpha = 0.0
+                    dimmingView.tag = 999
+                    
+                    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(self.handleMapTap(_:)))
+                    dimmingView.addGestureRecognizer(tapGesture)
+                    
+                    // Create popup view
+                    let popupView = CustomPopupView()
+                    let popupWidth: CGFloat = 350
+                    let popupHeight: CGFloat = 600
+                    
+                    let centerX = self.map.bounds.midX - (popupWidth / 2)
+                    let centerY = self.map.bounds.midY - (popupHeight / 2)
+                    
+                    popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
+                    popupView.layer.cornerRadius = 10
+                    popupView.layer.masksToBounds = true
+                    popupView.setDetails(
+                        title: selectedAnnotation.title,
+                        images: selectedAnnotation.images,
+                        reviewerName: selectedAnnotation.author,
+                        rating: selectedAnnotation.rating,
+                        comment: selectedAnnotation.subtitle,
+                        star: selectedAnnotation.rating,
+                        heart: selectedAnnotation.heartC
+                    )
+                    
+                    self.map.addSubview(dimmingView)
+                    self.map.addSubview(popupView)
+                    self.currentPopupView = popupView
+                    
+                    UIView.animate(withDuration: 0.3) {
+                        dimmingView.alpha = 0.5
+                    }
+                    
+                    self.isPopupShown = true
                 }
-                
-                isPopupShown = true
             }
+            
+            present(popupVC, animated: true)
         }
+        else if let annotation = view.annotation as? ImageAnnotation {
+            // Your existing code for handling individual annotations...
+            currentPopupView?.removeFromSuperview()
+            let dimmingView = UIView(frame: map.bounds)
+            dimmingView.backgroundColor = UIColor.black
+            dimmingView.alpha = 0.0
+            dimmingView.tag = 999
+            
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
+            dimmingView.addGestureRecognizer(tapGesture)
+            
+            let popupView = CustomPopupView()
+            let popupWidth: CGFloat = 350
+            let popupHeight: CGFloat = 600
+            
+            let centerX = map.bounds.midX - (popupWidth / 2)
+            let centerY = map.bounds.midY - (popupHeight / 2)
+            
+            popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
+            popupView.layer.cornerRadius = 10
+            popupView.layer.masksToBounds = true
+            popupView.setDetails(
+                title: annotation.title,
+                images: annotation.images,
+                reviewerName: annotation.author,
+                rating: annotation.rating,
+                comment: annotation.subtitle,
+                star: annotation.rating,
+                heart: annotation.heartC
+            )
+            
+            map.addSubview(dimmingView)
+            map.addSubview(popupView)
+            currentPopupView = popupView
+            
+            UIView.animate(withDuration: 0.3) {
+                dimmingView.alpha = 0.5
+            }
+            
+            isPopupShown = true
+        }
+    }
     
     // Handle tap on the map to dismiss popup
-//    @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
-//        let touchPoint = recognizer.location(in: map)
-//        
-//        // Check if the touch is outside the current popup view
-//        if let popupView = currentPopupView, !popupView.frame.contains(touchPoint) {
-//            // Remove the popup
-//            popupView.removeFromSuperview()
-//            currentPopupView = nil
-//            DispatchQueue.main.async {
-//                self.isPopupShown = false
-//            }
-//        }
-//    }
-    
     @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
         let touchPoint = recognizer.location(in: map)
         
