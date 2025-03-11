@@ -924,7 +924,32 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             
             // Use a delay to ensure the alert controller is fully dismissed
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                // Create a new annotation with the saved data
+                // First, check if there's already an annotation at this coordinate
+                let existingAnnotations = self.map.annotations.filter { 
+                    if let imgAnnotation = $0 as? ImageAnnotation {
+                        // Check if coordinates are very close (within ~10 meters)
+                        let distance = MKMapPoint(imgAnnotation.coordinate).distance(to: MKMapPoint(coordinate))
+                        return distance < 10 && imgAnnotation.title == title
+                    }
+                    return false
+                }
+                
+                // Remove any existing annotations at this location
+                for existingAnnotation in existingAnnotations {
+                    if !(existingAnnotation is MKUserLocation) {
+                        self.map.removeAnnotation(existingAnnotation)
+                    }
+                }
+                
+                // Center the map on the selected annotation first
+                let region = MKCoordinateRegion(
+                    center: coordinate,
+                    latitudinalMeters: 500,
+                    longitudinalMeters: 500
+                )
+                self.map.setRegion(region, animated: false)
+                
+                // Create and add the new annotation
                 let newAnnotation = ImageAnnotation(
                     coordinate: coordinate,
                     title: title,
@@ -935,14 +960,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     heartC: heartC
                 )
                 newAnnotation.images = images
-                
-                // Center the map on the selected annotation first
-                let region = MKCoordinateRegion(
-                    center: coordinate,
-                    latitudinalMeters: 500,
-                    longitudinalMeters: 500
-                )
-                self.map.setRegion(region, animated: false)
                 
                 // Then add and select the annotation
                 self.map.addAnnotation(newAnnotation)
