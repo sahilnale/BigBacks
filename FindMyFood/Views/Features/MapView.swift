@@ -396,6 +396,7 @@ class ImageAnnotationView: MKAnnotationView {
         self.imageView.layer.masksToBounds = true
         self.addSubview(self.imageView)
         
+        // Set clustering identifier only once during initialization
         self.clusteringIdentifier = "imageCluster"
         self.collisionMode = .circle
         self.displayPriority = .defaultHigh
@@ -419,6 +420,8 @@ class ImageAnnotationView: MKAnnotationView {
         super.prepareForReuse()
         self.imageView.image = nil
     }
+    
+    // Don't override prepareForDisplay as it might interfere with MapKit's internal KVO
 }
 // Map View Model
 class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, ObservableObject {
@@ -490,17 +493,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             forAnnotationViewWithReuseIdentifier: "ImageAnnotation"
         )
         
-        // Force the map to recalculate clusters
-        let nonUserAnnotations = map.annotations.filter { !($0 is MKUserLocation) }
-        for annotation in nonUserAnnotations {
-            map.removeAnnotation(annotation)
-        }
-        
-        
-        // Re-add the annotations if needed
-        Task {
-            await loadImageAnnotation()
-        }
+        // Don't force recalculation of clusters here - let MapKit handle it naturally
     }
     
     func removeAllAnnotations() {
@@ -685,11 +678,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         locationManager.stopUpdatingLocation()
     }
     static var lastZoom: Double = 0
-    func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-        // Remove the zoom handling completely since it's causing KVO issues
-        // MapKit will handle clustering automatically
-    }
-    
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Failed to get location: \(error.localizedDescription)")
     }
@@ -734,12 +722,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
         for view in views {
-            // Make sure all ImageAnnotationViews have clustering enabled
-            if let imageView = view as? ImageAnnotationView {
-                imageView.clusteringIdentifier = "imageCluster"
-            }
-            
-            // Add an animation for smoother appearance
+            // Just add animation, don't modify clustering identifiers here
             view.alpha = 0
             UIView.animate(withDuration: 0.3) {
                 view.alpha = 1
@@ -747,34 +730,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         }
     }
     // Add this to your MapViewModel class
-    func mapView(_ mapView: MKMapView, clusterAnnotationForMemberAnnotations memberAnnotations: [MKAnnotation]) -> MKClusterAnnotation {
-        // If there's only one annotation or they're all duplicates, don't create a cluster
-        if memberAnnotations.count == 1 {
-            return MKClusterAnnotation(memberAnnotations: [])
-        }
-        
-        // Check for duplicates by comparing coordinates
-        var uniqueCoordinates = Set<String>()
-        var uniqueAnnotations: [MKAnnotation] = []
-        
-        for annotation in memberAnnotations {
-            let coordString = "\(annotation.coordinate.latitude),\(annotation.coordinate.longitude)"
-            if !uniqueCoordinates.contains(coordString) {
-                uniqueCoordinates.insert(coordString)
-                uniqueAnnotations.append(annotation)
-            }
-        }
-        
-        // If after removing duplicates we have only one annotation, don't cluster
-        if uniqueAnnotations.count == 1 {
-            return MKClusterAnnotation(memberAnnotations: [])
-        }
-        
-        // Create a cluster with only unique annotations
-        let clusterAnnotation = MKClusterAnnotation(memberAnnotations: uniqueAnnotations)
-        clusterAnnotation.title = "\(uniqueAnnotations.count) Locations"
-        return clusterAnnotation
-    }
+
     
     
     
@@ -952,35 +908,45 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         print("✅ Clicked on annotation: \(annotation.title ?? "Unknown")")
         
+        // Store the annotation data we need
+        let coordinate = annotation.coordinate
+        let title = annotation.title
+        let subtitle = annotation.subtitle
+        let imageUrls = annotation.imageUrls
+        let author = annotation.author
+        let rating = annotation.rating
+        let heartC = annotation.heartC
+        let images = annotation.images
+        
         // Close the cluster popup
         topVC.dismiss(animated: true) { [weak self] in
             guard let self = self else { return }
             
-            // Instead of trying to deselect the cluster annotation, just add a delay
+            // Use a delay to ensure the alert controller is fully dismissed
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                // Create a new annotation view for the selected annotation
+                // Create a new annotation with the saved data
                 let newAnnotation = ImageAnnotation(
-                    coordinate: annotation.coordinate,
-                    title: annotation.title,
-                    subtitle: annotation.subtitle,
-                    imageUrls: annotation.imageUrls,
-                    author: annotation.author,
-                    rating: annotation.rating,
-                    heartC: annotation.heartC
+                    coordinate: coordinate,
+                    title: title,
+                    subtitle: subtitle,
+                    imageUrls: imageUrls,
+                    author: author,
+                    rating: rating,
+                    heartC: heartC
                 )
-                newAnnotation.images = annotation.images
+                newAnnotation.images = images
                 
-                // Add and select the new annotation
-                self.map.addAnnotation(newAnnotation)
-                self.map.selectAnnotation(newAnnotation, animated: true)
-                
-                // Center the map on the selected annotation
+                // Center the map on the selected annotation first
                 let region = MKCoordinateRegion(
-                    center: newAnnotation.coordinate,
+                    center: coordinate,
                     latitudinalMeters: 500,
                     longitudinalMeters: 500
                 )
-                self.map.setRegion(region, animated: true)
+                self.map.setRegion(region, animated: false)
+                
+                // Then add and select the annotation
+                self.map.addAnnotation(newAnnotation)
+                self.map.selectAnnotation(newAnnotation, animated: true)
             }
         }
     }
