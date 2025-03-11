@@ -1,4 +1,4 @@
-
+//
 // MARK: - Image Picker Component
 struct ImagePicker: UIViewControllerRepresentable {
     var sourceType: UIImagePickerController.SourceType
@@ -542,3 +542,4 @@ struct PostGridView: View {
         }
     }
 }
+
