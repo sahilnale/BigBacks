@@ -35,16 +35,17 @@ struct RestaurantCard: View {
                     AsyncImage(url: URL(string: firstImageUrl)) { image in
                         image
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 350, height: 350)
+                            .scaledToFill()
+                            .frame(width: 360, height: 350)
+                            .contentShape(Rectangle())
                             .clipShape(RoundedRectangle(cornerRadius: 15))
                             .clipped()
                     } placeholder: {
-                        Color.gray.frame(width: 350, height: 350)
+                        Color.gray.frame(width: 360, height: 350)
                             .clipShape(RoundedRectangle(cornerRadius: 15))
                     }
                 } else {
-                    Color.gray.frame(width: 350, height: 350)
+                    Color.gray.frame(width: 360, height: 350)
                         .clipShape(RoundedRectangle(cornerRadius: 15))
                         .overlay(
                             Text("No Image")

@@ -6,6 +6,326 @@ import FirebaseAuth
 import FirebaseFirestore
 private var annotationMapKey: UInt8 = 0
 // Custom annotation class
+
+
+
+class RestaurantClusterPopupViewController: UIViewController {
+    private let dimmingView = UIView()
+    private let containerView = UIView()
+    private let titleLabel = UILabel()
+    private let closeButton = UIButton(type: .system)
+    private let scrollView = UIScrollView()
+    private let contentStackView = UIStackView()
+    
+    private var imageAnnotations: [ImageAnnotation] = []
+    private var onSelect: ((ImageAnnotation) -> Void)?
+    
+    init(annotations: [ImageAnnotation], onSelect: @escaping (ImageAnnotation) -> Void) {
+        self.imageAnnotations = annotations
+        self.onSelect = onSelect
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .overCurrentContext
+        modalTransitionStyle = .crossDissolve
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupViews()
+        setupConstraints()
+        populateRestaurants()
+    }
+    
+    private func setupViews() {
+        // Set up main view
+        view.backgroundColor = .clear
+        
+        // Set up dimming view
+        dimmingView.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        dimmingView.alpha = 0
+        dimmingView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add tap gesture to dismiss when tapping outside the container
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleBackgroundTap(_:)))
+        dimmingView.addGestureRecognizer(tapGesture)
+        
+        // Set up container view
+        containerView.backgroundColor = .systemBackground
+        containerView.layer.cornerRadius = 16
+        containerView.clipsToBounds = true
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+        containerView.alpha = 0
+        
+        // Set up title label
+        titleLabel.text = "Restaurants"
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 24)
+        titleLabel.textColor = UIColor(red: 241/255, green: 90/255, blue: 35/255, alpha: 1)
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Set up close button
+        closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        closeButton.tintColor = .systemGray
+        closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Set up scroll view
+        scrollView.showsVerticalScrollIndicator = true
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Set up content stack view
+        contentStackView.axis = .vertical
+        contentStackView.spacing = 16
+        contentStackView.alignment = .fill
+        contentStackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add subviews in the correct order
+        view.addSubview(dimmingView)
+        view.addSubview(containerView)
+        containerView.addSubview(titleLabel)
+        containerView.addSubview(closeButton)
+        containerView.addSubview(scrollView)
+        scrollView.addSubview(contentStackView)
+    }
+    
+    private func setupConstraints() {
+        NSLayoutConstraint.activate([
+            // Dimming view fills the entire screen
+            dimmingView.topAnchor.constraint(equalTo: view.topAnchor),
+            dimmingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            dimmingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            dimmingView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            // Container view centered with fixed size
+            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            containerView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.85),
+            containerView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.6),
+            
+            // Title label at the top
+            titleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
+            titleLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            
+            // Close button at the top right
+            closeButton.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            closeButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            closeButton.widthAnchor.constraint(equalToConstant: 32),
+            closeButton.heightAnchor.constraint(equalToConstant: 32),
+            
+            // Scroll view takes the remaining space
+            scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            scrollView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            scrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            scrollView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16),
+            
+            // Content stack view fills the scroll view
+            contentStackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            contentStackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            contentStackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            contentStackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            contentStackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+        ])
+    }
+    
+    private func populateRestaurants() {
+        for annotation in imageAnnotations {
+            let itemContainer = createRestaurantCard(for: annotation)
+            contentStackView.addArrangedSubview(itemContainer)
+        }
+    }
+    
+    private func createRestaurantCard(for annotation: ImageAnnotation) -> UIView {
+        // Create container
+        let itemContainer = UIView()
+        itemContainer.translatesAutoresizingMaskIntoConstraints = false
+        itemContainer.layer.cornerRadius = 12
+        itemContainer.clipsToBounds = true
+        itemContainer.backgroundColor = .secondarySystemBackground
+        
+        // Add tap gesture
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(restaurantCardTapped(_:)))
+        itemContainer.addGestureRecognizer(tapGesture)
+        itemContainer.isUserInteractionEnabled = true
+        
+        // Store the annotation reference
+        objc_setAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Create image view
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        if let image = annotation.images.first {
+            imageView.image = image
+        } else {
+            imageView.image = UIImage(systemName: "photo")
+            imageView.tintColor = .gray
+            imageView.contentMode = .scaleAspectFit
+            imageView.backgroundColor = UIColor.systemGray6
+        }
+        
+        // Create gradient overlay
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.colors = [
+            UIColor.clear.cgColor,
+            UIColor.black.withAlphaComponent(0.6).cgColor
+        ]
+        gradientLayer.locations = [0.6, 1.0]
+        
+        let overlayView = UIView()
+        overlayView.translatesAutoresizingMaskIntoConstraints = false
+        overlayView.layer.addSublayer(gradientLayer)
+        
+        // Create title label
+        let nameLabel = UILabel()
+        nameLabel.text = annotation.title
+        nameLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
+        nameLabel.textColor = .white
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create rating view if rating exists
+        let ratingContainer = UIView()
+        ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        ratingContainer.layer.cornerRadius = 8
+        ratingContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        let ratingStack = UIStackView()
+        ratingStack.axis = .horizontal
+        ratingStack.spacing = 4
+        ratingStack.alignment = .center
+        ratingStack.translatesAutoresizingMaskIntoConstraints = false
+        ratingStack.isLayoutMarginsRelativeArrangement = true
+        ratingStack.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+        
+        let starIcon = UIImageView(image: UIImage(systemName: "star.fill"))
+        starIcon.tintColor = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
+        starIcon.contentMode = .scaleAspectFit
+        starIcon.translatesAutoresizingMaskIntoConstraints = false
+        
+        let ratingLabel = UILabel()
+        ratingLabel.text = annotation.rating != nil ? "\(annotation.rating!)" : "N/A"
+        ratingLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        ratingLabel.textColor = .white
+        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add subviews
+        ratingStack.addArrangedSubview(starIcon)
+        ratingStack.addArrangedSubview(ratingLabel)
+        ratingContainer.addSubview(ratingStack)
+        
+        itemContainer.addSubview(imageView)
+        itemContainer.addSubview(overlayView)
+        itemContainer.addSubview(nameLabel)
+        
+        if annotation.rating != nil {
+            itemContainer.addSubview(ratingContainer)
+        }
+        
+        // Setup constraints
+        NSLayoutConstraint.activate([
+            itemContainer.heightAnchor.constraint(equalToConstant: 120),
+            
+            imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor),
+            
+            overlayView.topAnchor.constraint(equalTo: imageView.topAnchor),
+            overlayView.leadingAnchor.constraint(equalTo: imageView.leadingAnchor),
+            overlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
+            overlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
+            
+            nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor, constant: 12),
+            nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
+            nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor, constant: -12)
+        ])
+        
+        if annotation.rating != nil {
+            NSLayoutConstraint.activate([
+                ratingContainer.topAnchor.constraint(equalTo: itemContainer.topAnchor, constant: 12),
+                ratingContainer.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
+                
+                ratingStack.topAnchor.constraint(equalTo: ratingContainer.topAnchor),
+                ratingStack.leadingAnchor.constraint(equalTo: ratingContainer.leadingAnchor),
+                ratingStack.trailingAnchor.constraint(equalTo: ratingContainer.trailingAnchor),
+                ratingStack.bottomAnchor.constraint(equalTo: ratingContainer.bottomAnchor),
+                
+                starIcon.widthAnchor.constraint(equalToConstant: 14),
+                starIcon.heightAnchor.constraint(equalToConstant: 14)
+            ])
+        }
+        
+        return itemContainer
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Update gradient layer frames after layout
+        for case let itemContainer as UIView in contentStackView.arrangedSubviews {
+            if let overlayView = itemContainer.subviews.first(where: { $0 != $0.subviews.first }) {
+                if let gradientLayer = overlayView.layer.sublayers?.first as? CAGradientLayer {
+                    gradientLayer.frame = overlayView.bounds
+                }
+            }
+        }
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        // Animate the appearance
+        UIView.animate(withDuration: 0.3) {
+            self.dimmingView.alpha = 1.0
+        }
+        
+        UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.5, options: .curveEaseOut) {
+            self.containerView.alpha = 1.0
+            self.containerView.transform = .identity
+        }
+    }
+    
+    @objc private func closeButtonTapped() {
+        dismiss(animated: true)
+    }
+    
+    @objc private func handleBackgroundTap(_ gestureRecognizer: UITapGestureRecognizer) {
+        let location = gestureRecognizer.location(in: view)
+        if !containerView.frame.contains(location) {
+            dismiss(animated: true)
+        }
+    }
+    
+    @objc private func restaurantCardTapped(_ gestureRecognizer: UITapGestureRecognizer) {
+        guard let itemContainer = gestureRecognizer.view,
+              let annotation = objc_getAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!) as? ImageAnnotation else {
+            return
+        }
+        
+        dismiss(animated: true) { [weak self] in
+            self?.onSelect?(annotation)
+        }
+    }
+    
+    override func dismiss(animated flag: Bool, completion: (() -> Void)? = nil) {
+        if flag {
+            UIView.animate(withDuration: 0.2, animations: {
+                self.containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+                self.containerView.alpha = 0
+                self.dimmingView.alpha = 0
+            }) { _ in
+                super.dismiss(animated: false, completion: completion)
+            }
+        } else {
+            super.dismiss(animated: false, completion: completion)
+        }
+    }
+}
+
+
 class ImageAnnotation: NSObject, MKAnnotation {
     var coordinate: CLLocationCoordinate2D
     var title: String?
@@ -821,164 +1141,279 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     
     // Show popup when annotation is selected
     
-    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-        if let cluster = view.annotation as? MKClusterAnnotation {
-            let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .alert)
-            
-            // Increase the size of the popup
-            let popupView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 400)) //height is 400
-            popupView.backgroundColor = .white
-            popupView.layer.cornerRadius = 12
-            popupView.layer.masksToBounds = true
-            
-            let titleLabel = UILabel()
-            titleLabel.text = "Restaurants"
-            titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
-            titleLabel.textColor = .accentColor2
-            titleLabel.textAlignment = .center
-            titleLabel.translatesAutoresizingMaskIntoConstraints = false
-            
-            let scrollView = UIScrollView()
-            scrollView.translatesAutoresizingMaskIntoConstraints = false
-            scrollView.showsVerticalScrollIndicator = true
-            
-            let contentStackView = UIStackView()
-            contentStackView.axis = .vertical
-            contentStackView.alignment = .fill
-            contentStackView.spacing = 10
-            contentStackView.translatesAutoresizingMaskIntoConstraints = false
-            
-            var annotationMap: [UIView: ImageAnnotation] = [:]
-            
-            for annotation in cluster.memberAnnotations {
-                if let imageAnnotation = annotation as? ImageAnnotation {
-                    let itemContainer = UIView()
-                    itemContainer.translatesAutoresizingMaskIntoConstraints = false
-                    itemContainer.layer.cornerRadius = 8
-                    itemContainer.layer.borderWidth = 1
-                    itemContainer.layer.borderColor = UIColor.lightGray.cgColor
-                    itemContainer.backgroundColor = UIColor(white: 0.95, alpha: 1.0)
+//    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+//        if let cluster = view.annotation as? MKClusterAnnotation {
+//            let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .alert)
+//            
+//            // Increase the size of the popup
+//            let popupView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 400)) //height is 400
+//            popupView.backgroundColor = .white
+//            popupView.layer.cornerRadius = 12
+//            popupView.layer.masksToBounds = true
+//            
+//            let titleLabel = UILabel()
+//            titleLabel.text = "Restaurants"
+//            titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
+//            titleLabel.textColor = .accentColor2
+//            titleLabel.textAlignment = .center
+//            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+//            
+//            let scrollView = UIScrollView()
+//            scrollView.translatesAutoresizingMaskIntoConstraints = false
+//            scrollView.showsVerticalScrollIndicator = true
+//            
+//            let contentStackView = UIStackView()
+//            contentStackView.axis = .vertical
+//            contentStackView.alignment = .fill
+//            contentStackView.spacing = 10
+//            contentStackView.translatesAutoresizingMaskIntoConstraints = false
+//            
+//            var annotationMap: [UIView: ImageAnnotation] = [:]
+//            
+//            for annotation in cluster.memberAnnotations {
+//                if let imageAnnotation = annotation as? ImageAnnotation {
+//                    let itemContainer = UIView()
+//                    itemContainer.translatesAutoresizingMaskIntoConstraints = false
+//                    itemContainer.layer.cornerRadius = 8
+//                    itemContainer.layer.borderWidth = 1
+//                    itemContainer.layer.borderColor = UIColor.lightGray.cgColor
+//                    itemContainer.backgroundColor = UIColor(white: 0.95, alpha: 1.0)
+//                    
+//                    let imageView = UIImageView(image: imageAnnotation.images.first)
+//                    imageView.contentMode = .scaleAspectFill
+//                    imageView.layer.cornerRadius = 8
+//                    imageView.clipsToBounds = true
+//                    imageView.translatesAutoresizingMaskIntoConstraints = false
+//                    
+//                    let nameLabel = UILabel()
+//                    nameLabel.text = imageAnnotation.title
+//                    nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+//                    nameLabel.textColor = .darkGray
+//                    nameLabel.textAlignment = .center
+//                    nameLabel.translatesAutoresizingMaskIntoConstraints = false
+//                    
+//                    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(showAnnotationPopup(_:)))
+//                    itemContainer.addGestureRecognizer(tapGesture)
+//                    itemContainer.isUserInteractionEnabled = true
+//                    
+//                    annotationMap[itemContainer] = imageAnnotation
+//                    
+//                    itemContainer.addSubview(imageView)
+//                    itemContainer.addSubview(nameLabel)
+//                    
+//                    NSLayoutConstraint.activate([
+//                        imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
+//                        imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+//                        imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+//                        imageView.heightAnchor.constraint(equalToConstant: 120),
+//                        
+//                        nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 5),
+//                        nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+//                        nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+//                        nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor)
+//                    ])
+//                    
+//                    contentStackView.addArrangedSubview(itemContainer)
+//                }
+//            }
+//            
+//            scrollView.addSubview(contentStackView)
+//            popupView.addSubview(titleLabel)
+//            popupView.addSubview(scrollView)
+//            
+//            NSLayoutConstraint.activate([
+//                titleLabel.topAnchor.constraint(equalTo: popupView.topAnchor, constant: 10),
+//                titleLabel.centerXAnchor.constraint(equalTo: popupView.centerXAnchor),
+//                
+//                scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
+//                scrollView.leadingAnchor.constraint(equalTo: popupView.leadingAnchor, constant: 10),
+//                scrollView.trailingAnchor.constraint(equalTo: popupView.trailingAnchor, constant: -10),
+//                scrollView.bottomAnchor.constraint(equalTo: popupView.bottomAnchor, constant: -10),
+//                
+//                contentStackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+//                contentStackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+//                contentStackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+//                contentStackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+//                contentStackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+//            ])
+//            
+//            let alertControllerHeight = NSLayoutConstraint(
+//                item: alertController.view!,
+//                attribute: .height,
+//                relatedBy: .equal,
+//                toItem: nil,
+//                attribute: .notAnAttribute,
+//                multiplier: 1,
+//                constant: 450
+//            )
+//            alertController.view.addConstraint(alertControllerHeight)
+//            
+//            alertController.view.addSubview(popupView)
+//            alertController.addAction(UIAlertAction(title: "Close", style: .cancel, handler: nil))
+//            
+//            self.present(alertController, animated: true, completion: nil)
+//            
+//            mapView.deselectAnnotation(cluster, animated: true)
+//            
+//            objc_setAssociatedObject(alertController, &annotationMapKey, annotationMap, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+//        }
+//        // Rest of your existing code for regular annotations
+//        else if let annotation = view.annotation as? ImageAnnotation {
+//            // Your existing code for handling individual annotations...
+//            currentPopupView?.removeFromSuperview()
+//            let dimmingView = UIView(frame: map.bounds)
+//               dimmingView.backgroundColor = UIColor.black
+//               dimmingView.alpha = 0.0 // Start transparent
+//               dimmingView.tag = 999 // Tag for easy identification
+//               
+//               // Add tap gesture to dismiss when tapping outside
+//               let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
+//               dimmingView.addGestureRecognizer(tapGesture)
+//            let popupView = CustomPopupView()
+//            let popupWidth: CGFloat = 350
+//            let popupHeight: CGFloat = 600
+//            
+//            // Calculate center position relative to the map's bounds
+//            let centerX = map.bounds.midX - (popupWidth / 2)
+//            let centerY = map.bounds.midY - (popupHeight / 2)
+//            
+//            // Set the frame using the calculated center position
+//            popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
+//            popupView.layer.cornerRadius = 10
+//            popupView.layer.masksToBounds = true
+//            popupView.setDetails(
+//                title: annotation.title,
+//                images: annotation.images, 
+//                reviewerName: annotation.author,
+//                rating: annotation.rating,
+//                comment: annotation.subtitle,
+//                star: annotation.rating,
+//                heart: annotation.heartC
+//            )
+//            map.addSubview(dimmingView)
+//            map.addSubview(popupView)
+//            currentPopupView = popupView
+//            UIView.animate(withDuration: 0.3) {
+//                       dimmingView.alpha = 0.5 // Adjust opacity as needed
+//                   }
+//            isPopupShown = true
+//        }
+//    }
+    
+        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            if let cluster = view.annotation as? MKClusterAnnotation {
+                // Deselect the cluster annotation
+                mapView.deselectAnnotation(cluster, animated: true)
+                
+                // Extract ImageAnnotations from the cluster
+                let imageAnnotations = cluster.memberAnnotations.compactMap { $0 as? ImageAnnotation }
+                
+                // Create and show the modern popup
+                let popupVC = RestaurantClusterPopupViewController(annotations: imageAnnotations) { [weak self] selectedAnnotation in
+                    guard let self = self else { return }
                     
-                    let imageView = UIImageView(image: imageAnnotation.images.first)
-                    imageView.contentMode = .scaleAspectFill
-                    imageView.layer.cornerRadius = 8
-                    imageView.clipsToBounds = true
-                    imageView.translatesAutoresizingMaskIntoConstraints = false
+                    // Center the map on the selected annotation
+                    let region = MKCoordinateRegion(
+                        center: selectedAnnotation.coordinate,
+                        latitudinalMeters: 500,
+                        longitudinalMeters: 500
+                    )
+                    self.map.setRegion(region, animated: true)
                     
-                    let nameLabel = UILabel()
-                    nameLabel.text = imageAnnotation.title
-                    nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-                    nameLabel.textColor = .darkGray
-                    nameLabel.textAlignment = .center
-                    nameLabel.translatesAutoresizingMaskIntoConstraints = false
-                    
-                    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(showAnnotationPopup(_:)))
-                    itemContainer.addGestureRecognizer(tapGesture)
-                    itemContainer.isUserInteractionEnabled = true
-                    
-                    annotationMap[itemContainer] = imageAnnotation
-                    
-                    itemContainer.addSubview(imageView)
-                    itemContainer.addSubview(nameLabel)
-                    
-                    NSLayoutConstraint.activate([
-                        imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
-                        imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-                        imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-                        imageView.heightAnchor.constraint(equalToConstant: 120),
+                    // Create the CustomPopupView directly instead of selecting the annotation
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        // Remove any existing popup
+                        self.currentPopupView?.removeFromSuperview()
+                        if let dimmingView = self.map.viewWithTag(999) {
+                            dimmingView.removeFromSuperview()
+                        }
                         
-                        nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 5),
-                        nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-                        nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-                        nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor)
-                    ])
-                    
-                    contentStackView.addArrangedSubview(itemContainer)
+                        // Create dimming view
+                        let dimmingView = UIView(frame: self.map.bounds)
+                        dimmingView.backgroundColor = UIColor.black
+                        dimmingView.alpha = 0.0
+                        dimmingView.tag = 999
+                        
+                        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(self.handleMapTap(_:)))
+                        dimmingView.addGestureRecognizer(tapGesture)
+                        
+                        // Create popup view
+                        let popupView = CustomPopupView()
+                        let popupWidth: CGFloat = 350
+                        let popupHeight: CGFloat = 600
+                        
+                        let centerX = self.map.bounds.midX - (popupWidth / 2)
+                        let centerY = self.map.bounds.midY - (popupHeight / 2)
+                        
+                        popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
+                        popupView.layer.cornerRadius = 10
+                        popupView.layer.masksToBounds = true
+                        popupView.setDetails(
+                            title: selectedAnnotation.title,
+                            images: selectedAnnotation.images,
+                            reviewerName: selectedAnnotation.author,
+                            rating: selectedAnnotation.rating,
+                            comment: selectedAnnotation.subtitle,
+                            star: selectedAnnotation.rating,
+                            heart: selectedAnnotation.heartC
+                        )
+                        
+                        self.map.addSubview(dimmingView)
+                        self.map.addSubview(popupView)
+                        self.currentPopupView = popupView
+                        
+                        UIView.animate(withDuration: 0.3) {
+                            dimmingView.alpha = 0.5
+                        }
+                        
+                        self.isPopupShown = true
+                    }
                 }
+                
+                present(popupVC, animated: true)
             }
-            
-            scrollView.addSubview(contentStackView)
-            popupView.addSubview(titleLabel)
-            popupView.addSubview(scrollView)
-            
-            NSLayoutConstraint.activate([
-                titleLabel.topAnchor.constraint(equalTo: popupView.topAnchor, constant: 10),
-                titleLabel.centerXAnchor.constraint(equalTo: popupView.centerXAnchor),
+            else if let annotation = view.annotation as? ImageAnnotation {
+                // Your existing code for handling individual annotations...
+                currentPopupView?.removeFromSuperview()
+                let dimmingView = UIView(frame: map.bounds)
+                dimmingView.backgroundColor = UIColor.black
+                dimmingView.alpha = 0.0
+                dimmingView.tag = 999
                 
-                scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
-                scrollView.leadingAnchor.constraint(equalTo: popupView.leadingAnchor, constant: 10),
-                scrollView.trailingAnchor.constraint(equalTo: popupView.trailingAnchor, constant: -10),
-                scrollView.bottomAnchor.constraint(equalTo: popupView.bottomAnchor, constant: -10),
+                let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
+                dimmingView.addGestureRecognizer(tapGesture)
                 
-                contentStackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-                contentStackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-                contentStackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-                contentStackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-                contentStackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
-            ])
-            
-            let alertControllerHeight = NSLayoutConstraint(
-                item: alertController.view!,
-                attribute: .height,
-                relatedBy: .equal,
-                toItem: nil,
-                attribute: .notAnAttribute,
-                multiplier: 1,
-                constant: 450
-            )
-            alertController.view.addConstraint(alertControllerHeight)
-            
-            alertController.view.addSubview(popupView)
-            alertController.addAction(UIAlertAction(title: "Close", style: .cancel, handler: nil))
-            
-            self.present(alertController, animated: true, completion: nil)
-            
-            mapView.deselectAnnotation(cluster, animated: true)
-            
-            objc_setAssociatedObject(alertController, &annotationMapKey, annotationMap, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                let popupView = CustomPopupView()
+                let popupWidth: CGFloat = 350
+                let popupHeight: CGFloat = 600
+                
+                let centerX = map.bounds.midX - (popupWidth / 2)
+                let centerY = map.bounds.midY - (popupHeight / 2)
+                
+                popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
+                popupView.layer.cornerRadius = 10
+                popupView.layer.masksToBounds = true
+                popupView.setDetails(
+                    title: annotation.title,
+                    images: annotation.images,
+                    reviewerName: annotation.author,
+                    rating: annotation.rating,
+                    comment: annotation.subtitle,
+                    star: annotation.rating,
+                    heart: annotation.heartC
+                )
+                
+                map.addSubview(dimmingView)
+                map.addSubview(popupView)
+                currentPopupView = popupView
+                
+                UIView.animate(withDuration: 0.3) {
+                    dimmingView.alpha = 0.5
+                }
+                
+                isPopupShown = true
+            }
         }
-        // Rest of your existing code for regular annotations
-        else if let annotation = view.annotation as? ImageAnnotation {
-            // Your existing code for handling individual annotations...
-            currentPopupView?.removeFromSuperview()
-            let dimmingView = UIView(frame: map.bounds)
-               dimmingView.backgroundColor = UIColor.black
-               dimmingView.alpha = 0.0 // Start transparent
-               dimmingView.tag = 999 // Tag for easy identification
-               
-               // Add tap gesture to dismiss when tapping outside
-               let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
-               dimmingView.addGestureRecognizer(tapGesture)
-            let popupView = CustomPopupView()
-            let popupWidth: CGFloat = 350
-            let popupHeight: CGFloat = 600
-            
-            // Calculate center position relative to the map's bounds
-            let centerX = map.bounds.midX - (popupWidth / 2)
-            let centerY = map.bounds.midY - (popupHeight / 2)
-            
-            // Set the frame using the calculated center position
-            popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
-            popupView.layer.cornerRadius = 10
-            popupView.layer.masksToBounds = true
-            popupView.setDetails(
-                title: annotation.title,
-                images: annotation.images, 
-                reviewerName: annotation.author,
-                rating: annotation.rating,
-                comment: annotation.subtitle,
-                star: annotation.rating,
-                heart: annotation.heartC
-            )
-            map.addSubview(dimmingView)
-            map.addSubview(popupView)
-            currentPopupView = popupView
-            UIView.animate(withDuration: 0.3) {
-                       dimmingView.alpha = 0.5 // Adjust opacity as needed
-                   }
-            isPopupShown = true
-        }
-    }
     
     // Handle tap on the map to dismiss popup
 //    @objc func handleMapTap(_ recognizer: UITapGestureRecognizer) {
