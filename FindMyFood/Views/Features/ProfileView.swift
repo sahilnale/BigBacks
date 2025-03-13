@@ -269,7 +269,7 @@ struct ProfileView: View {
                             }
                             .onEnded { gesture in
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                    let upperLimit = screenHeight * 0.2
+                                    let upperLimit = screenHeight * 0.09
                                     let lowerLimit = screenHeight * 0.5
                                     
                                     if gesture.predictedEndTranslation.height < 0 {
@@ -504,7 +504,7 @@ struct PostGridView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, maxHeight: 300)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
         } else {
             LazyVGrid(columns: columns, spacing: 8) {
