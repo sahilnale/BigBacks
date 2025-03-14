@@ -204,7 +204,7 @@ struct ProfileView: View {
                                             // Logout button under posts
                                             logoutButton
                                                 .padding(.top, 20)
-                                                .padding(.bottom, 30)
+                                                .padding(.bottom, 80)
                                         }
                                     }
                                     .tag(0)
@@ -230,10 +230,8 @@ struct ProfileView: View {
                                                 .padding(.vertical, 12)
                                             }
                                             
-                                            // Logout button under wishlist
-                                            logoutButton
-                                                .padding(.top, 20)
-                                                .padding(.bottom, 30)
+                                            // Remove logout button from wishlist tab
+                                            Spacer(minLength: 80) // Keep some space at the bottom for consistency
                                         }
                                     }
                                     .tag(1)
@@ -486,6 +484,9 @@ struct ProfileView: View {
             .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
         }
         .padding(.horizontal, 20)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 20)
+        }
     }
     
     // Namespace for matched geometry effect
