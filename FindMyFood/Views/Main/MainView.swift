@@ -28,6 +28,9 @@ struct MainView: View {
                         .foregroundColor(.customOrange)
                         .padding(.top, 40)
                     Spacer()
+                    
+                    
+                    
                 }
                 Spacer()
             }

@@ -196,52 +196,49 @@ struct ProfileView: View {
                                 TabView(selection: $selectedTab) {
                                     // Posts grid
                                     ScrollView {
-                                        PostGridView(posts: viewModel.posts, columns: columns)
-                                            .padding(.horizontal, 8)
-                                            .padding(.top, 8)
+                                        VStack {
+                                            PostGridView(posts: viewModel.posts, columns: columns)
+                                                .padding(.horizontal, 8)
+                                                .padding(.top, 8)
+                                            
+                                            // Logout button under posts
+                                            logoutButton
+                                                .padding(.top, 20)
+                                                .padding(.bottom, 30)
+                                        }
                                     }
                                     .tag(0)
                                     
                                     // Wishlist
-                                    wishlistTabView
-                                        .tag(1)
+                                    ScrollView {
+                                        VStack {
+                                            if isLoadingWishlist {
+                                                ProgressView("Loading wishlist...")
+                                                    .padding()
+                                            } else if wishlistPosts.isEmpty {
+                                                emptyStateView(
+                                                    icon: "heart.slash",
+                                                    message: "Your wishlist is empty!"
+                                                )
+                                            } else {
+                                                LazyVStack(spacing: 16) {
+                                                    ForEach(wishlistPosts, id: \.post._id) { (post, userName) in
+                                                        RestaurantCard(post: post, userName: userName)
+                                                            .padding(.horizontal)
+                                                    }
+                                                }
+                                                .padding(.vertical, 12)
+                                            }
+                                            
+                                            // Logout button under wishlist
+                                            logoutButton
+                                                .padding(.top, 20)
+                                                .padding(.bottom, 30)
+                                        }
+                                    }
+                                    .tag(1)
                                 }
                                 .tabViewStyle(.page(indexDisplayMode: .never))
-                                
-                                // Logout button at the bottom
-                                // Logout button always visible at bottom of screen
-                                VStack {
-                                    Spacer()
-                                    
-                                    Button(action: {
-                                        authViewModel.logout()
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                                .font(.system(size: 16))
-                                            Text("Logout")
-                                                .font(.system(size: 16, weight: .medium))
-                                        }
-                                        .foregroundColor(.white)
-                                        .frame(height: 45)
-                                        .frame(maxWidth: .infinity)
-                                        .background(
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [Color.customOrange, Color.customOrange.opacity(0.8)]),
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
-                                        .cornerRadius(12)
-                                        .shadow(color: Color.customOrange.opacity(0.3), radius: 5, x: 0, y: 2)
-                                    }
-                                    .padding(.horizontal, 20)
-                                    .padding(.bottom, 30)
-                                }
-                                .ignoresSafeArea(.keyboard) // Ensure it's visible even when keyboard is open
-                                .background(Color(.systemBackground))
-                                .frame(maxWidth: .infinity)
-
                             }
                             .animation(.easeInOut, value: selectedTab)
                             .transition(.opacity)
@@ -269,7 +266,7 @@ struct ProfileView: View {
                             }
                             .onEnded { gesture in
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                    let upperLimit = screenHeight * 0.2
+                                    let upperLimit = screenHeight * 0.09
                                     let lowerLimit = screenHeight * 0.5
                                     
                                     if gesture.predictedEndTranslation.height < 0 {
@@ -302,27 +299,8 @@ struct ProfileView: View {
     
     // MARK: - Wishlist Tab
     private var wishlistTabView: some View {
-        VStack {
-            if isLoadingWishlist {
-                ProgressView("Loading wishlist...")
-                    .padding()
-            } else if wishlistPosts.isEmpty {
-                emptyStateView(
-                    icon: "heart.slash",
-                    message: "Your wishlist is empty!"
-                )
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        ForEach(wishlistPosts, id: \.post._id) { (post, userName) in
-                            RestaurantCard(post: post, userName: userName)
-                                .padding(.horizontal)
-                        }
-                    }
-                    .padding(.vertical, 12)
-                }
-            }
-        }
+        // Replace the entire wishlist tab view with the ScrollView implementation above
+        EmptyView()
     }
     
     // MARK: - Background View
@@ -481,6 +459,33 @@ struct ProfileView: View {
                 isLoadingWishlist = false
             }
         }
+    }
+    
+    // MARK: - Logout Button
+    private var logoutButton: some View {
+        Button(action: {
+            authViewModel.logout()
+        }) {
+            HStack {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.system(size: 16))
+                Text("Logout")
+                    .font(.system(size: 16, weight: .medium))
+            }
+            .foregroundColor(.white)
+            .frame(height: 50)
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.customOrange, Color.customOrange.opacity(0.8)]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+        }
+        .padding(.horizontal, 20)
     }
     
     // Namespace for matched geometry effect
