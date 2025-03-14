@@ -750,16 +750,22 @@ struct FriendRequestView: View {
     var body: some View {
         Group {
             if isLoading {
-                VStack {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    
-                    Text("Loading requests...")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.gray)
-                        .padding(.top, 12)
+                ProgressView("Loading requests...")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.gray)
+                    .padding()
+            } else if !friendRequests.isEmpty {
+                List {
+                    ForEach(friendRequests) { requester in
+                        FriendRequestRow(
+                            requester: requester,
+                            onAccept: { acceptRequest(from: requester) },
+                            onReject: { rejectRequest(from: requester) }
+                        )
+                    }
                 }
-            } else if friendRequests.isEmpty {
+                .listStyle(PlainListStyle())
+            } else {
                 VStack(spacing: 20) {
                     Image(systemName: "person.crop.circle.badge.xmark")
                         .font(.system(size: 60))
@@ -774,28 +780,13 @@ struct FriendRequestView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
                 }
-            } else {
-                List {
-                    ForEach(friendRequests) { requester in
-                        FriendRequestRow(
-                            requester: requester,
-                            onAccept: { acceptRequest(from: requester) },
-                            onReject: { rejectRequest(from: requester) }
-                        )
-                    }
-                }
-                .listStyle(PlainListStyle())
             }
         }
         .navigationTitle("Friend Requests")
-        .navigationBarItems(trailing: Button("Done") { dismiss() })
-        .alert("Error", isPresented: .constant(errorMessage != nil)) {
-            Button("OK") { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
-        }
-        .task {
-            await loadFriendRequests()
+        .onAppear {
+            Task {
+                await loadFriendRequests()
+            }
         }
     }
     
@@ -1187,7 +1178,7 @@ private struct AddFriendButton: View {
                         .font(.system(size: 12, weight: .semibold))
                 }
                 
-                Text(isRequestPending ? "Pending" : "Add")
+                Text(isRequestPending ? "Pending" : "Add Friend")
                     .font(.system(size: 14, weight: .semibold))
             }
             .foregroundColor(isRequestPending ? .gray : .white)
@@ -1196,7 +1187,7 @@ private struct AddFriendButton: View {
             .background(isRequestPending ? Color(.systemGray5) : Color.accentColor)
             .cornerRadius(18)
         }
-        .disabled(isRequestPending)
+        .disabled(isRequestPending) // Prevent clicking when pending
     }
 
     private func sendFriendRequest() {
@@ -1204,17 +1195,15 @@ private struct AddFriendButton: View {
         
         Task {
             do {
-                // Add `fromUserName` to friend request data
                 let currentUser = AuthViewModel.shared.currentUser
                 let fromUserName = currentUser?.username ?? "Unknown"
                 
-                // Send friend request with sender's username
                 try await AuthViewModel.shared.sendFriendRequest(
                     from: currentUserId,
                     to: user.id,
                     fromUserName: fromUserName
                 )
-                isRequestPending = true // Update state to show "Pending"
+                isRequestPending = true
             } catch {
                 errorMessage = error.localizedDescription
             }
