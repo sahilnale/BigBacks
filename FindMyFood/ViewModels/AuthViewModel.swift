@@ -799,27 +799,48 @@ class AuthViewModel: ObservableObject {
     
     func rejectFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let db = Firestore.firestore()
+        let currentUserRef = db.collection("users").document(currentUserId)
+        let friendRef = db.collection("users").document(friendId)
 
         // Query the friendRequests collection to find the specific request
         let friendRequestQuery = db.collection("friendRequests")
             .whereField("toUserId", isEqualTo: currentUserId)
             .whereField("fromUserId", isEqualTo: friendId)
-
+        
         Task {
-            do {
-                let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
+               do {
+                   let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
 
-                // Delete all matching friend requests
-                for doc in friendRequestSnapshot.documents {
-                    try await doc.reference.delete()
-                }
+                   db.runTransaction({ transaction, errorPointer in
+                       do {
+                           // Delete all friend request documents
+                           for doc in friendRequestSnapshot.documents {
+                               transaction.deleteDocument(doc.reference)
+                           }
 
-                completion(.success(()))
-            } catch {
-                completion(.failure(error))
-            }
-        }
-    }
+                           // Remove IDs from both users' arrays
+                           transaction.updateData([
+                               "friendRequests": FieldValue.arrayRemove([friendId])
+                           ], forDocument: currentUserRef)
+
+                           transaction.updateData([
+                               "pendingRequests": FieldValue.arrayRemove([currentUserId])
+                           ], forDocument: friendRef)
+
+                       }
+                       return nil
+                   }) { _, error in
+                       if let error = error {
+                           completion(.failure(error))
+                       } else {
+                           completion(.success(()))
+                       }
+                   }
+               } catch {
+                   completion(.failure(error))
+               }
+           }
+       }
     
     func deletePost(postId: String) async throws {
         let db = Firestore.firestore()
