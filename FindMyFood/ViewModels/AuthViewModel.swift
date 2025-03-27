@@ -565,27 +565,39 @@ class AuthViewModel: ObservableObject {
     }
         
     // MARK: - Send Friend Request
+
     func sendFriendRequest(from fromUserId: String, to toUserId: String, fromUserName: String) async throws {
         let db = Firestore.firestore()
 
-        // Check if the friend request already exists
-        let existingRequests = try await db.collection("friendRequests")
-            .whereField("fromUserId", isEqualTo: fromUserId)
-            .whereField("toUserId", isEqualTo: toUserId)
-            .getDocuments()
+        // Check for duplicate request or already friends
+        let fromUserDoc = try await db.collection("users").document(fromUserId).getDocument()
+        let toUserDoc = try await db.collection("users").document(toUserId).getDocument()
 
-        if !existingRequests.documents.isEmpty {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Request already sent."])
+        let fromPending = fromUserDoc.data()?["pendingRequests"] as? [String] ?? []
+        let toIncoming = toUserDoc.data()?["friendRequests"] as? [String] ?? []
+        let fromFriends = fromUserDoc.data()?["friends"] as? [String] ?? []
+
+        if fromPending.contains(toUserId) || toIncoming.contains(fromUserId) || fromFriends.contains(toUserId) {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Request already sent or user already added."])
         }
 
-        // Proceed with sending request if it doesn't exist
+        // Save request to friendRequests collection
         try await db.collection("friendRequests").addDocument(data: [
             "fromUserId": fromUserId,
             "toUserId": toUserId,
             "fromUserName": fromUserName,
             "timestamp": Timestamp()
         ])
+
+        // Update user arrays
+        try await db.collection("users").document(fromUserId).updateData([
+            "pendingRequests": FieldValue.arrayUnion([toUserId])
+        ])
+        try await db.collection("users").document(toUserId).updateData([
+            "friendRequests": FieldValue.arrayUnion([fromUserId])
+        ])
     }
+
 
         // MARK: - Update FCM Token
         func updateFCMTokenForCurrentUser() async throws {
@@ -639,6 +651,92 @@ class AuthViewModel: ObservableObject {
         return friendRequests
     }
     
+//    func acceptFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+//        let db = Firestore.firestore()
+//
+//        let friendRequestQuery = db.collection("friendRequests")
+//            .whereField("toUserId", isEqualTo: currentUserId)
+//            .whereField("fromUserId", isEqualTo: friendId)
+//
+//        Task {
+//            do {
+//                let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
+//                print("Found \(friendRequestSnapshot.documents.count) friend requests to accept")
+//
+//                db.runTransaction({ transaction, errorPointer in
+//                    do {
+//                        print("Transaction started for accepting friend request.")
+//
+//                        // References to user documents
+//                        let currentUserRef = db.collection("users").document(currentUserId)
+//                        let friendRef = db.collection("users").document(friendId)
+//
+//                        // Get current user document
+//                        let currentUserSnapshot = try transaction.getDocument(currentUserRef)
+//                        guard var currentUserData = currentUserSnapshot.data(),
+//                              var currentUserFriends = currentUserData["friends"] as? [String] else {
+//                            print("Failed to fetch current user data.")
+//                            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
+//                        }
+//
+//                        // Get friend document
+//                        let friendSnapshot = try transaction.getDocument(friendRef)
+//                        if let friendData = friendSnapshot.data() {
+//                            print("✅ Friend data fetched successfully:", friendData)
+//                        } else {
+//                            print("⚠️ Friend document exists but has no data.")
+//                        }
+//                        let friendData = friendSnapshot.data() ?? [:] // Default to empty dictionary
+//                        var friendFriends = friendData["friends"] as? [String] ?? [] // Default to empty array
+//
+//
+//                        print("Fetched both users' data successfully.")
+//
+//                        // Add each other to friends list
+//                        currentUserFriends.append(friendId)
+//                        friendFriends.append(currentUserId)
+//
+//                        // Update user documents
+//                        transaction.updateData(["friends": currentUserFriends], forDocument: currentUserRef)
+//                        transaction.updateData(["friends": friendFriends], forDocument: friendRef)
+//
+//                        print("Updated friends list in transaction.")
+//
+//                        // Delete friend request
+//                        for doc in friendRequestSnapshot.documents {
+//                            transaction.deleteDocument(doc.reference)
+//                        }
+//
+//                        print("Deleted friend request document.")
+//
+//                        // Remove the pending request from the sender's document
+//                        transaction.updateData([
+//                            "pendingRequests": FieldValue.arrayRemove([currentUserId])
+//                        ], forDocument: friendRef)
+//
+//                        print("Removed pending request entry from sender.")
+//
+//                    } catch {
+//                        errorPointer?.pointee = error as NSError
+//                        print("Transaction failed: \(error.localizedDescription)")
+//                    }
+//                    return nil
+//                }) { _, error in
+//                    if let error = error {
+//                        print("Error in accepting request transaction: \(error.localizedDescription)")
+//                        completion(.failure(error))
+//                    } else {
+//                        print("Friend request accepted successfully.")
+//                        completion(.success(()))
+//                    }
+//                }
+//            } catch {
+//                print("Error fetching friend request: \(error.localizedDescription)")
+//                completion(.failure(error))
+//            }
+//        }
+//    }
+
     func acceptFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let db = Firestore.firestore()
 
@@ -649,83 +747,54 @@ class AuthViewModel: ObservableObject {
         Task {
             do {
                 let friendRequestSnapshot = try await friendRequestQuery.getDocuments()
-                print("Found \(friendRequestSnapshot.documents.count) friend requests to accept")
 
                 db.runTransaction({ transaction, errorPointer in
                     do {
-                        print("Transaction started for accepting friend request.")
-
-                        // References to user documents
                         let currentUserRef = db.collection("users").document(currentUserId)
                         let friendRef = db.collection("users").document(friendId)
 
-                        // Get current user document
                         let currentUserSnapshot = try transaction.getDocument(currentUserRef)
-                        guard var currentUserData = currentUserSnapshot.data(),
-                              var currentUserFriends = currentUserData["friends"] as? [String] else {
-                            print("Failed to fetch current user data.")
-                            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch current user data."])
-                        }
-
-                        // Get friend document
                         let friendSnapshot = try transaction.getDocument(friendRef)
-                        if let friendData = friendSnapshot.data() {
-                            print("✅ Friend data fetched successfully:", friendData)
-                        } else {
-                            print("⚠️ Friend document exists but has no data.")
-                        }
-                        let friendData = friendSnapshot.data() ?? [:] // Default to empty dictionary
-                        var friendFriends = friendData["friends"] as? [String] ?? [] // Default to empty array
 
+                        var currentUserFriends = currentUserSnapshot.data()?["friends"] as? [String] ?? []
+                        var friendFriends = friendSnapshot.data()?["friends"] as? [String] ?? []
 
-                        print("Fetched both users' data successfully.")
-
-                        // Add each other to friends list
                         currentUserFriends.append(friendId)
                         friendFriends.append(currentUserId)
 
-                        // Update user documents
                         transaction.updateData(["friends": currentUserFriends], forDocument: currentUserRef)
                         transaction.updateData(["friends": friendFriends], forDocument: friendRef)
 
-                        print("Updated friends list in transaction.")
+                        // 🧹 Clean up requests from both sides
+                        transaction.updateData([
+                            "friendRequests": FieldValue.arrayRemove([friendId])
+                        ], forDocument: currentUserRef)
 
-                        // Delete friend request
-                        for doc in friendRequestSnapshot.documents {
-                            transaction.deleteDocument(doc.reference)
-                        }
-
-                        print("Deleted friend request document.")
-
-                        // Remove the pending request from the sender's document
                         transaction.updateData([
                             "pendingRequests": FieldValue.arrayRemove([currentUserId])
                         ], forDocument: friendRef)
 
-                        print("Removed pending request entry from sender.")
+                        for doc in friendRequestSnapshot.documents {
+                            transaction.deleteDocument(doc.reference)
+                        }
 
                     } catch {
                         errorPointer?.pointee = error as NSError
-                        print("Transaction failed: \(error.localizedDescription)")
                     }
                     return nil
                 }) { _, error in
                     if let error = error {
-                        print("Error in accepting request transaction: \(error.localizedDescription)")
                         completion(.failure(error))
                     } else {
-                        print("Friend request accepted successfully.")
                         completion(.success(()))
                     }
                 }
+
             } catch {
-                print("Error fetching friend request: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
     }
-
-
 
     
     func rejectFriendRequest(currentUserId: String, friendId: String, completion: @escaping (Result<Void, Error>) -> Void) {

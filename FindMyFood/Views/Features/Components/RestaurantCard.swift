@@ -198,8 +198,91 @@ struct RestaurantCard: View {
             // 6) Show/hide comments section
             if showComments {
                 VStack(alignment: .leading, spacing: 8) {
-                    // ... your existing comment list code ...
-                    // ... including the TextField for adding a comment ...
+                    ForEach(post.comments) { comment in
+                       HStack(alignment: .top) {
+                           AsyncImage(url: URL(string: comment.profilePhotoUrl)) { image in
+                               image
+                                   .resizable()
+                                   .scaledToFill()
+                                   .frame(width: 25, height: 25)
+                                   .clipShape(Circle())
+                                   .padding(.leading)
+                           } placeholder: {
+                               Circle()
+                                   .fill(Color.gray)
+                                   .frame(width: 25, height: 25)
+                                   .padding(.leading)
+                           }
+
+                           VStack(alignment: .leading, spacing: 4) {
+                               Text("@\(commenterUsernames[comment.userId] ?? "Loading...")")
+                                   .foregroundColor(Color.accentColor)
+                                   .font(.subheadline)
+                                   .onAppear {
+                                       Task {
+                                           let userId = Auth.auth().currentUser?.uid ?? ""
+
+                                           self.likeCount = post.likes // ✅ This will set it from the post
+                                           self.isLiked = post.likedBy.contains(userId) // ✅ Check if the user has liked it already
+
+                                           do {
+                                               self.isWishlisted = try await AuthViewModel.shared.isPostWishlisted(postId: post.id, userId: userId)
+                                           } catch {
+                                               print("Failed to fetch wishlist status: \(error)")
+                                           }
+                                       }
+                                   }
+
+                               Text(comment.text)
+                                   .font(.subheadline)
+                                   .foregroundColor(.secondary)
+                                   .padding(.vertical, 4)
+                                   .padding(.horizontal)
+                                   .background(Color(UIColor.systemGray6))
+                                   .cornerRadius(8)
+                               
+                               Text("\(timeAgo(from: comment.timestamp))")
+                                                                  .font(.caption)
+                                                                  .foregroundColor(.gray)
+                           }
+                       }
+                   }
+                   HStack {
+                      TextField("Add a comment...", text: $newCommentText)
+                          .textFieldStyle(DefaultTextFieldStyle())
+                      
+                      Button(action: {
+                          guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                          Task {
+                              do {
+                                  let comment = Comment(
+                                      id: UUID().uuidString,
+                                      commentId: UUID().uuidString,
+                                      userId: Auth.auth().currentUser?.uid ?? "",
+                                      profilePhotoUrl: AuthViewModel.shared.currentUser?.profilePicture ?? "placeholder",
+                                      text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
+                                      timestamp: Date()
+                                  )
+                                  
+                                  let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
+                                  
+                                  await MainActor.run {
+                                      post.comments.append(newComment)
+                                      newCommentText = ""
+                                  }
+                                  print("Comment added successfully.")
+                              } catch {
+                                  print("Failed to add comment: \(error)")
+                              }
+                          }
+                      }) {
+                          Text("Post")
+                              .font(.subheadline)
+                              .foregroundColor(.customOrange)
+                              .padding(.horizontal)
+                      }
+                  }
+                  .padding(.horizontal)
                 }
                 .padding(.bottom)
             }
@@ -241,14 +324,3 @@ func timeAgo(from date: Date) -> String {
     
     return "Just now"
 }
-
-
-
-
-
-
-
-
-
-
-
