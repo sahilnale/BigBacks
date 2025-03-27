@@ -585,6 +585,9 @@ private struct UserRowView: View {
     @Binding var errorMessage: String?
     let isAlreadyFriend: Bool // Check if the user is already a friend
     let isAlreadyRequestedBy: Bool
+    @State private var requestHandled = false
+    @State private var requestAccepted = false
+
     
     var body: some View {
         HStack(spacing: 16) {
@@ -617,15 +620,46 @@ private struct UserRowView: View {
                     .padding(.vertical, 6)
                     .background(Color(.systemGray5))
                     .cornerRadius(16)
-            } else if isAlreadyRequestedBy {
-                Text("Request waiting")
+            } else if isAlreadyRequestedBy && !requestHandled {
+                HStack(spacing: 8) {
+                    Button(action: {
+                        acceptRequest(from: user)
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green.opacity(0.1))
+                                .frame(width: 36, height: 36)
+                            
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.green)
+                        }
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+
+                    Button(action: {
+                        rejectRequest(from: user)
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.red.opacity(0.1))
+                                .frame(width: 36, height: 36)
+                            
+                            Image(systemName: "xmark")
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+                }
+            } else if requestAccepted || isAlreadyFriend {
+                Text("Friend")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.gray)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.accentColor.opacity(0.1))
+                    .background(Color(.systemGray5))
                     .cornerRadius(16)
-            } else {
+            }
+            else {
                 AddFriendButton(
                     user: user,
                     currentUserId: currentUserId,
@@ -635,6 +669,33 @@ private struct UserRowView: View {
             }
         }
         .padding(.vertical, 6)
+    }
+    private func acceptRequest(from user: User) {
+        AuthViewModel.shared.acceptFriendRequest(currentUserId: currentUserId, friendId: user.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    requestHandled = true
+                    requestAccepted = true
+                case .failure(let error):
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func rejectRequest(from user: User) {
+        AuthViewModel.shared.rejectFriendRequest(currentUserId: currentUserId, friendId: user.id) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    requestHandled = true
+                    requestAccepted = false
+                case .failure(let error):
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
     }
 }
 
