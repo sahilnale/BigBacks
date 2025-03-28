@@ -22,6 +22,8 @@ struct CreatePostView: View {
     @State private var isUploading = false
     @State private var isLocationManuallySet = false
     @State private var isKeyboardVisible = false // Track keyboard visibility
+    @State private var draggedItem: UIImage?
+    
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -47,18 +49,12 @@ struct CreatePostView: View {
                                 .padding()
                         } else {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(selectedImages, id: \.self) { image in
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(height: isKeyboardVisible ? 150 : 250) // Shrink while typing
-                                            .cornerRadius(15)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 15)
-                                                    .stroke(Color.gray, lineWidth: 1)
-                                            )
+                                HStack(spacing: 10) {
+                                    ForEach(Array(selectedImages.indices), id: \.self) { index in
+                                        imageView(for: selectedImages[index], at: index)
+                                            .padding(.horizontal, 4)
                                     }
+                                    
                                     // Add More Images Button
                                     Button(action: { showPhotoOptions = true }) {
                                         RoundedRectangle(cornerRadius: 15)
@@ -71,6 +67,7 @@ struct CreatePostView: View {
                                             )
                                     }
                                 }
+                                .padding(.horizontal)
                             }
                             .frame(height: isKeyboardVisible ? 150 : 250)
                         }
@@ -220,6 +217,60 @@ struct CreatePostView: View {
                 }
             }
         }
+    }
+    
+    // Helper method to create an image view with drag and drop support
+    private func imageView(for image: UIImage, at index: Int) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(height: isKeyboardVisible ? 150 : 250)
+            .cornerRadius(15)
+            .overlay(
+                RoundedRectangle(cornerRadius: 15)
+                    .stroke(Color.gray, lineWidth: 1)
+            )
+            .overlay(
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text("\(index + 1)")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(8)
+                            .background(Color.black.opacity(0.6))
+                            .clipShape(Circle())
+                            .padding(8)
+                    }
+                }
+            )
+            .onDrag {
+                self.draggedItem = image
+                return NSItemProvider(object: "\(index)" as NSString)
+            }
+            .onDrop(of: [.text], isTargeted: nil) { providers in
+                guard let provider = providers.first else { return false }
+                
+                _ = provider.loadObject(ofClass: NSString.self) { draggedIndex, _ in
+                    if let draggedIndex = draggedIndex as? NSString, 
+                       let draggedIndexInt = Int(draggedIndex as String),
+                       draggedIndexInt < selectedImages.count {
+                        
+                        DispatchQueue.main.async {
+                            // Make sure indices are valid
+                            guard draggedIndexInt != index else { return }
+                            
+                            // Perform the move
+                            withAnimation {
+                                let item = selectedImages.remove(at: draggedIndexInt)
+                                selectedImages.insert(item, at: index)
+                            }
+                        }
+                    }
+                }
+                return true
+            }
     }
 
 
@@ -577,5 +628,43 @@ struct NearbyRestaurantPicker: View {
 
             nearbyRestaurants = uniquePlaces
         }
+    }
+}
+
+// Image drop delegate for handling reordering
+struct ImageDropDelegate: DropDelegate {
+    let item: UIImage
+    @Binding var items: [UIImage]
+    let draggedItem: UIImage?
+    
+    func performDrop(info: DropInfo) -> Bool {
+        guard let itemProvider = info.itemProviders(for: [.text]).first else {
+            return false
+        }
+        
+        let _ = itemProvider.loadObject(ofClass: NSString.self) { (string, error) in
+            guard let string = string as? NSString,
+                  let fromIndex = Int(string as String),
+                  let toIndex = self.items.firstIndex(where: { $0 == self.item }) else {
+                return
+            }
+            
+            // Only move if different positions
+            if fromIndex != toIndex {
+                DispatchQueue.main.async {
+                    // Move the element
+                    withAnimation {
+                        let movedItem = self.items.remove(at: fromIndex)
+                        self.items.insert(movedItem, at: toIndex)
+                    }
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        return DropProposal(operation: .move)
     }
 }
