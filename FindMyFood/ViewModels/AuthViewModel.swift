@@ -1255,6 +1255,36 @@ class AuthViewModel: ObservableObject {
             return false
         }
         
+    func cancelFriendRequest(from fromUserId: String, to toUserId: String) async throws {
+        let db = Firestore.firestore()
+
+        // Find the friend request document
+        let query = db.collection("friendRequests")
+            .whereField("fromUserId", isEqualTo: fromUserId)
+            .whereField("toUserId", isEqualTo: toUserId)
+
+        let snapshot = try await query.getDocuments()
+
+        try await db.runTransaction { transaction, _ in
+            for doc in snapshot.documents {
+                transaction.deleteDocument(doc.reference)
+            }
+
+            let fromUserRef = db.collection("users").document(fromUserId)
+            let toUserRef = db.collection("users").document(toUserId)
+
+            transaction.updateData([
+                "pendingRequests": FieldValue.arrayRemove([toUserId])
+            ], forDocument: fromUserRef)
+
+            transaction.updateData([
+                "friendRequests": FieldValue.arrayRemove([fromUserId])
+            ], forDocument: toUserRef)
+
+            return nil
+        }
+    }
+
 
 }
 

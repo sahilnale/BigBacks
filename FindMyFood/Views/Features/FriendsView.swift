@@ -618,8 +618,8 @@ private struct UserRowView: View {
                     .foregroundColor(.gray)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color(.systemGray5))
-                    .cornerRadius(16)
+                   // .background(Color(.systemGray5))
+                   // .cornerRadius(16)
             } else if isAlreadyRequestedBy && !requestHandled {
                 HStack(spacing: 8) {
                     Button(action: {
@@ -720,7 +720,7 @@ private struct AddFriendButton: View {
                         .font(.system(size: 12, weight: .semibold))
                 }
                 
-                Text(isRequestPending ? "Pending" : "Add Friend")
+                Text(isRequestPending ? "Pending" : "Add")
                     .font(.system(size: 14, weight: .semibold))
             }
             .foregroundColor(isRequestPending ? .gray : .white)
@@ -729,26 +729,37 @@ private struct AddFriendButton: View {
             .background(isRequestPending ? Color(.systemGray5) : Color.accentColor)
             .cornerRadius(18)
         }
-        .disabled(isRequestPending) // Prevent clicking when pending
+        //.disabled(isRequestPending)
     }
 
     private func sendFriendRequest() {
-        guard !isRequestPending else { return }
+       // guard !isRequestPending else { return }
         
         Task {
             do {
                 let currentUser = AuthViewModel.shared.currentUser
                 let fromUserName = currentUser?.username ?? "Unknown"
                 
-                try await AuthViewModel.shared.sendFriendRequest(
-                    from: currentUserId,
-                    to: user.id,
-                    fromUserName: fromUserName
-                )
-                isRequestPending = true
+                if isRequestPending {
+                                // Cancel the request
+                    try await AuthViewModel.shared.cancelFriendRequest(
+                        from: currentUserId,
+                        to: user.id
+                    )
+                    isRequestPending = false
+                } else {
+                    
+                    try await AuthViewModel.shared.sendFriendRequest(
+                        from: currentUserId,
+                        to: user.id,
+                        fromUserName: fromUserName
+                    )
+                    isRequestPending = true
+                }
             } catch {
                 errorMessage = error.localizedDescription
             }
         }
     }
 }
+
