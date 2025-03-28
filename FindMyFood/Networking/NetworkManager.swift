@@ -686,7 +686,7 @@ struct User: Codable, Identifiable {
     }
 }
 
-struct Post: Codable, Identifiable {
+struct Post: Codable, Identifiable, Hashable {
     let _id: String
     var id: String { _id }
     let userId: String
