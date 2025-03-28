@@ -210,6 +210,7 @@ struct ProfileView: View {
                                     .tag(0)
                                     
                                     // Wishlist
+                                    // Wishlist
                                     ScrollView {
                                         VStack {
                                             if isLoadingWishlist {
@@ -221,17 +222,12 @@ struct ProfileView: View {
                                                     message: "Your wishlist is empty!"
                                                 )
                                             } else {
-                                                LazyVStack(spacing: 16) {
-                                                    ForEach(wishlistPosts, id: \.post._id) { (post, userName) in
-                                                        RestaurantCard(post: post, userName: userName)
-                                                            .padding(.horizontal)
-                                                    }
-                                                }
-                                                .padding(.vertical, 12)
+                                                PostGridView(posts: wishlistPosts.map { $0.post }, columns: columns)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.top, 8)
                                             }
-                                            
-                                            // Remove logout button from wishlist tab
-                                            Spacer(minLength: 80) // Keep some space at the bottom for consistency
+
+                                            Spacer(minLength: 80)
                                         }
                                     }
                                     .tag(1)
