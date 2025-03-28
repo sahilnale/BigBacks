@@ -138,23 +138,356 @@ class RestaurantClusterPopupViewController: UIViewController {
         }
     }
     
+//    private func createRestaurantCard(for annotation: ImageAnnotation) -> UIView {
+//        // Create container
+//        let itemContainer = UIView()
+//        itemContainer.translatesAutoresizingMaskIntoConstraints = false
+//        itemContainer.layer.cornerRadius = 12
+//        itemContainer.clipsToBounds = true
+//        itemContainer.backgroundColor = .secondarySystemBackground
+//        
+//        // Add tap gesture
+//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(restaurantCardTapped(_:)))
+//        itemContainer.addGestureRecognizer(tapGesture)
+//        itemContainer.isUserInteractionEnabled = true
+//        
+//        // Store the annotation reference
+//        objc_setAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+//        
+//        // Create image view
+//        let imageView = UIImageView()
+//        imageView.contentMode = .scaleAspectFill
+//        imageView.clipsToBounds = true
+//        imageView.translatesAutoresizingMaskIntoConstraints = false
+//        if let image = annotation.images.first {
+//            imageView.image = image
+//        } else {
+//            imageView.image = UIImage(systemName: "photo")
+//            imageView.tintColor = .gray
+//            imageView.contentMode = .scaleAspectFit
+//            imageView.backgroundColor = UIColor.systemGray6
+//        }
+//        
+//        // Create gradient overlay
+//        let gradientLayer = CAGradientLayer()
+//        gradientLayer.colors = [
+//            UIColor.clear.cgColor,
+//            UIColor.black.withAlphaComponent(0.6).cgColor
+//        ]
+//        gradientLayer.locations = [0.6, 1.0]
+//        
+//        let overlayView = UIView()
+//        overlayView.translatesAutoresizingMaskIntoConstraints = false
+//        overlayView.layer.addSublayer(gradientLayer)
+//        
+//        // Create title label
+//        let nameLabel = UILabel()
+//        nameLabel.text = annotation.title
+//        nameLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
+//        nameLabel.textColor = .white
+//        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Create rating view if rating exists
+//        let ratingContainer = UIView()
+//        ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+//        ratingContainer.layer.cornerRadius = 8
+//        ratingContainer.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        let ratingStack = UIStackView()
+//        ratingStack.axis = .horizontal
+//        ratingStack.spacing = 4
+//        ratingStack.alignment = .center
+//        ratingStack.translatesAutoresizingMaskIntoConstraints = false
+//        ratingStack.isLayoutMarginsRelativeArrangement = true
+//        ratingStack.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+//        
+//        let starIcon = UIImageView(image: UIImage(systemName: "star.fill"))
+//        starIcon.tintColor = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
+//        starIcon.contentMode = .scaleAspectFit
+//        starIcon.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        let ratingLabel = UILabel()
+//        ratingLabel.text = annotation.rating != nil ? "\(annotation.rating!)" : "N/A"
+//        ratingLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+//        ratingLabel.textColor = .white
+//        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Add subviews
+//        ratingStack.addArrangedSubview(starIcon)
+//        ratingStack.addArrangedSubview(ratingLabel)
+//        ratingContainer.addSubview(ratingStack)
+//        
+//        itemContainer.addSubview(imageView)
+//        itemContainer.addSubview(overlayView)
+//        itemContainer.addSubview(nameLabel)
+//        
+//        if annotation.rating != nil {
+//            itemContainer.addSubview(ratingContainer)
+//        }
+//        
+//        // Setup constraints
+//        NSLayoutConstraint.activate([
+//            itemContainer.heightAnchor.constraint(equalToConstant: 120),
+//            
+//            imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
+//            imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+//            imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+//            imageView.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor),
+//            
+//            overlayView.topAnchor.constraint(equalTo: imageView.topAnchor),
+//            overlayView.leadingAnchor.constraint(equalTo: imageView.leadingAnchor),
+//            overlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
+//            overlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
+//            
+//            nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor, constant: 12),
+//            nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
+//            nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor, constant: -12)
+//        ])
+//        
+//        if annotation.rating != nil {
+//            NSLayoutConstraint.activate([
+//                ratingContainer.topAnchor.constraint(equalTo: itemContainer.topAnchor, constant: 12),
+//                ratingContainer.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
+//                
+//                ratingStack.topAnchor.constraint(equalTo: ratingContainer.topAnchor),
+//                ratingStack.leadingAnchor.constraint(equalTo: ratingContainer.leadingAnchor),
+//                ratingStack.trailingAnchor.constraint(equalTo: ratingContainer.trailingAnchor),
+//                ratingStack.bottomAnchor.constraint(equalTo: ratingContainer.bottomAnchor),
+//                
+//                starIcon.widthAnchor.constraint(equalToConstant: 14),
+//                starIcon.heightAnchor.constraint(equalToConstant: 14)
+//            ])
+//        }
+//        
+//        return itemContainer
+//    }
+//    private func createRestaurantCard(for annotation: ImageAnnotation) -> UIView {
+//        // Create main container with shadow
+//        let cardContainer = UIView()
+//        cardContainer.translatesAutoresizingMaskIntoConstraints = false
+//        cardContainer.backgroundColor = .clear
+//        
+//        // Inner container with rounded corners
+//        let itemContainer = UIView()
+//        itemContainer.translatesAutoresizingMaskIntoConstraints = false
+//        itemContainer.layer.cornerRadius = 16
+//        itemContainer.clipsToBounds = true
+//        itemContainer.backgroundColor = .systemBackground
+//        itemContainer.layer.masksToBounds = true
+//        
+//        // Add shadow to main container
+//        cardContainer.layer.shadowColor = UIColor.black.cgColor
+//        cardContainer.layer.shadowOffset = CGSize(width: 0, height: 4)
+//        cardContainer.layer.shadowRadius = 12
+//        cardContainer.layer.shadowOpacity = 0.1
+//        
+//        
+//        
+//        // Add tap gesture
+//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(restaurantCardTapped(_:)))
+//        cardContainer.addGestureRecognizer(tapGesture)
+//        cardContainer.isUserInteractionEnabled = true
+//        
+//        // Store the annotation reference
+//        objc_setAssociatedObject(cardContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+//
+//        
+//        // Create image view with increased height
+//        let imageView = UIImageView()
+//        imageView.contentMode = .scaleAspectFill
+//        imageView.clipsToBounds = true
+//        imageView.translatesAutoresizingMaskIntoConstraints = false
+//        if let image = annotation.images.first {
+//            imageView.image = image
+//        } else {
+//            // Enhanced placeholder
+//            let configuration = UIImage.SymbolConfiguration(pointSize: 32, weight: .light)
+//            imageView.image = UIImage(systemName: "fork.knife", withConfiguration: configuration)
+//            imageView.tintColor = .systemGray3
+//            imageView.contentMode = .scaleAspectFit
+//            imageView.backgroundColor = UIColor.systemGray6
+//        }
+//        
+//        // Content container for text info
+//        let contentContainer = UIView()
+//        contentContainer.translatesAutoresizingMaskIntoConstraints = false
+//        contentContainer.backgroundColor = .systemBackground
+//        
+//        // Create title label with better typography
+//        let nameLabel = UILabel()
+//        nameLabel.text = annotation.title
+//        nameLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+//        nameLabel.textColor = .label
+//        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Category label (example, you might need to adjust based on your data model)
+//        let categoryLabel = UILabel()
+//        categoryLabel.text = annotation.subtitle ?? "Restaurant"
+//        categoryLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+//        categoryLabel.textColor = .secondaryLabel
+//        categoryLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Create modern rating view
+//        let ratingView = UIView()
+//        ratingView.backgroundColor = .systemBackground
+//        ratingView.translatesAutoresizingMaskIntoConstraints = false
+//        
+//                // Create rating view if rating exists
+//                let ratingContainer = UIView()
+//                ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+//                ratingContainer.layer.cornerRadius = 8
+//                ratingContainer.translatesAutoresizingMaskIntoConstraints = false
+//        
+//                let ratingStack = UIStackView()
+//                ratingStack.axis = .horizontal
+//                ratingStack.spacing = 4
+//                ratingStack.alignment = .center
+//                ratingStack.translatesAutoresizingMaskIntoConstraints = false
+//                ratingStack.isLayoutMarginsRelativeArrangement = true
+//                ratingStack.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+//        
+//                let starIcon = UIImageView(image: UIImage(systemName: "star.fill"))
+//                starIcon.tintColor = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
+//                starIcon.contentMode = .scaleAspectFit
+//                starIcon.translatesAutoresizingMaskIntoConstraints = false
+//        
+//                let ratingLabel = UILabel()
+//                ratingLabel.text = annotation.rating != nil ? "\(annotation.rating!)" : "N/A"
+//                ratingLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+//                ratingLabel.textColor = .white
+//                ratingLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        
+//        // Badge for status or promotion (optional)
+//        let badgeLabel = UILabel()
+//        badgeLabel.text = "Open"
+//        badgeLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+//        badgeLabel.textColor = .white
+//        badgeLabel.backgroundColor = UIColor(red: 40/255, green: 167/255, blue: 69/255, alpha: 1) // Green color
+//        badgeLabel.textAlignment = .center
+//        badgeLabel.layer.cornerRadius = 10
+//        badgeLabel.layer.masksToBounds = true
+//        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+//        
+//        // Add subviews to containers
+//        ratingStack.addArrangedSubview(starIcon)
+//        ratingStack.addArrangedSubview(ratingLabel)
+//        ratingView.addSubview(ratingStack)
+//        
+//        contentContainer.addSubview(nameLabel)
+//        contentContainer.addSubview(categoryLabel)
+//        contentContainer.addSubview(ratingView)
+//        
+//        itemContainer.addSubview(imageView)
+//        itemContainer.addSubview(contentContainer)
+//        
+//        //        // Add subviews
+//        //        ratingStack.addArrangedSubview(starIcon)
+//        //        ratingStack.addArrangedSubview(ratingLabel)
+//        //        ratingContainer.addSubview(ratingStack)
+//        //
+//        //        itemContainer.addSubview(imageView)
+//        //        itemContainer.addSubview(overlayView)
+//        //        itemContainer.addSubview(nameLabel)
+//        //
+//                if annotation.rating != nil {
+//                    itemContainer.addSubview(ratingContainer)
+//                }
+//        // Badge is conditionally added (you can customize this logic)
+//        if Bool.random() { // Replace with actual condition based on your data
+//            contentContainer.addSubview(badgeLabel)
+//        }
+//        
+//        // Add itemContainer to cardContainer
+//        cardContainer.addSubview(itemContainer)
+//        
+//        // Setup constraints
+//        NSLayoutConstraint.activate([
+//            // Card container constraints
+//            cardContainer.heightAnchor.constraint(equalToConstant: 220),
+//            
+//            // Item container fills card container
+//            itemContainer.topAnchor.constraint(equalTo: cardContainer.topAnchor),
+//            itemContainer.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
+//            itemContainer.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
+//            itemContainer.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor),
+//            
+//            // Image view takes 70% of the card height
+//            imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
+//            imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+//            imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+//            imageView.heightAnchor.constraint(equalTo: itemContainer.heightAnchor, multiplier: 0.7),
+//            
+//            // Content container takes the remaining space
+//            contentContainer.topAnchor.constraint(equalTo: imageView.bottomAnchor),
+//            contentContainer.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+//            contentContainer.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+//            contentContainer.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor),
+//            
+//            // Content layout
+//            nameLabel.topAnchor.constraint(equalTo: contentContainer.topAnchor, constant: 12),
+//            nameLabel.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: 16),
+//            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: ratingView.leadingAnchor, constant: -8),
+//            
+//            categoryLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+//            categoryLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+//            categoryLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentContainer.trailingAnchor, constant: -16),
+//            
+//            // Rating view aligned to the right
+//            ratingView.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
+//            ratingView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -16),
+//            
+//            // Rating stack inside rating view
+//            ratingStack.topAnchor.constraint(equalTo: ratingView.topAnchor),
+//            ratingStack.leadingAnchor.constraint(equalTo: ratingView.leadingAnchor),
+//            ratingStack.trailingAnchor.constraint(equalTo: ratingView.trailingAnchor),
+//            ratingStack.bottomAnchor.constraint(equalTo: ratingView.bottomAnchor),
+//        ])
+//        
+//        
+//        // Conditional constraints for badge
+//        if badgeLabel.superview != nil {
+//            NSLayoutConstraint.activate([
+//                badgeLabel.topAnchor.constraint(equalTo: imageView.topAnchor, constant: 12),
+//                badgeLabel.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 12),
+//                badgeLabel.heightAnchor.constraint(equalToConstant: 20),
+//                badgeLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+//            ])
+//        }
+//        
+//        return cardContainer
+//    }
+    
+//March 14
     private func createRestaurantCard(for annotation: ImageAnnotation) -> UIView {
-        // Create container
+        // Create main container with shadow
+        let cardContainer = UIView()
+        cardContainer.translatesAutoresizingMaskIntoConstraints = false
+        cardContainer.backgroundColor = .clear
+        
+        // Inner container with rounded corners
         let itemContainer = UIView()
         itemContainer.translatesAutoresizingMaskIntoConstraints = false
-        itemContainer.layer.cornerRadius = 12
+        itemContainer.layer.cornerRadius = 16
         itemContainer.clipsToBounds = true
-        itemContainer.backgroundColor = .secondarySystemBackground
+        itemContainer.backgroundColor = .systemBackground
+        itemContainer.layer.masksToBounds = true
+        
+        // Add shadow to main container
+        cardContainer.layer.shadowColor = UIColor.black.cgColor
+        cardContainer.layer.shadowOffset = CGSize(width: 0, height: 4)
+        cardContainer.layer.shadowRadius = 12
+        cardContainer.layer.shadowOpacity = 0.1
         
         // Add tap gesture
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(restaurantCardTapped(_:)))
-        itemContainer.addGestureRecognizer(tapGesture)
-        itemContainer.isUserInteractionEnabled = true
+        cardContainer.addGestureRecognizer(tapGesture)
+        cardContainer.isUserInteractionEnabled = true
         
         // Store the annotation reference
-        objc_setAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        
-        // Create image view
+        objc_setAssociatedObject(cardContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+
+        // Create image view with increased height
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
@@ -162,32 +495,33 @@ class RestaurantClusterPopupViewController: UIViewController {
         if let image = annotation.images.first {
             imageView.image = image
         } else {
-            imageView.image = UIImage(systemName: "photo")
-            imageView.tintColor = .gray
+            let configuration = UIImage.SymbolConfiguration(pointSize: 32, weight: .light)
+            imageView.image = UIImage(systemName: "fork.knife", withConfiguration: configuration)
+            imageView.tintColor = .systemGray3
             imageView.contentMode = .scaleAspectFit
             imageView.backgroundColor = UIColor.systemGray6
         }
         
-        // Create gradient overlay
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.colors = [
-            UIColor.clear.cgColor,
-            UIColor.black.withAlphaComponent(0.6).cgColor
-        ]
-        gradientLayer.locations = [0.6, 1.0]
+        // Content container for text info
+        let contentContainer = UIView()
+        contentContainer.translatesAutoresizingMaskIntoConstraints = false
+        contentContainer.backgroundColor = .systemBackground
         
-        let overlayView = UIView()
-        overlayView.translatesAutoresizingMaskIntoConstraints = false
-        overlayView.layer.addSublayer(gradientLayer)
-        
-        // Create title label
+        // Create title label with better typography
         let nameLabel = UILabel()
         nameLabel.text = annotation.title
-        nameLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
-        nameLabel.textColor = .white
+        nameLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        nameLabel.textColor = .label
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Create rating view if rating exists
+        // Category label
+        let categoryLabel = UILabel()
+        categoryLabel.text = annotation.subtitle ?? "Restaurant"
+        categoryLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        categoryLabel.textColor = .secondaryLabel
+        categoryLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create modern rating view
         let ratingContainer = UIView()
         ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.5)
         ratingContainer.layer.cornerRadius = 8
@@ -200,68 +534,113 @@ class RestaurantClusterPopupViewController: UIViewController {
         ratingStack.translatesAutoresizingMaskIntoConstraints = false
         ratingStack.isLayoutMarginsRelativeArrangement = true
         ratingStack.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
-        
+
         let starIcon = UIImageView(image: UIImage(systemName: "star.fill"))
         starIcon.tintColor = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
         starIcon.contentMode = .scaleAspectFit
         starIcon.translatesAutoresizingMaskIntoConstraints = false
-        
+
         let ratingLabel = UILabel()
         ratingLabel.text = annotation.rating != nil ? "\(annotation.rating!)" : "N/A"
         ratingLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         ratingLabel.textColor = .white
         ratingLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Add subviews
+        // Add subviews to rating stack
         ratingStack.addArrangedSubview(starIcon)
         ratingStack.addArrangedSubview(ratingLabel)
         ratingContainer.addSubview(ratingStack)
+
+        // Badge for status or promotion (optional)
+        let badgeLabel = UILabel()
+        badgeLabel.text = "Open"
+        badgeLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        badgeLabel.textColor = .white
+        badgeLabel.backgroundColor = UIColor(red: 40/255, green: 167/255, blue: 69/255, alpha: 1)
+        badgeLabel.textAlignment = .center
+        badgeLabel.layer.cornerRadius = 10
+        badgeLabel.layer.masksToBounds = true
+        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Add subviews
+        contentContainer.addSubview(nameLabel)
+        contentContainer.addSubview(categoryLabel)
         
-        itemContainer.addSubview(imageView)
-        itemContainer.addSubview(overlayView)
-        itemContainer.addSubview(nameLabel)
-        
+        // Only add ratingContainer if annotation has a rating
         if annotation.rating != nil {
-            itemContainer.addSubview(ratingContainer)
+            contentContainer.addSubview(ratingContainer)
+        }
+
+        itemContainer.addSubview(imageView)
+        itemContainer.addSubview(contentContainer)
+
+        // Badge is conditionally added
+        if Bool.random() { // Replace with actual condition based on your data
+            contentContainer.addSubview(badgeLabel)
         }
         
+        // Add itemContainer to cardContainer
+        cardContainer.addSubview(itemContainer)
+
         // Setup constraints
         NSLayoutConstraint.activate([
-            itemContainer.heightAnchor.constraint(equalToConstant: 120),
-            
+            cardContainer.heightAnchor.constraint(equalToConstant: 220),
+
+            itemContainer.topAnchor.constraint(equalTo: cardContainer.topAnchor),
+            itemContainer.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
+            itemContainer.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
+            itemContainer.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor),
+
             imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor),
-            
-            overlayView.topAnchor.constraint(equalTo: imageView.topAnchor),
-            overlayView.leadingAnchor.constraint(equalTo: imageView.leadingAnchor),
-            overlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
-            overlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
-            
-            nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor, constant: 12),
-            nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
-            nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor, constant: -12)
+            imageView.heightAnchor.constraint(equalTo: itemContainer.heightAnchor, multiplier: 0.7),
+
+            contentContainer.topAnchor.constraint(equalTo: imageView.bottomAnchor),
+            contentContainer.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
+            contentContainer.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
+            contentContainer.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor),
+
+            nameLabel.topAnchor.constraint(equalTo: contentContainer.topAnchor, constant: 12),
+            nameLabel.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: 16),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: ratingContainer.leadingAnchor, constant: -8),
+
+            categoryLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+            categoryLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            categoryLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentContainer.trailingAnchor, constant: -16),
         ])
-        
+
+        // Add constraints only if ratingContainer exists
         if annotation.rating != nil {
             NSLayoutConstraint.activate([
-                ratingContainer.topAnchor.constraint(equalTo: itemContainer.topAnchor, constant: 12),
-                ratingContainer.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
-                
+                ratingContainer.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
+                ratingContainer.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -16),
+
                 ratingStack.topAnchor.constraint(equalTo: ratingContainer.topAnchor),
                 ratingStack.leadingAnchor.constraint(equalTo: ratingContainer.leadingAnchor),
                 ratingStack.trailingAnchor.constraint(equalTo: ratingContainer.trailingAnchor),
                 ratingStack.bottomAnchor.constraint(equalTo: ratingContainer.bottomAnchor),
-                
+
                 starIcon.widthAnchor.constraint(equalToConstant: 14),
                 starIcon.heightAnchor.constraint(equalToConstant: 14)
             ])
         }
-        
-        return itemContainer
+
+        // Conditional constraints for badge
+        if badgeLabel.superview != nil {
+            NSLayoutConstraint.activate([
+                badgeLabel.topAnchor.constraint(equalTo: imageView.topAnchor, constant: 12),
+                badgeLabel.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 12),
+                badgeLabel.heightAnchor.constraint(equalToConstant: 20),
+                badgeLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            ])
+        }
+
+        return cardContainer
     }
     
+    
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         // Update gradient layer frames after layout
@@ -772,6 +1151,17 @@ extension CustomPopupView: UIScrollViewDelegate {
         pageControl.currentPage = Int(pageIndex)
     }
 }
+
+
+
+
+
+
+
+
+
+
+
 // MARK: - ViewModel
 struct RestaurantReviewViewModel {
     let restaurantName: String

@@ -11,6 +11,7 @@ struct Comment: Encodable, Decodable, Identifiable, Hashable {
 }
 
 struct RestaurantCard: View {
+    @ObservedObject private var authViewModel = AuthViewModel.shared
     @State var post: Post
     @State private var commenterUsernames: [String: String] = [:]
     @State private var isLiked: Bool = false
@@ -21,6 +22,7 @@ struct RestaurantCard: View {
     @State private var navigateToProfile = false
     @State private var navigateToPost = false
     @State private var isWishlisted: Bool = false
+    @State private var commentText = ""
 // ✅ Per-user wishlisting state
     var userName: String
 
@@ -196,12 +198,87 @@ struct RestaurantCard: View {
             .padding(.bottom)
 
             // 6) Show/hide comments section
+            // Comments Section
             if showComments {
-                VStack(alignment: .leading, spacing: 8) {
-                    // ... your existing comment list code ...
-                    // ... including the TextField for adding a comment ...
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Comments")
+                            .font(.headline)
+                            .foregroundColor(.primary.opacity(0.8))
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            withAnimation {
+                                showComments.toggle()
+                            }
+                        }) {
+                            Image(systemName: "chevron.up")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    
+                    if post.comments.isEmpty {
+                        HStack {
+                            Spacer()
+                            VStack(spacing: 12) {
+                                Image(systemName: "bubble.middle.bottom")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.gray.opacity(0.5))
+                                Text("No comments yet")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                            Spacer()
+                        }
+                        .padding(.vertical, 20)
+                    } else {
+                        ForEach(post.comments, id: \.self) { comment in
+                            commentView(for: comment)
+                        }
+                    }
+                    
+                    // Comment input field
+                    HStack {
+                        TextField("Add a comment...", text: $commentText)
+                            .padding(10)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(20)
+                        
+                        Button(action: {
+                            // Add comment functionality
+                        }) {
+                            Image(systemName: "paperplane.fill")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .padding(.top, 8)
                 }
-                .padding(.bottom)
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(16)
+                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+                .padding(.horizontal)
+            } else {
+                Button(action: {
+                    withAnimation {
+                        showComments.toggle()
+                    }
+                }) {
+                    HStack {
+                        Spacer()
+                        Text("Show Comments")
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                        Image(systemName: "chevron.down")
+                            .foregroundColor(.blue)
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, 12)
+                .background(Color.blue.opacity(0.05))
+                .cornerRadius(12)
+                .padding(.horizontal)
             }
         }
         .background(Color(UIColor.systemBackground))
@@ -222,8 +299,72 @@ struct RestaurantCard: View {
             }
         }
     }
+    
+    
+    private func fetchUsername(for userId: String) {
+        if commenterUsernames[userId] != nil {
+            return
+        }
+
+        Task {
+            do {
+                if let user = try await authViewModel.getUserById(friendId: userId) {
+                    await MainActor.run {
+                        commenterUsernames[userId] = user.username
+                    }
+                } else {
+                    await MainActor.run {
+                        commenterUsernames[userId] = "Unknown User"
+                    }
+                }
+            } catch {
+                print("Failed to fetch username for userId \(userId): \(error)")
+                await MainActor.run {
+                    commenterUsernames[userId] = "Error"
+                }
+            }
+        }
+    }
+    
+    
+    private func commentView(for comment: Comment) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Circle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        Text(String((commenterUsernames[comment.userId] ?? "?").prefix(1)).uppercased())
+                            .foregroundColor(.primary)
+                            .font(.system(size: 16, weight: .bold))
+                    )
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("@\(commenterUsernames[comment.userId] ?? "Loading...")")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.primary.opacity(0.8))
+                    
+                    Text(comment.text)
+                        .font(.system(size: 15))
+                        .lineSpacing(3)
+                }
+                .padding(.leading, 4)
+                .onAppear {
+                    fetchUsername(for: comment.userId)
+                }
+                
+                Spacer()
+            }
+            
+            Divider()
+                .padding(.leading, 40)
+        }
+        .padding(.vertical, 6)
+    }
 
 }
+
+
 
 
 
@@ -241,5 +382,6 @@ func timeAgo(from date: Date) -> String {
     
     return "Just now"
 }
+
 
 
