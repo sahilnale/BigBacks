@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 struct PostView: View {
     @ObservedObject private var authViewModel = AuthViewModel.shared
@@ -11,6 +12,8 @@ struct PostView: View {
     @State private var currentImageIndex = 0
     @State private var showComments = false
     @State private var commentText = ""
+    @State private var userLocation: CLLocation?
+
     
     private let spacing: CGFloat = 20
     
@@ -32,9 +35,33 @@ struct PostView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "mappin.circle.fill")
                             .foregroundColor(.red)
-                        Text(post.location)
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
+                       // Text(post.location)
+//                            .font(.subheadline)
+//                            .foregroundColor(.gray)
+                        
+                        if let userLocation = userLocation {
+                            let parts = post.location.split(separator: ",")
+                            if parts.count == 2,
+                               let lat = Double(parts[0]),
+                               let lon = Double(parts[1]) {
+                                let postLocation = CLLocation(latitude: lat, longitude: lon)
+                                let distanceInMeters = userLocation.distance(from: postLocation)
+                                let distanceInMiles = distanceInMeters / 1609.34
+                                
+                                Text(String(format: "%.1f miles away", distanceInMiles))
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            } else {
+                                Text("Invalid location format")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                        } else {
+                            Text("Locating...")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
+
                     }
                     
                     // Star Rating
@@ -235,6 +262,10 @@ struct PostView: View {
                     }
                 } catch {
                     print("Failed to fetch updated post details: \(error)")
+                }
+                
+                LocationManager.shared.startUpdatingLocation { location in
+                           userLocation = location
                 }
             }
         }

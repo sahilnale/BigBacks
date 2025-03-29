@@ -21,29 +21,37 @@ struct RestaurantCard: View {
     @State private var navigateToProfile = false
     @State private var navigateToPost = false
     @State private var isWishlisted: Bool = false
+    @State private var selectedImageIndex = 0
 // ✅ Per-user wishlisting state
     var userName: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            NavigationLink(value: post) {
             
             // 1) The main image and profile link
-            Button(action: {
-                navigateToPost = true
-            }) {
-                if let firstImageUrl = post.imageUrls.first, !firstImageUrl.isEmpty {
-                    AsyncImage(url: URL(string: firstImageUrl)) { image in
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 360, height: 350)
-                            .contentShape(Rectangle())
-                            .clipShape(RoundedRectangle(cornerRadius: 15))
-                            .clipped()
-                    } placeholder: {
-                        Color.gray.frame(width: 360, height: 350)
-                            .clipShape(RoundedRectangle(cornerRadius: 15))
+                if !post.imageUrls.isEmpty {
+                    TabView(selection: $selectedImageIndex) {
+                        ForEach(Array(post.imageUrls.enumerated()), id: \.offset) { index, imageUrl in
+                            AsyncImage(url: URL(string: imageUrl)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 360, height: 350)
+                                    .contentShape(Rectangle())
+                                    .clipShape(RoundedRectangle(cornerRadius: 15))
+                                    .clipped()
+                            } placeholder: {
+                                Color.gray
+                                    .frame(width: 360, height: 350)
+                                    .clipShape(RoundedRectangle(cornerRadius: 15))
+                            }
+                            .tag(index)
+                        }
                     }
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: post.imageUrls.count > 1 ? .automatic : .never))
+                    .frame(width: 360, height: 350)
+                    .clipShape(RoundedRectangle(cornerRadius: 15))
                 } else {
                     Color.gray.frame(width: 360, height: 350)
                         .clipShape(RoundedRectangle(cornerRadius: 15))
@@ -55,21 +63,30 @@ struct RestaurantCard: View {
                 }
             }
             .buttonStyle(PlainButtonStyle())
-            .background(
-                NavigationLink(
-                    destination: PostView(post: post),
-                    isActive: $navigateToPost
-                ) {
-                    EmptyView()
-                }
-                .hidden()
-            )
+//            .navigationDestination(isPresented: $navigateToPost) {
+//                            PostView(post: post)
+//                        }
+
             
             // 2) Username link
+//            HStack {
+//                Button(action: {
+//                    navigateToProfile = true
+//                }) {
+//                    Text("@\(userName)")
+//                        .font(.subheadline.bold())
+//                        .foregroundColor(.customOrange)
+//                        .padding(.leading)
+//                }
+//                .buttonStyle(PlainButtonStyle())
+//            }
+//            .navigationDestination(isPresented: $navigateToProfile) {
+//                           FriendProfileView(userId: post.userId)
+//                       }
+
+            
             HStack {
-                Button(action: {
-                    navigateToProfile = true
-                }) {
+                NavigationLink(value: post.userId) {
                     Text("@\(userName)")
                         .font(.subheadline.bold())
                         .foregroundColor(.customOrange)
@@ -77,16 +94,7 @@ struct RestaurantCard: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
-            .background(
-                NavigationLink(
-                    destination: FriendProfileView(userId: post.userId),
-                    isActive: $navigateToProfile
-                ) {
-                    EmptyView()
-                }
-                .hidden()
-            )
-
+            
             // 3) Restaurant name + star rating on the same row
             HStack {
                 Image(systemName: "mappin.and.ellipse")
