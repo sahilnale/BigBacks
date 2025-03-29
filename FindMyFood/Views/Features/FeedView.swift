@@ -61,12 +61,6 @@ struct FeedView: View {
             .onAppear {
                 if posts.isEmpty { loadFeed() }
             }
-            .navigationDestination(for: Post.self) { post in
-                            PostView(post: post)
-            }
-            .navigationDestination(for: String.self) { userId in
-                FriendProfileView(userId: userId)
-            }
             // Dynamic re-sorting when sortOption changes:
             .onChange(of: sortOption) { newOption in
                 if newOption == .distance {
@@ -97,6 +91,13 @@ struct FeedView: View {
                     }
                 }
             }
+            .navigationDestination(for: Post.self) { post in
+                            PostView(post: post)
+            }
+            .navigationDestination(for: String.self) { userId in
+                FriendProfileView(userId: userId)
+            }
+            
         }
         .navigationViewStyle(StackNavigationViewStyle())
     }

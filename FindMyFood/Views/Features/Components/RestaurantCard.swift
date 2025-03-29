@@ -27,11 +27,9 @@ struct RestaurantCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            NavigationLink(value: post) {
             
             // 1) The main image and profile link
-            Button(action: {
-                navigateToPost = true
-            }) {
                 if !post.imageUrls.isEmpty {
                     TabView(selection: $selectedImageIndex) {
                         ForEach(Array(post.imageUrls.enumerated()), id: \.offset) { index, imageUrl in
@@ -65,16 +63,30 @@ struct RestaurantCard: View {
                 }
             }
             .buttonStyle(PlainButtonStyle())
-            .navigationDestination(isPresented: $navigateToPost) {
-                            PostView(post: post)
-                        }
+//            .navigationDestination(isPresented: $navigateToPost) {
+//                            PostView(post: post)
+//                        }
 
             
             // 2) Username link
+//            HStack {
+//                Button(action: {
+//                    navigateToProfile = true
+//                }) {
+//                    Text("@\(userName)")
+//                        .font(.subheadline.bold())
+//                        .foregroundColor(.customOrange)
+//                        .padding(.leading)
+//                }
+//                .buttonStyle(PlainButtonStyle())
+//            }
+//            .navigationDestination(isPresented: $navigateToProfile) {
+//                           FriendProfileView(userId: post.userId)
+//                       }
+
+            
             HStack {
-                Button(action: {
-                    navigateToProfile = true
-                }) {
+                NavigationLink(value: post.userId) {
                     Text("@\(userName)")
                         .font(.subheadline.bold())
                         .foregroundColor(.customOrange)
@@ -82,10 +94,7 @@ struct RestaurantCard: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
-            .navigationDestination(isPresented: $navigateToProfile) {
-                           FriendProfileView(userId: post.userId)
-                       }
-
+            
             // 3) Restaurant name + star rating on the same row
             HStack {
                 Image(systemName: "mappin.and.ellipse")

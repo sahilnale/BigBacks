@@ -47,7 +47,9 @@ class ProfileViewModel: ObservableObject {
 
     // Shared logic
     private func loadProfileData(for userId: String, isFriendProfile: Bool) async {
-        isLoading = true
+        DispatchQueue.main.async {
+            self.isLoading = true
+        }
         do {
             let db = Firestore.firestore()
 
