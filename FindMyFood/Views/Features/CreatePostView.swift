@@ -550,7 +550,7 @@ struct Coordinate: Hashable {
 
 struct NearbyRestaurantPicker: View {
     @Environment(\.dismiss) var dismiss
-    @State private var nearbyRestaurants: [MKMapItem] = []
+    @State private var nearbyRestaurants: [(restaurant: MKMapItem, distance: CLLocationDistance)] = []
     @State private var isLoading = false
     var userLocation: CLLocationCoordinate2D
     var onRestaurantSelected: (String, CLLocationCoordinate2D) -> Void
@@ -566,15 +566,34 @@ struct NearbyRestaurantPicker: View {
                         .foregroundColor(.gray)
                         .padding()
                 } else {
-                    List(nearbyRestaurants, id: \.self) { restaurant in
-                        Button(action: {
-                            let name = restaurant.name ?? "Unnamed Restaurant"
-                            let coordinate = restaurant.placemark.coordinate
-                            onRestaurantSelected(name, coordinate)
-                            dismiss()
-                        }) {
-                            Text(restaurant.name ?? "Unnamed Restaurant")
-                                .font(.headline)
+                    List {
+                        ForEach(nearbyRestaurants, id: \.restaurant) { item in
+                            Button(action: {
+                                let name = item.restaurant.name ?? "Unnamed Restaurant"
+                                let coordinate = item.restaurant.placemark.coordinate
+                                onRestaurantSelected(name, coordinate)
+                                dismiss()
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.restaurant.name ?? "Unnamed Restaurant")
+                                            .font(.headline)
+                                        
+                                        if let addressString = addressString(from: item.restaurant.placemark) {
+                                            Text(addressString)
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    // Display distance
+                                    Text(formatDistance(item.distance))
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                            }
                         }
                     }
                 }
@@ -594,19 +613,44 @@ struct NearbyRestaurantPicker: View {
     }
 
     private func fetchNearbyRestaurants() {
-        let searchTerms = ["food", "coffee", "restaurants", "cafe", "bakery"]
+        // Search terms with more categories to find a wider variety of places
+        let searchTerms = [
+            "restaurant",
+            "food", 
+            "coffee shop", 
+            "cafe", 
+            "bakery", 
+            "bar", 
+            "pub", 
+            "fast food", 
+            "diner", 
+            "bistro",
+            "sandwich shop",
+            "pizzeria",
+            "sushi",
+            "noodles",
+            "mexican",
+            "takeout",
+            "dessert"
+        ]
+        
         var allPlaces: [MKMapItem] = []
         let group = DispatchGroup()
         isLoading = true
-
+        
+        // Use a larger search radius to find more places
+        let searchRadius: CLLocationDistance = 2000 // 2000 meters = ~1.25 miles
+        
         for term in searchTerms {
             group.enter()
             let request = MKLocalSearch.Request()
             request.naturalLanguageQuery = term
             request.region = MKCoordinateRegion(
                 center: userLocation,
-                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.01)
+                latitudinalMeters: searchRadius,
+                longitudinalMeters: searchRadius
             )
+            
             let search = MKLocalSearch(request: request)
             search.start { response, error in
                 if let mapItems = response?.mapItems {
@@ -617,17 +661,63 @@ struct NearbyRestaurantPicker: View {
         }
 
         group.notify(queue: .main) {
-            isLoading = false
-
-            // Use a custom struct to make CLLocationCoordinate2D hashable
-            let uniquePlaces = Dictionary(
+            // Create a dictionary to filter out duplicates
+            let uniquePlacesDict = Dictionary(
                 grouping: allPlaces,
                 by: { Coordinate($0.placemark.coordinate) }
             )
             .compactMap { $0.value.first }
-
-            nearbyRestaurants = uniquePlaces
+            
+            // Calculate distance for each restaurant
+            let userLocationObj = CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)
+            let restaurantsWithDistance = uniquePlacesDict.compactMap { restaurant -> (restaurant: MKMapItem, distance: CLLocationDistance)? in
+                let restaurantLocation = CLLocation(
+                    latitude: restaurant.placemark.coordinate.latitude, 
+                    longitude: restaurant.placemark.coordinate.longitude
+                )
+                let distance = restaurantLocation.distance(from: userLocationObj)
+                return (restaurant: restaurant, distance: distance)
+            }
+            
+            // Sort by distance from closest to furthest
+            self.nearbyRestaurants = restaurantsWithDistance.sorted { $0.distance < $1.distance }
+            
+            self.isLoading = false
         }
+    }
+    
+    // Format distance to human-readable format
+    private func formatDistance(_ meters: CLLocationDistance) -> String {
+        if meters < 1000 {
+            return "\(Int(meters))m"
+        } else {
+            let miles = meters / 1609.34
+            return String(format: "%.1f mi", miles)
+        }
+    }
+    
+    // Get a formatted address from the placemark
+    private func addressString(from placemark: MKPlacemark) -> String? {
+        // Extract street address components
+        let thoroughfare = placemark.thoroughfare
+        let subThoroughfare = placemark.subThoroughfare
+        let locality = placemark.locality
+        
+        var components: [String] = []
+        
+        if let subThoroughfare = subThoroughfare {
+            components.append(subThoroughfare)
+        }
+        
+        if let thoroughfare = thoroughfare {
+            components.append(thoroughfare)
+        }
+        
+        if let locality = locality {
+            components.append(locality)
+        }
+        
+        return components.isEmpty ? nil : components.joined(separator: ", ")
     }
 }
 
