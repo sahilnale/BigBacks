@@ -312,6 +312,32 @@ class AuthViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
+                    
+                    // Provide a user-friendly error message for authentication errors
+                    let nsError = error as NSError
+                    let errorCode = nsError.code
+                    
+                    // Handle Firebase Auth errors - these use specific error codes
+                    if nsError.domain == AuthErrorDomain {
+                        // Common Firebase auth error codes
+                        switch errorCode {
+                        case 17011, 17009, 17008: // userNotFound, wrongPassword, invalidEmail
+                            self.error = "Incorrect email or password. Please try again."
+                        case 17005: // userDisabled
+                            self.error = "Your account has been disabled. Please contact support."
+                        case 17010: // tooManyRequests
+                            self.error = "Too many failed login attempts. Please try again later."
+                        case 17020: // networkError
+                            self.error = "Network error. Please check your internet connection and try again."
+                        default:
+                            self.error = "Login failed. Please try again."
+                        }
+                    } else {
+                        self.error = "Login failed. Please try again."
+                    }
+                    
+                    // We don't show the alert for login errors, as they'll be displayed inline in the login view
+                    self.showError = false
                     completion(false)
                 }
             }
