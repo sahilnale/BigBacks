@@ -367,6 +367,12 @@ struct CameraPicker: UIViewControllerRepresentable {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.delegate = context.coordinator
+        
+        // Request location when opening camera
+        if imageLocation == nil && !isLocationManuallySet {
+            requestCurrentLocation()
+        }
+        
         return picker
     }
 
@@ -374,6 +380,34 @@ struct CameraPicker: UIViewControllerRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
+    }
+    
+    // Request current location as a fallback
+    private func requestCurrentLocation() {
+        LocationManager.shared.startUpdatingLocation { location in
+            DispatchQueue.main.async {
+                // Only set if not already set by other means
+                if self.imageLocation == nil && !self.isLocationManuallySet {
+                    self.imageLocation = location
+                    print("Debug: Using current location as fallback - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                    self.reverseGeocode(location)
+                }
+            }
+        }
+    }
+    
+    private func reverseGeocode(_ location: CLLocation) {
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            if let placemark = placemarks?.first {
+                let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet {
+                        self.locationDisplay = locationName
+                    }
+                }
+            }
+        }
     }
 
     class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
@@ -388,21 +422,28 @@ struct CameraPicker: UIViewControllerRepresentable {
                 DispatchQueue.main.async {
                     self.parent.selectedImages.append(image)
                     if !self.parent.isLocationManuallySet {
-                        self.fetchAssetLocation(from: info)
+                        let hasLocation = self.fetchAssetLocation(from: info)
+                        
+                        // If no location in image metadata, ensure we have the current location
+                        if !hasLocation && self.parent.imageLocation == nil {
+                            self.parent.requestCurrentLocation()
+                        }
                     }
                 }
             }
             picker.dismiss(animated: true)
         }
 
-        private func fetchAssetLocation(from info: [UIImagePickerController.InfoKey: Any]) {
+        private func fetchAssetLocation(from info: [UIImagePickerController.InfoKey: Any]) -> Bool {
             if let asset = info[.phAsset] as? PHAsset, let location = asset.location {
                 DispatchQueue.main.async {
                     self.parent.imageLocation = location
                     print("Debug: Camera image location - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
                     self.reverseGeocode(location)
                 }
+                return true
             }
+            return false
         }
 
         private func reverseGeocode(_ location: CLLocation) {
@@ -441,6 +482,12 @@ struct MultiImagePicker: UIViewControllerRepresentable {
         picker.sourceType = sourceType
         picker.delegate = context.coordinator
         picker.allowsEditing = false
+        
+        // Request location when opening picker
+        if imageLocation == nil && !isLocationManuallySet {
+            requestCurrentLocation()
+        }
+        
         return picker
     }
 
@@ -448,6 +495,34 @@ struct MultiImagePicker: UIViewControllerRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
+    }
+    
+    // Request current location as a fallback
+    private func requestCurrentLocation() {
+        LocationManager.shared.startUpdatingLocation { location in
+            DispatchQueue.main.async {
+                // Only set if not already set by other means
+                if self.imageLocation == nil && !self.isLocationManuallySet {
+                    self.imageLocation = location
+                    print("Debug: Using current location as fallback - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                    self.reverseGeocode(location)
+                }
+            }
+        }
+    }
+    
+    private func reverseGeocode(_ location: CLLocation) {
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            if let placemark = placemarks?.first {
+                let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet {
+                        self.locationDisplay = locationName
+                    }
+                }
+            }
+        }
     }
 
     class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
@@ -463,12 +538,19 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                     self.parent.selectedImages.append(image)
                     print("Debug: Added image.")
                     
-                    // Only extract location metadata for the first image
-                    if !self.parent.isLocationManuallySet {
+                    // Only extract location metadata if no location is set yet
+                    if !self.parent.isLocationManuallySet && self.parent.imageLocation == nil {
+                        var hasLocation = false
+                        
                         if let asset = info[.phAsset] as? PHAsset {
-                            self.processAsset(asset)
+                            hasLocation = self.processAsset(asset)
                         } else if let fileURL = info[.imageURL] as? URL {
-                            self.fetchAssetFromFileURL(fileURL)
+                            hasLocation = self.fetchAssetFromFileURL(fileURL)
+                        }
+                        
+                        // If no location found in metadata, use current location
+                        if !hasLocation {
+                            self.parent.requestCurrentLocation()
                         }
                     }
                 }
@@ -476,29 +558,25 @@ struct MultiImagePicker: UIViewControllerRepresentable {
             picker.dismiss(animated: true)
         }
 
-        private func processAsset(_ asset: PHAsset) {
+        private func processAsset(_ asset: PHAsset) -> Bool {
             if let location = asset.location {
                 DispatchQueue.main.async {
                     self.parent.imageLocation = location
                     print("Debug: Detected image location - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
                     self.reverseGeocode(location)
                 }
+                return true
             } else {
-                DispatchQueue.main.async {
-                    self.parent.locationDisplay = "Location not found"
-                }
+                return false
             }
         }
 
-        private func fetchAssetFromFileURL(_ fileURL: URL) {
+        private func fetchAssetFromFileURL(_ fileURL: URL) -> Bool {
             let result = PHAsset.fetchAssets(withALAssetURLs: [fileURL], options: nil)
             if let asset = result.firstObject {
-                processAsset(asset)
-            } else {
-                DispatchQueue.main.async {
-                    self.parent.locationDisplay = "Location not found"
-                }
+                return processAsset(asset)
             }
+            return false
         }
 
         private func reverseGeocode(_ location: CLLocation) {
