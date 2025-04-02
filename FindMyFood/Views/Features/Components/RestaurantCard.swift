@@ -140,6 +140,9 @@ struct RestaurantCard: View {
                 Button(action: {
                     withAnimation {
                         showComments.toggle()
+                        if showComments {
+                            refreshComments()
+                        }
                     }
                 }) {
                     Text("Comments (\(post.comments.count))")
@@ -280,7 +283,8 @@ struct RestaurantCard: View {
                                   let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
                                   
                                   await MainActor.run {
-                                      post.comments.append(newComment)
+                                      // Instead of just appending locally, refresh all comments
+                                      refreshComments()
                                       newCommentText = ""
                                   }
                                   print("Comment added successfully.")
@@ -306,6 +310,9 @@ struct RestaurantCard: View {
                 Button(action: {
                     withAnimation {
                         showComments.toggle()
+                        if showComments {
+                            refreshComments()
+                        }
                     }
                 }) {
                     HStack {
@@ -343,6 +350,21 @@ struct RestaurantCard: View {
         }
     }
     
+    // New function to refresh comments
+    private func refreshComments() {
+        Task {
+            do {
+                // Fetch the latest post data with updated comments
+                if let updatedPost = try await AuthViewModel.shared.fetchPostDetails(postId: post.id) {
+                    await MainActor.run {
+                        self.post.comments = updatedPost.comments
+                    }
+                }
+            } catch {
+                print("Failed to refresh comments: \(error)")
+            }
+        }
+    }
     
     private func fetchUsername(for userId: String) {
         if commenterUsernames[userId] != nil {
@@ -404,12 +426,7 @@ struct RestaurantCard: View {
         }
         .padding(.vertical, 6)
     }
-
 }
-
-
-
-
 
 func timeAgo(from date: Date) -> String {
     let calendar = Calendar.current

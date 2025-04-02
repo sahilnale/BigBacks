@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseAuth
 import MapKit
 
 struct PostView: View {
@@ -178,7 +179,30 @@ struct PostView: View {
                                 .cornerRadius(20)
                             
                             Button(action: {
-                                // Add comment functionality
+                                guard !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                                Task {
+                                    do {
+                                        let comment = Comment(
+                                            id: UUID().uuidString,
+                                            commentId: UUID().uuidString,
+                                            userId: Auth.auth().currentUser?.uid ?? "",
+                                            profilePhotoUrl: AuthViewModel.shared.currentUser?.profilePicture ?? "placeholder",
+                                            text: commentText.trimmingCharacters(in: .whitespacesAndNewlines),
+                                            timestamp: Date()
+                                        )
+                                        
+                                        let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
+                                        
+                                        await MainActor.run {
+                                            post.comments.append(newComment)
+                                            commentText = ""
+                                        }
+                                        print("Comment added successfully.")
+                                    }
+                                    catch {
+                                        print("Failed to add comment: \(error)")
+                                    }
+                                }
                             }) {
                                 Image(systemName: "paperplane.fill")
                                     .foregroundColor(.blue)
