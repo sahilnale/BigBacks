@@ -212,7 +212,8 @@ struct CreatePostView: View {
                         selectedImages: $selectedImages,
                         imageLocation: $imageLocation,
                         locationDisplay: $locationDisplay,
-                        isLocationManuallySet: $isLocationManuallySet
+                        isLocationManuallySet: $isLocationManuallySet,
+                        customLocation: $customLocation
                     )
                 }
             }
@@ -475,6 +476,7 @@ struct MultiImagePicker: UIViewControllerRepresentable {
     @Binding var imageLocation: CLLocation?
     @Binding var locationDisplay: String
     @Binding var isLocationManuallySet: Bool
+    @Binding var customLocation: CLLocationCoordinate2D?
     @Environment(\.dismiss) var dismiss
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -503,7 +505,7 @@ struct MultiImagePicker: UIViewControllerRepresentable {
             DispatchQueue.main.async {
                 // Only set if not already set by other means
                 if self.imageLocation == nil && !self.isLocationManuallySet {
-                    self.imageLocation = location
+                    self.customLocation = location.coordinate
                     print("Debug: Using current location as fallback - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
                     self.reverseGeocode(location)
                 }
@@ -544,8 +546,10 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                         
                         if let asset = info[.phAsset] as? PHAsset {
                             hasLocation = self.processAsset(asset)
+                            print("metadata not found1")
                         } else if let fileURL = info[.imageURL] as? URL {
                             hasLocation = self.fetchAssetFromFileURL(fileURL)
+                            print("metadata not found2")
                         }
                         
                         // If no location found in metadata, use current location
