@@ -12,10 +12,10 @@ struct LoginView: View {
     var body: some View {
         VStack(spacing: 30) {
             // Title
-            Text("Login")
-                .font(.system(.largeTitle, design: .serif))
-                .fontWeight(.bold)
-                .foregroundColor(Color.accentColor)
+//            Text("Login")
+//                .font(.system(.largeTitle, design: .serif))
+//                .fontWeight(.bold)
+//                .foregroundColor(Color.accentColor)
 
             // Input Fields
             VStack(spacing: 16) {
@@ -93,6 +93,9 @@ struct LoginView: View {
                 } else {
                     Text("Login")
                         .font(.headline)
+                        .frame(maxWidth: .infinity)
+//                        .padding()
+//                        .background(Color.white)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -125,7 +128,7 @@ struct LoginView: View {
         .animation(.easeInOut(duration: 0.2), value: showingLocalError)
         // We'll keep the alert for other types of errors, but login errors will be shown inline
         .alert("Error", isPresented: $authViewModel.showError) {
-            Button("OK", role: .cancel) { 
+            Button("OK", role: .cancel) {
                 authViewModel.showError = false
             }
         } message: {
