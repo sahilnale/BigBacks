@@ -6,6 +6,8 @@ struct LoginView: View {
     @State private var password = ""
     @State private var isPasswordVisible = false
     @State private var canNavigate = false
+    @State private var showingLocalError = false
+    @State private var localErrorMessage = ""
 
     var body: some View {
         VStack(spacing: 30) {
@@ -59,14 +61,29 @@ struct LoginView: View {
                 .padding()
                 .background(Color(UIColor.systemGray6))
                 .cornerRadius(10)
-
+                
+                // Error message display
+                if showingLocalError {
+                    Text(localErrorMessage)
+                        .foregroundColor(.red)
+                        .font(.subheadline)
+                        .padding(.top, 4)
+                        .transition(.opacity)
+                }
             }
 
             // Login Button
             Button(action: {
+                // Reset error state when attempting to login
+                showingLocalError = false
+                
                 authViewModel.login(email: email, password: password) { success in
                     if success {
                         canNavigate = true
+                    } else if let errorMessage = authViewModel.error {
+                        // Show the error locally instead of in an alert
+                        localErrorMessage = errorMessage
+                        showingLocalError = true
                     }
                 }
             }) {
@@ -105,10 +122,21 @@ struct LoginView: View {
             }
         }
         .padding()
+        .animation(.easeInOut(duration: 0.2), value: showingLocalError)
+        // We'll keep the alert for other types of errors, but login errors will be shown inline
         .alert("Error", isPresented: $authViewModel.showError) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) { 
+                authViewModel.showError = false
+            }
         } message: {
             Text(authViewModel.error ?? "An unknown error occurred")
+        }
+        .onChange(of: authViewModel.error) { newError in
+            if newError != nil && !authViewModel.showError {
+                // If there's an error but the alert isn't showing, display it locally
+                localErrorMessage = newError ?? ""
+                showingLocalError = true
+            }
         }
     }
 }

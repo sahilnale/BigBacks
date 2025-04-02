@@ -3,8 +3,9 @@
 //  FindMyFood
 //
 //  Created by Ridhima Morampudi on 11/24/24.
-
-
+//
+//
+//
 
 import Foundation
 import UIKit
@@ -20,6 +21,8 @@ class ProfileViewModel: ObservableObject {
     @Published var errorMessage: String? = nil
     @Published var profilePicture: String? = nil
     @Published var profileImageUrl: String = ""
+    @Published var mutualFriendsCount: Int = 0
+    @Published var mutualFriends: [User] = []
 
     private let authViewModel: AuthViewModel
 
@@ -34,21 +37,23 @@ class ProfileViewModel: ObservableObject {
             return
         }
 
-        await loadProfileData(for: userId)
+        await loadProfileData(for: userId, isFriendProfile: false)
     }
 
     // Load a friend's profile
     func loadFriendProfile(userId: String) async {
-        await loadProfileData(for: userId)
-    }
+           await loadProfileData(for: userId, isFriendProfile: true)
+       }
 
-    // Private helper to fetch profile data
-    private func loadProfileData(for userId: String) async {
-        isLoading = true
+    // Shared logic
+    private func loadProfileData(for userId: String, isFriendProfile: Bool) async {
+        DispatchQueue.main.async {
+            self.isLoading = true
+        }
         do {
             let db = Firestore.firestore()
 
-            // Fetch user details
+            // Fetch user document
             let userDocument = try await db.collection("users").document(userId).getDocument()
             guard let userData = userDocument.data() else {
                 DispatchQueue.main.async {
@@ -58,7 +63,6 @@ class ProfileViewModel: ObservableObject {
                 return
             }
 
-            // Update user details
             DispatchQueue.main.async {
                 self.name = userData["name"] as? String ?? "Unknown"
                 self.username = userData["username"] as? String ?? "unknown"
@@ -98,6 +102,18 @@ class ProfileViewModel: ObservableObject {
             DispatchQueue.main.async {
                 fetchedPosts.sort { $0.timestamp.dateValue() < $1.timestamp.dateValue() }
                 self.posts = fetchedPosts
+            }
+
+            // Fetch mutual friends only if this is a friend's profile
+            if isFriendProfile {
+               let mutualFriendsList = try await authViewModel.getMutualFriends(with: userId)
+               DispatchQueue.main.async {
+                   self.mutualFriends = mutualFriendsList
+                   self.mutualFriendsCount = mutualFriendsList.count
+               }
+           }
+
+            DispatchQueue.main.async {
                 self.isLoading = false
             }
         } catch {

@@ -10,6 +10,7 @@ struct FeedView: View {
     @State private var errorMessage: String? = nil
     @State private var sortOption: SortOption = .mostRecent
     @State private var userLocation: CLLocation? = nil
+    @State private var navPath = NavigationPath()
 
     enum Tab: String, CaseIterable {
         case feed = "Feed"
@@ -24,7 +25,7 @@ struct FeedView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack(path: $navPath){
             ScrollView {
                 VStack(spacing: 0) {
                     headerView()
@@ -50,8 +51,10 @@ struct FeedView: View {
                                 .padding(.top, 12)
                         }
                     }
+                    
                     // Use system background so dark mode is supported.
                     .background(Color(.systemBackground))
+                    
                 }
             }
             .edgesIgnoringSafeArea(.top)
@@ -88,6 +91,13 @@ struct FeedView: View {
                     }
                 }
             }
+            .navigationDestination(for: Post.self) { post in
+                            PostView(post: post)
+            }
+            .navigationDestination(for: String.self) { userId in
+                FriendProfileView(userId: userId)
+            }
+            
         }
         .navigationViewStyle(StackNavigationViewStyle())
     }

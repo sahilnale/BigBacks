@@ -22,6 +22,8 @@ struct CreatePostView: View {
     @State private var isUploading = false
     @State private var isLocationManuallySet = false
     @State private var isKeyboardVisible = false // Track keyboard visibility
+    @State private var draggedItem: UIImage?
+    
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTab: Int
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -47,18 +49,12 @@ struct CreatePostView: View {
                                 .padding()
                         } else {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(selectedImages, id: \.self) { image in
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(height: isKeyboardVisible ? 150 : 250) // Shrink while typing
-                                            .cornerRadius(15)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 15)
-                                                    .stroke(Color.gray, lineWidth: 1)
-                                            )
+                                HStack(spacing: 10) {
+                                    ForEach(Array(selectedImages.indices), id: \.self) { index in
+                                        imageView(for: selectedImages[index], at: index)
+                                            .padding(.horizontal, 4)
                                     }
+                                    
                                     // Add More Images Button
                                     Button(action: { showPhotoOptions = true }) {
                                         RoundedRectangle(cornerRadius: 15)
@@ -71,6 +67,7 @@ struct CreatePostView: View {
                                             )
                                     }
                                 }
+                                .padding(.horizontal)
                             }
                             .frame(height: isKeyboardVisible ? 150 : 250)
                         }
@@ -221,6 +218,60 @@ struct CreatePostView: View {
             }
         }
     }
+    
+    // Helper method to create an image view with drag and drop support
+    private func imageView(for image: UIImage, at index: Int) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(height: isKeyboardVisible ? 150 : 250)
+            .cornerRadius(15)
+            .overlay(
+                RoundedRectangle(cornerRadius: 15)
+                    .stroke(Color.gray, lineWidth: 1)
+            )
+            .overlay(
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text("\(index + 1)")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(8)
+                            .background(Color.black.opacity(0.6))
+                            .clipShape(Circle())
+                            .padding(8)
+                    }
+                }
+            )
+            .onDrag {
+                self.draggedItem = image
+                return NSItemProvider(object: "\(index)" as NSString)
+            }
+            .onDrop(of: [.text], isTargeted: nil) { providers in
+                guard let provider = providers.first else { return false }
+                
+                _ = provider.loadObject(ofClass: NSString.self) { draggedIndex, _ in
+                    if let draggedIndex = draggedIndex as? NSString, 
+                       let draggedIndexInt = Int(draggedIndex as String),
+                       draggedIndexInt < selectedImages.count {
+                        
+                        DispatchQueue.main.async {
+                            // Make sure indices are valid
+                            guard draggedIndexInt != index else { return }
+                            
+                            // Perform the move
+                            withAnimation {
+                                let item = selectedImages.remove(at: draggedIndexInt)
+                                selectedImages.insert(item, at: index)
+                            }
+                        }
+                    }
+                }
+                return true
+            }
+    }
 
 
     private func postReview() async {
@@ -316,6 +367,12 @@ struct CameraPicker: UIViewControllerRepresentable {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.delegate = context.coordinator
+        
+        // Request location when opening camera
+        if imageLocation == nil && !isLocationManuallySet {
+            requestCurrentLocation()
+        }
+        
         return picker
     }
 
@@ -323,6 +380,34 @@ struct CameraPicker: UIViewControllerRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
+    }
+    
+    // Request current location as a fallback
+    private func requestCurrentLocation() {
+        LocationManager.shared.startUpdatingLocation { location in
+            DispatchQueue.main.async {
+                // Only set if not already set by other means
+                if self.imageLocation == nil && !self.isLocationManuallySet {
+                    self.imageLocation = location
+                    print("Debug: Using current location as fallback - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                    self.reverseGeocode(location)
+                }
+            }
+        }
+    }
+    
+    private func reverseGeocode(_ location: CLLocation) {
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            if let placemark = placemarks?.first {
+                let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet {
+                        self.locationDisplay = locationName
+                    }
+                }
+            }
+        }
     }
 
     class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
@@ -337,21 +422,28 @@ struct CameraPicker: UIViewControllerRepresentable {
                 DispatchQueue.main.async {
                     self.parent.selectedImages.append(image)
                     if !self.parent.isLocationManuallySet {
-                        self.fetchAssetLocation(from: info)
+                        let hasLocation = self.fetchAssetLocation(from: info)
+                        
+                        // If no location in image metadata, ensure we have the current location
+                        if !hasLocation && self.parent.imageLocation == nil {
+                            self.parent.requestCurrentLocation()
+                        }
                     }
                 }
             }
             picker.dismiss(animated: true)
         }
 
-        private func fetchAssetLocation(from info: [UIImagePickerController.InfoKey: Any]) {
+        private func fetchAssetLocation(from info: [UIImagePickerController.InfoKey: Any]) -> Bool {
             if let asset = info[.phAsset] as? PHAsset, let location = asset.location {
                 DispatchQueue.main.async {
                     self.parent.imageLocation = location
                     print("Debug: Camera image location - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
                     self.reverseGeocode(location)
                 }
+                return true
             }
+            return false
         }
 
         private func reverseGeocode(_ location: CLLocation) {
@@ -390,6 +482,12 @@ struct MultiImagePicker: UIViewControllerRepresentable {
         picker.sourceType = sourceType
         picker.delegate = context.coordinator
         picker.allowsEditing = false
+        
+        // Request location when opening picker
+        if imageLocation == nil && !isLocationManuallySet {
+            requestCurrentLocation()
+        }
+        
         return picker
     }
 
@@ -397,6 +495,34 @@ struct MultiImagePicker: UIViewControllerRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
+    }
+    
+    // Request current location as a fallback
+    private func requestCurrentLocation() {
+        LocationManager.shared.startUpdatingLocation { location in
+            DispatchQueue.main.async {
+                // Only set if not already set by other means
+                if self.imageLocation == nil && !self.isLocationManuallySet {
+                    self.imageLocation = location
+                    print("Debug: Using current location as fallback - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
+                    self.reverseGeocode(location)
+                }
+            }
+        }
+    }
+    
+    private func reverseGeocode(_ location: CLLocation) {
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            if let placemark = placemarks?.first {
+                let locationName = placemark.name ?? placemark.locality ?? "Unknown Location"
+                DispatchQueue.main.async {
+                    if !self.isLocationManuallySet {
+                        self.locationDisplay = locationName
+                    }
+                }
+            }
+        }
     }
 
     class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
@@ -412,12 +538,19 @@ struct MultiImagePicker: UIViewControllerRepresentable {
                     self.parent.selectedImages.append(image)
                     print("Debug: Added image.")
                     
-                    // Only extract location metadata for the first image
-                    if !self.parent.isLocationManuallySet {
+                    // Only extract location metadata if no location is set yet
+                    if !self.parent.isLocationManuallySet && self.parent.imageLocation == nil {
+                        var hasLocation = false
+                        
                         if let asset = info[.phAsset] as? PHAsset {
-                            self.processAsset(asset)
+                            hasLocation = self.processAsset(asset)
                         } else if let fileURL = info[.imageURL] as? URL {
-                            self.fetchAssetFromFileURL(fileURL)
+                            hasLocation = self.fetchAssetFromFileURL(fileURL)
+                        }
+                        
+                        // If no location found in metadata, use current location
+                        if !hasLocation {
+                            self.parent.requestCurrentLocation()
                         }
                     }
                 }
@@ -425,29 +558,25 @@ struct MultiImagePicker: UIViewControllerRepresentable {
             picker.dismiss(animated: true)
         }
 
-        private func processAsset(_ asset: PHAsset) {
+        private func processAsset(_ asset: PHAsset) -> Bool {
             if let location = asset.location {
                 DispatchQueue.main.async {
                     self.parent.imageLocation = location
                     print("Debug: Detected image location - Latitude: \(location.coordinate.latitude), Longitude: \(location.coordinate.longitude)")
                     self.reverseGeocode(location)
                 }
+                return true
             } else {
-                DispatchQueue.main.async {
-                    self.parent.locationDisplay = "Location not found"
-                }
+                return false
             }
         }
 
-        private func fetchAssetFromFileURL(_ fileURL: URL) {
+        private func fetchAssetFromFileURL(_ fileURL: URL) -> Bool {
             let result = PHAsset.fetchAssets(withALAssetURLs: [fileURL], options: nil)
             if let asset = result.firstObject {
-                processAsset(asset)
-            } else {
-                DispatchQueue.main.async {
-                    self.parent.locationDisplay = "Location not found"
-                }
+                return processAsset(asset)
             }
+            return false
         }
 
         private func reverseGeocode(_ location: CLLocation) {
@@ -499,7 +628,7 @@ struct Coordinate: Hashable {
 
 struct NearbyRestaurantPicker: View {
     @Environment(\.dismiss) var dismiss
-    @State private var nearbyRestaurants: [MKMapItem] = []
+    @State private var nearbyRestaurants: [(restaurant: MKMapItem, distance: CLLocationDistance)] = []
     @State private var isLoading = false
     var userLocation: CLLocationCoordinate2D
     var onRestaurantSelected: (String, CLLocationCoordinate2D) -> Void
@@ -515,15 +644,34 @@ struct NearbyRestaurantPicker: View {
                         .foregroundColor(.gray)
                         .padding()
                 } else {
-                    List(nearbyRestaurants, id: \.self) { restaurant in
-                        Button(action: {
-                            let name = restaurant.name ?? "Unnamed Restaurant"
-                            let coordinate = restaurant.placemark.coordinate
-                            onRestaurantSelected(name, coordinate)
-                            dismiss()
-                        }) {
-                            Text(restaurant.name ?? "Unnamed Restaurant")
-                                .font(.headline)
+                    List {
+                        ForEach(nearbyRestaurants, id: \.restaurant) { item in
+                            Button(action: {
+                                let name = item.restaurant.name ?? "Unnamed Restaurant"
+                                let coordinate = item.restaurant.placemark.coordinate
+                                onRestaurantSelected(name, coordinate)
+                                dismiss()
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.restaurant.name ?? "Unnamed Restaurant")
+                                            .font(.headline)
+                                        
+                                        if let addressString = addressString(from: item.restaurant.placemark) {
+                                            Text(addressString)
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    // Display distance
+                                    Text(formatDistance(item.distance))
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                            }
                         }
                     }
                 }
@@ -543,19 +691,44 @@ struct NearbyRestaurantPicker: View {
     }
 
     private func fetchNearbyRestaurants() {
-        let searchTerms = ["food", "coffee", "restaurants", "cafe", "bakery"]
+        // Search terms with more categories to find a wider variety of places
+        let searchTerms = [
+            "restaurant",
+            "food", 
+            "coffee shop", 
+            "cafe", 
+            "bakery", 
+            "bar", 
+            "pub", 
+            "fast food", 
+            "diner", 
+            "bistro",
+            "sandwich shop",
+            "pizzeria",
+            "sushi",
+            "noodles",
+            "mexican",
+            "takeout",
+            "dessert"
+        ]
+        
         var allPlaces: [MKMapItem] = []
         let group = DispatchGroup()
         isLoading = true
-
+        
+        // Use a larger search radius to find more places
+        let searchRadius: CLLocationDistance = 2000 // 2000 meters = ~1.25 miles
+        
         for term in searchTerms {
             group.enter()
             let request = MKLocalSearch.Request()
             request.naturalLanguageQuery = term
             request.region = MKCoordinateRegion(
                 center: userLocation,
-                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.01)
+                latitudinalMeters: searchRadius,
+                longitudinalMeters: searchRadius
             )
+            
             let search = MKLocalSearch(request: request)
             search.start { response, error in
                 if let mapItems = response?.mapItems {
@@ -566,16 +739,100 @@ struct NearbyRestaurantPicker: View {
         }
 
         group.notify(queue: .main) {
-            isLoading = false
-
-            // Use a custom struct to make CLLocationCoordinate2D hashable
-            let uniquePlaces = Dictionary(
+            // Create a dictionary to filter out duplicates
+            let uniquePlacesDict = Dictionary(
                 grouping: allPlaces,
                 by: { Coordinate($0.placemark.coordinate) }
             )
             .compactMap { $0.value.first }
-
-            nearbyRestaurants = uniquePlaces
+            
+            // Calculate distance for each restaurant
+            let userLocationObj = CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)
+            let restaurantsWithDistance = uniquePlacesDict.compactMap { restaurant -> (restaurant: MKMapItem, distance: CLLocationDistance)? in
+                let restaurantLocation = CLLocation(
+                    latitude: restaurant.placemark.coordinate.latitude, 
+                    longitude: restaurant.placemark.coordinate.longitude
+                )
+                let distance = restaurantLocation.distance(from: userLocationObj)
+                return (restaurant: restaurant, distance: distance)
+            }
+            
+            // Sort by distance from closest to furthest
+            self.nearbyRestaurants = restaurantsWithDistance.sorted { $0.distance < $1.distance }
+            
+            self.isLoading = false
         }
+    }
+    
+    // Format distance to human-readable format
+    private func formatDistance(_ meters: CLLocationDistance) -> String {
+        if meters < 1000 {
+            return "\(Int(meters))m"
+        } else {
+            let miles = meters / 1609.34
+            return String(format: "%.1f mi", miles)
+        }
+    }
+    
+    // Get a formatted address from the placemark
+    private func addressString(from placemark: MKPlacemark) -> String? {
+        // Extract street address components
+        let thoroughfare = placemark.thoroughfare
+        let subThoroughfare = placemark.subThoroughfare
+        let locality = placemark.locality
+        
+        var components: [String] = []
+        
+        if let subThoroughfare = subThoroughfare {
+            components.append(subThoroughfare)
+        }
+        
+        if let thoroughfare = thoroughfare {
+            components.append(thoroughfare)
+        }
+        
+        if let locality = locality {
+            components.append(locality)
+        }
+        
+        return components.isEmpty ? nil : components.joined(separator: ", ")
+    }
+}
+
+// Image drop delegate for handling reordering
+struct ImageDropDelegate: DropDelegate {
+    let item: UIImage
+    @Binding var items: [UIImage]
+    let draggedItem: UIImage?
+    
+    func performDrop(info: DropInfo) -> Bool {
+        guard let itemProvider = info.itemProviders(for: [.text]).first else {
+            return false
+        }
+        
+        let _ = itemProvider.loadObject(ofClass: NSString.self) { (string, error) in
+            guard let string = string as? NSString,
+                  let fromIndex = Int(string as String),
+                  let toIndex = self.items.firstIndex(where: { $0 == self.item }) else {
+                return
+            }
+            
+            // Only move if different positions
+            if fromIndex != toIndex {
+                DispatchQueue.main.async {
+                    // Move the element
+                    withAnimation {
+                        let movedItem = self.items.remove(at: fromIndex)
+                        self.items.insert(movedItem, at: toIndex)
+                    }
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        return DropProposal(operation: .move)
     }
 }

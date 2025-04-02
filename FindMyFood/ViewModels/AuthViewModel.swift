@@ -312,6 +312,32 @@ class AuthViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
+                    
+                    // Provide a user-friendly error message for authentication errors
+                    let nsError = error as NSError
+                    let errorCode = nsError.code
+                    
+                    // Handle Firebase Auth errors - these use specific error codes
+                    if nsError.domain == AuthErrorDomain {
+                        // Common Firebase auth error codes
+                        switch errorCode {
+                        case 17011, 17009, 17008: // userNotFound, wrongPassword, invalidEmail
+                            self.error = "Incorrect email or password. Please try again."
+                        case 17005: // userDisabled
+                            self.error = "Your account has been disabled. Please contact support."
+                        case 17010: // tooManyRequests
+                            self.error = "Too many failed login attempts. Please try again later."
+                        case 17020: // networkError
+                            self.error = "Network error. Please check your internet connection and try again."
+                        default:
+                            self.error = "Login failed. Please try again."
+                        }
+                    } else {
+                        self.error = "Login failed. Please try again."
+                    }
+                    
+                    // We don't show the alert for login errors, as they'll be displayed inline in the login view
+                    self.showError = false
                     completion(false)
                 }
             }
@@ -467,6 +493,46 @@ class AuthViewModel: ObservableObject {
         )
     }
     
+//    func getUserById(friendId: String) async throws -> User? {
+//        let userDocument = try await Firestore.firestore()
+//            .collection("users")
+//            .document(friendId)
+//            .getDocument()
+//
+//        guard let data = userDocument.data() else {
+//            throw UserFetchError.documentNotFound
+//        }
+//
+//        // Manual decoding of Firestore document
+//        guard let id = data["id"] as? String,
+//              let name = data["name"] as? String,
+//              let username = data["username"] as? String,
+//              let email = data["email"] as? String,
+//              let friends = data["friends"] as? [String],
+//              let friendRequests = data["friendRequests"] as? [String],
+//              let pendingRequests = data["pendingRequests"] as? [String],
+//              let posts = data["posts"] as? [String] else {
+//            throw NetworkError.decodingError
+//        }
+//
+//        let profilePicture = data["profilePicture"] as? String
+//        let loggedIn = data["loggedIn"] as? Bool ?? false
+//
+//        return User(
+//            id: id,
+//            name: name,
+//            username: username,
+//            email: email,
+//            friends: friends,
+//            friendRequests: friendRequests,
+//            pendingRequests: pendingRequests,
+//            posts: [], // Assuming `Post` initializer for post IDs
+//            profilePicture: profilePicture,
+//            loggedIn: loggedIn
+//        )
+//    }
+//
+    
     func getUserById(friendId: String) async throws -> User? {
         let userDocument = try await Firestore.firestore()
             .collection("users")
@@ -474,33 +540,24 @@ class AuthViewModel: ObservableObject {
             .getDocument()
 
         guard let data = userDocument.data() else {
+            print("Debug: No data found for user ID \(friendId)")
             throw UserFetchError.documentNotFound
         }
 
-        // Manual decoding of Firestore document
-        guard let id = data["id"] as? String,
-              let name = data["name"] as? String,
-              let username = data["username"] as? String,
-              let email = data["email"] as? String,
-              let friends = data["friends"] as? [String],
-              let friendRequests = data["friendRequests"] as? [String],
-              let pendingRequests = data["pendingRequests"] as? [String],
-              let posts = data["posts"] as? [String] else {
-            throw NetworkError.decodingError
-        }
-
+        // Use the document ID directly instead of expecting an "id" field
         let profilePicture = data["profilePicture"] as? String
         let loggedIn = data["loggedIn"] as? Bool ?? false
 
+        // Make optional fields truly optional
         return User(
-            id: id,
-            name: name,
-            username: username,
-            email: email,
-            friends: friends,
-            friendRequests: friendRequests,
-            pendingRequests: pendingRequests,
-            posts: [], // Assuming `Post` initializer for post IDs
+            id: friendId, // Use the Firestore document ID
+            name: data["name"] as? String ?? "",
+            username: data["username"] as? String ?? "",
+            email: data["email"] as? String ?? "",
+            friends: data["friends"] as? [String] ?? [],
+            friendRequests: data["friendRequests"] as? [String] ?? [],
+            pendingRequests: data["pendingRequests"] as? [String] ?? [],
+            posts: [], // or handle posts differently if needed
             profilePicture: profilePicture,
             loggedIn: loggedIn
         )
@@ -1284,7 +1341,71 @@ class AuthViewModel: ObservableObject {
             return nil
         }
     }
+    func getMutualFriendsCount(with friendId: String) async throws -> Int {
+        guard let currentUser = currentUser else {
+            print("Debug: No current user logged in")
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user is logged in."])
+        }
 
+        let db = Firestore.firestore()
+
+
+        let currentUserFriends = currentUser.friends
+
+        do {
+            let friendDoc = try await db.collection("users").document(friendId).getDocument()
+            guard let friendData = friendDoc.data() else {
+                print("Debug: Could not fetch friend document")
+                return 0
+            }
+
+            let friendFriends = friendData["friends"] as? [String] ?? []
+
+            let mutualFriends = Set(currentUserFriends).intersection(Set(friendFriends))
+            
+            return mutualFriends.count
+        } catch {
+            print("Debug: Error fetching friend document: \(error)")
+            return 0
+        }
+    }
+
+    func getMutualFriends(with friendId: String) async throws -> [User] {
+        guard let currentUser = currentUser else {
+            print("Debug: No current user logged in")
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user is logged in."])
+        }
+
+        let db = Firestore.firestore()
+
+        let currentUserFriends = Set(currentUser.friends)
+
+        do {
+            let friendDoc = try await db.collection("users").document(friendId).getDocument()
+            guard let friendData = friendDoc.data() else {
+                return []
+            }
+
+            let friendFriends = friendData["friends"] as? [String] ?? []
+
+            let mutualFriendIds = currentUserFriends.intersection(Set(friendFriends))
+
+            var mutualFriends: [User] = []
+            for id in mutualFriendIds {
+                do {
+                    if let user = try await getUserById(friendId: id) {
+                        mutualFriends.append(user)
+                    }
+                } catch {
+                    print("Debug: Error fetching mutual friend with ID \(id): \(error)")
+                }
+            }
+
+            return mutualFriends
+        } catch {
+            return []
+        }
+    }
 
 }
 
