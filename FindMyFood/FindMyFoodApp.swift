@@ -4,12 +4,34 @@ import FirebaseMessaging
 import UserNotifications
 import FirebaseAuth
 import FirebaseFirestore
+// Import the ImageCacheManager
+import UIKit
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         FirebaseApp.configure()
+
+        // Configure the image cache manager with increased limits for better performance
+        ImageCacheManager.shared.configure(countLimit: 250, memoryLimit: 250 * 1024 * 1024) // 250MB cache limit
+        
+        // Initialize the cache system in the background
+        Task {
+            // This just ensures the cache directories are created
+            // No need to actually load data here as it will be loaded when needed by the MapView
+            _ = ImageCacheManager.shared
+            _ = AnnotationDataCache.shared
+            
+            // Log cache status if user is logged in
+            if let userId = Auth.auth().currentUser?.uid {
+                if AnnotationDataCache.shared.needsRefresh(for: userId) {
+                    print("Annotation cache is stale or empty, will need refresh")
+                } else {
+                    print("Annotation cache is up-to-date")
+                }
+            }
+        }
 
         // Request notification permissions
         UNUserNotificationCenter.current().delegate = self

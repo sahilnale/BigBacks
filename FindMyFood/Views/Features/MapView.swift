@@ -1223,17 +1223,27 @@ struct RestaurantReviewViewModel {
 // Custom annotation view with clustering support
 class ImageAnnotationView: MKAnnotationView {
     private var imageView: UIImageView!
+    private var activityIndicator: UIActivityIndicatorView!
+    private var isLoadingImage: Bool = false
     
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         
         self.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
+        
+        // Initialize image view
         self.imageView = UIImageView(frame: self.bounds)
         self.imageView.contentMode = .scaleAspectFill
         self.imageView.clipsToBounds = true
         self.imageView.layer.cornerRadius = 12
         self.imageView.layer.masksToBounds = true
         self.addSubview(self.imageView)
+        
+        // Add loading indicator
+        self.activityIndicator = UIActivityIndicatorView(style: .medium)
+        self.activityIndicator.hidesWhenStopped = true
+        self.activityIndicator.center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
+        self.addSubview(self.activityIndicator)
         
         // Set clustering identifier only once during initialization
         self.clusteringIdentifier = "imageCluster"
@@ -1252,25 +1262,43 @@ class ImageAnnotationView: MKAnnotationView {
     
     override var image: UIImage? {
         get { return self.imageView.image }
-        set { self.imageView.image = newValue }
+        set { 
+            if newValue == nil && !isLoadingImage {
+                // If no image is set and we're not loading, show loading indicator
+                self.activityIndicator.startAnimating()
+                isLoadingImage = true
+            } else if newValue != nil {
+                // Image is set, stop loading indicator
+                self.activityIndicator.stopAnimating()
+                isLoadingImage = false
+                self.imageView.image = newValue
+                
+                // Animate the image appearance
+                self.imageView.alpha = 0
+                UIView.animate(withDuration: 0.3) {
+                    self.imageView.alpha = 1
+                }
+            }
+        }
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
         self.imageView.image = nil
+        self.activityIndicator.stopAnimating()
+        isLoadingImage = false
     }
-    
-    // Don't override prepareForDisplay as it might interfere with MapKit's internal KVO
 }
 // Map View Model
 class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, ObservableObject {
     @Published var isPopupShown: Bool = false
+    @Published var isLoadingAnnotations: Bool = false
+    
     private let locationManager = CLLocationManager()
     private let map: MKMapView = {
         let map = MKMapView()
         map.showsUserLocation = true
         map.userTrackingMode = .followWithHeading
-        
         
         map.isZoomEnabled = true
         map.isScrollEnabled = true
@@ -1281,6 +1309,12 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     }()
     
     private var currentPopupView: CustomPopupView?
+    private var loadTask: Task<Void, Never>?
+    private var cachedAnnotations = [String: ImageAnnotation]()
+    
+    // Use a more comprehensive tracking system for annotations
+    private var addedAnnotationIDs = Set<String>() // Just track IDs
+    private var displayedAnnotations = [String: ImageAnnotation]() // Track actual annotations by ID
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1290,7 +1324,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         // Configure the location manager
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
@@ -1313,9 +1346,161 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             object: nil
         )
         
-        // Add image annotation for San Francisco
-        Task {
-            await loadImageAnnotation()
+        // Start loading annotations immediately
+        loadCachedAnnotationsAndRefresh()
+    }
+    
+    // Load cached annotations and then refresh with new ones
+    private func loadCachedAnnotationsAndRefresh() {
+        // Cancel any existing task
+        loadTask?.cancel()
+        
+        // Clear any existing annotations
+        clearAllAnnotations()
+        
+        // Start a new loading task
+        loadTask = Task {
+            isLoadingAnnotations = true
+            
+            // First try to load from cache
+            let loadedFromCache = await loadAnnotationsFromCache()
+            
+            // Then refresh from the network only if needed
+            guard let userId = Auth.auth().currentUser?.uid else {
+                isLoadingAnnotations = false
+                return
+            }
+            
+            // Check if we need to refresh based on cache age
+            let needsRefresh = !loadedFromCache || AnnotationDataCache.shared.needsRefresh(for: userId, maxAge: 900) // 15 minutes
+            
+            if needsRefresh {
+                print("Cache is stale or empty, fetching from network")
+                await refreshAnnotationsFromNetwork()
+            } else {
+                print("Using cached annotations, network refresh not needed")
+            }
+            
+            isLoadingAnnotations = false
+        }
+    }
+    
+    // Clear all annotations properly
+    private func clearAllAnnotations() {
+        DispatchQueue.main.async {
+            // Remove all non-user location annotations from the map
+            let annotationsToRemove = self.map.annotations.filter { !($0 is MKUserLocation) }
+            self.map.removeAnnotations(annotationsToRemove)
+            
+            // Clear our tracking dictionaries
+            self.displayedAnnotations.removeAll()
+            self.addedAnnotationIDs.removeAll()
+        }
+    }
+    
+    // Load annotations from cache
+    private func loadAnnotationsFromCache() async -> Bool {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("Failed to get user ID")
+            return false
+        }
+        
+        if let cachedAnnotations = AnnotationDataCache.shared.loadAnnotations(for: userId) {
+            self.cachedAnnotations = cachedAnnotations
+            
+            // Add cached annotations to the map
+            DispatchQueue.main.async {
+                for (id, annotation) in cachedAnnotations {
+                    // Skip if we've already added this annotation (shouldn't happen here, but safety check)
+                    if self.addedAnnotationIDs.contains(id) {
+                        continue
+                    }
+                    
+                    // We need to create a new instance to avoid reference issues
+                    let newAnnotation = ImageAnnotation(
+                        coordinate: annotation.coordinate,
+                        title: annotation.title,
+                        subtitle: annotation.subtitle,
+                        imageUrls: annotation.imageUrls,
+                        author: annotation.author,
+                        rating: annotation.rating,
+                        heartC: annotation.heartC
+                    )
+                    
+                    // Load image from disk cache if available
+                    if let imageUrlString = annotation.imageUrls.first,
+                       let cachedImage = ImageCacheManager.shared.retrieveImage(for: imageUrlString) {
+                        newAnnotation.images = [cachedImage]
+                    } else {
+                        // Start loading images in the background
+                        Task {
+                            await self.loadImagesForAnnotation(newAnnotation)
+                        }
+                    }
+                    
+                    // Add to map
+                    self.map.addAnnotation(newAnnotation)
+                    
+                    // Track this annotation
+                    self.addedAnnotationIDs.insert(id)
+                    self.displayedAnnotations[id] = newAnnotation
+                }
+                
+                print("Loaded \(self.displayedAnnotations.count) annotations from cache")
+            }
+            
+            // Start prefetching images
+            AnnotationDataCache.shared.prefetchImages(for: Array(cachedAnnotations.values))
+            return true
+        }
+        return false
+    }
+    
+    // Load images for an annotation
+    private func loadImagesForAnnotation(_ annotation: ImageAnnotation) async {
+        var loadedImages: [UIImage] = []
+        
+        for imageUrlString in annotation.imageUrls {
+            guard let imageUrl = URL(string: imageUrlString) else { continue }
+            
+            if let image = await ImageCacheManager.shared.loadImageAsync(from: imageUrl) {
+                loadedImages.append(image)
+                
+                // Update the annotation's first image as soon as we have one
+                if loadedImages.count == 1 {
+                    annotation.images = loadedImages
+                    
+                    DispatchQueue.main.async {
+                        if let annotationView = self.map.view(for: annotation) as? ImageAnnotationView {
+                            annotationView.image = loadedImages.first
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Update with all images once we have them all
+        if loadedImages.count > 1 {
+            annotation.images = loadedImages
+        }
+    }
+    
+    // Refresh annotations from network
+    private func refreshAnnotationsFromNetwork() async {
+        await loadImageAnnotation()
+    }
+    
+    deinit {
+        // Cancel any pending task when view model is deallocated
+        loadTask?.cancel()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // If there are no annotations, try loading them again
+        if map.annotations.count <= 1 { // account for user location annotation
+            loadCachedAnnotationsAndRefresh()
         }
     }
     
@@ -1351,13 +1536,8 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        // Remove all existing annotations
-        //                removeAllAnnotations()
-        
-        // Reload image annotations asynchronously
-        Task {
-            await loadImageAnnotation()
-        }
+        // We don't need to reload in viewDidAppear since we're already loading in viewWillAppear
+        // when needed. This was causing duplicate annotations.
     }
     
     func recenterMap() {
@@ -1387,8 +1567,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 return
             }
             
-            
-            
             // Parse the coordinate
             let components = coordinate.split(separator: ",")
             guard components.count == 2,
@@ -1399,104 +1577,151 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             }
             let coordinateC = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
             
-            print("About to add")
-            addUserAnnotation(coordinate_in: coordinateC, title_in: title, review: review, image_in: imageIdentifiers, author_in: author, rating_in: rating, heartC_in: likes)
+            // Generate a consistent ID for this annotation
+            let annotationId = "\(latitude),\(longitude)_\(title)"
             
-            print("Done")
+            // Check if this annotation is already on the map
+            if addedAnnotationIDs.contains(annotationId) {
+                print("Annotation already exists, skipping")
+                return
+            }
+            
+            // Create the annotation with a placeholder initially
+            let annotation = ImageAnnotation(
+                coordinate: coordinateC,
+                title: title,
+                subtitle: review,
+                imageUrls: imageIdentifiers,
+                author: author,
+                rating: rating,
+                heartC: likes
+            )
+            
+            // Add to the map immediately
+            DispatchQueue.main.async {
+                self.map.addAnnotation(annotation)
+                
+                // Track this annotation
+                self.addedAnnotationIDs.insert(annotationId)
+                self.displayedAnnotations[annotationId] = annotation
+                
+                // Adjust map view region to include the new annotation
+                var region = self.map.region
+                region.center = coordinateC
+                region.span.latitudeDelta = 0.05
+                region.span.longitudeDelta = 0.05
+                self.map.setRegion(region, animated: true)
+            }
+            
+            // Load images in the background
+            await loadImagesForAnnotation(annotation)
+            
+            // Add to cached annotations
+            if let userId = Auth.auth().currentUser?.uid {
+                self.cachedAnnotations[annotationId] = annotation
+                AnnotationDataCache.shared.saveAnnotations(self.cachedAnnotations, for: userId)
+            }
+            
+            print("Done adding annotation")
         }
     }
-    
-    func addUserAnnotation(
-        coordinate_in: CLLocationCoordinate2D,
-        title_in: String,
-        review: String,
-        image_in: [String],
-        author_in: String,
-        rating_in: Int,
-        heartC_in: Int
-    ) {
-        let annotation = ImageAnnotation(
-            coordinate: coordinate_in,
-            title: title_in,
-            subtitle: review,
-            imageUrls: image_in,
-            author: author_in,
-            rating: rating_in,
-            heartC: heartC_in
-        )
-        print("working")
-        self.map.addAnnotation(annotation)
-        
-        // Optionally, adjust map view region to include the new annotation
-        var region = self.map.region
-        region.center = coordinate_in
-        region.span.latitudeDelta = 0.05
-        region.span.longitudeDelta = 0.05
-        self.map.setRegion(region, animated: true)
-    }
-    private var addedAnnotationIDs = Set<String>()
     
     func loadImageAnnotation() async {
         guard let userId = Auth.auth().currentUser?.uid else {
             print("Failed to get user")
             return
         }
+        
         do {
             let feed = try await AuthViewModel.shared.fetchPostDetailsFromFeed(userId: userId)
+            
+            // Check if task was cancelled while waiting for the feed
+            if Task.isCancelled { return }
+            
+            // Process the feed and update annotations
+            var newAnnotations = [String: ImageAnnotation]()
+            var newIDs = Set<String>()
+            
             for (post, user) in feed {
                 let annotationID = post._id
+                newIDs.insert(annotationID)
                 
+                // Skip if we've already added this annotation to the map
                 if addedAnnotationIDs.contains(annotationID) {
+                    // But keep the annotation in our cache
+                    if let existingAnnotation = displayedAnnotations[annotationID] {
+                        newAnnotations[annotationID] = existingAnnotation
+                    }
                     continue
                 }
-                addedAnnotationIDs.insert(annotationID)
                 
-                let imageUrls = post.imageUrls // Use the array
-                var images: [UIImage] = []
-                
-                for imageUrlString in imageUrls {
-                    guard let imageUrl = URL(string: imageUrlString) else { continue }
-                    
-                    let image: UIImage? = await withCheckedContinuation { continuation in
-                        URLSession.shared.dataTask(with: imageUrl) { data, _, error in
-                            if let data = data, let fetchedImage = UIImage(data: data) {
-                                continuation.resume(returning: fetchedImage)
-                            } else {
-                                continuation.resume(returning: nil)
-                            }
-                        }.resume()
-                    }
-                    
-                    if let image = image {
-                        images.append(image)
-                    }
-                }
-                
-                guard !images.isEmpty else { continue }
-                
+                // Parse location
                 let locationComponents = post.location.split(separator: ",")
                 guard locationComponents.count == 2,
                       let latitude = Double(locationComponents[0]),
                       let longitude = Double(locationComponents[1]) else {
                     continue
                 }
+                
                 let annotationCoordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
                 
+                // Create the annotation
                 let annotation = ImageAnnotation(
                     coordinate: annotationCoordinate,
                     title: post.restaurantName,
                     subtitle: post.review,
-                    imageUrls: imageUrls,
+                    imageUrls: post.imageUrls,
                     author: user.username,
                     rating: post.starRating,
                     heartC: post.likes
                 )
-                annotation.images = images
                 
+                // Add to the map immediately
                 DispatchQueue.main.async {
                     self.map.addAnnotation(annotation)
+                    
+                    // Track this annotation
+                    self.addedAnnotationIDs.insert(annotationID)
+                    self.displayedAnnotations[annotationID] = annotation
+                }
+                
+                // Store in our new annotations dictionary
+                newAnnotations[annotationID] = annotation
+                
+                // Load images asynchronously
+                Task {
+                    await loadImagesForAnnotation(annotation)
                 }
             }
+            
+            // Remove annotations that are no longer in the feed
+            let outdatedIDs = self.addedAnnotationIDs.subtracting(newIDs)
+            if !outdatedIDs.isEmpty {
+                DispatchQueue.main.async {
+                    // Remove these annotations from the map
+                    let outdatedAnnotations = outdatedIDs.compactMap { self.displayedAnnotations[$0] }
+                    self.map.removeAnnotations(outdatedAnnotations)
+                    
+                    // Remove them from our tracking dictionaries
+                    for id in outdatedIDs {
+                        self.displayedAnnotations.removeValue(forKey: id)
+                        self.addedAnnotationIDs.remove(id)
+                    }
+                    
+                    print("Removed \(outdatedAnnotations.count) outdated annotations")
+                }
+            }
+            
+            // Update our cached annotations
+            self.cachedAnnotations = newAnnotations
+            
+            // Save to disk
+            AnnotationDataCache.shared.saveAnnotations(newAnnotations, for: userId)
+            
+            // Prefetch all images in the background
+            AnnotationDataCache.shared.prefetchImages(for: Array(newAnnotations.values))
+            
+            print("Network load complete, showing \(self.displayedAnnotations.count) annotations")
         } catch {
             print("Error fetching post details: \(error)")
         }

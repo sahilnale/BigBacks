@@ -112,10 +112,10 @@ struct WelcomeView: View {
 
 }
 
-//Preview Provider
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-            .environmentObject(AuthViewModel())
-    }
-}
+////Preview Provider
+//struct ContentView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        ContentView()
+//            .environmentObject(AuthViewModel())
+//    }
+//}
