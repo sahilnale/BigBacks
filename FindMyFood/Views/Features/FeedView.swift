@@ -348,3 +348,7 @@ struct WishlistView: View {
 extension Notification.Name {
     static let reloadWishlist = Notification.Name("reloadWishlist")
 }
+
+
+
+

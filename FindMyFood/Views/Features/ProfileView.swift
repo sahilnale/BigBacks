@@ -506,7 +506,7 @@ struct PostGridView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, maxHeight: 300)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
         } else {
             LazyVGrid(columns: columns, spacing: 8) {
