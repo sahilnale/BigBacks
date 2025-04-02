@@ -51,6 +51,7 @@ struct SignUpView: View {
                                 Text("Add Profile Picture")
                                     .font(.headline)
                                     .foregroundColor(.gray)
+                                    .frame(alignment: .center)
                             )
                             .onTapGesture {
                                 showImagePicker = true

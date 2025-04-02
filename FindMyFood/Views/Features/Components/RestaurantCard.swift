@@ -200,59 +200,92 @@ struct RestaurantCard: View {
             // 6) Show/hide comments section
             // Comments Section
             if showComments {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Comments")
-                            .font(.headline)
-                            .foregroundColor(.primary.opacity(0.8))
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            withAnimation {
-                                showComments.toggle()
-                            }
-                        }) {
-                            Image(systemName: "chevron.up")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    
-                    if post.comments.isEmpty {
-                        HStack {
-                            Spacer()
-                            VStack(spacing: 12) {
-                                Image(systemName: "bubble.middle.bottom")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.gray.opacity(0.5))
-                                Text("No comments yet")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                            }
-                            Spacer()
-                        }
-                        .padding(.vertical, 20)
-                    } else {
-                        ForEach(post.comments, id: \.self) { comment in
-                            commentView(for: comment)
-                        }
-                    }
-                    
-                    // Comment input field
-                    HStack {
-                        TextField("Add a comment...", text: $commentText)
-                            .padding(10)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(20)
-                        
-                        Button(action: {
-                            // Add comment functionality
-                        }) {
-                            Image(systemName: "paperplane.fill")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    .padding(.top, 8)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(post.comments) { comment in
+                       HStack(alignment: .top) {
+                           AsyncImage(url: URL(string: comment.profilePhotoUrl)) { image in
+                               image
+                                   .resizable()
+                                   .scaledToFill()
+                                   .frame(width: 25, height: 25)
+                                   .clipShape(Circle())
+                                   .padding(.leading)
+                           } placeholder: {
+                               Circle()
+                                   .fill(Color.gray)
+                                   .frame(width: 25, height: 25)
+                                   .padding(.leading)
+                           }
+
+                           VStack(alignment: .leading, spacing: 4) {
+                               Text("@\(commenterUsernames[comment.userId] ?? "Loading...")")
+                                   .foregroundColor(Color.accentColor)
+                                   .font(.subheadline)
+                                   .onAppear {
+                                       Task {
+                                           let userId = Auth.auth().currentUser?.uid ?? ""
+
+                                           self.likeCount = post.likes // ✅ This will set it from the post
+                                           self.isLiked = post.likedBy.contains(userId) // ✅ Check if the user has liked it already
+
+                                           do {
+                                               self.isWishlisted = try await AuthViewModel.shared.isPostWishlisted(postId: post.id, userId: userId)
+                                           } catch {
+                                               print("Failed to fetch wishlist status: \(error)")
+                                           }
+                                       }
+                                   }
+
+                               Text(comment.text)
+                                   .font(.subheadline)
+                                   .foregroundColor(.secondary)
+                                   .padding(.vertical, 4)
+                                   .padding(.horizontal)
+                                   .background(Color(UIColor.systemGray6))
+                                   .cornerRadius(8)
+                               
+                               Text("\(timeAgo(from: comment.timestamp))")
+                                                                  .font(.caption)
+                                                                  .foregroundColor(.gray)
+                           }
+                       }
+                   }
+                   HStack {
+                      TextField("Add a comment...", text: $newCommentText)
+                          .textFieldStyle(DefaultTextFieldStyle())
+                      
+                      Button(action: {
+                          guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                          Task {
+                              do {
+                                  let comment = Comment(
+                                      id: UUID().uuidString,
+                                      commentId: UUID().uuidString,
+                                      userId: Auth.auth().currentUser?.uid ?? "",
+                                      profilePhotoUrl: AuthViewModel.shared.currentUser?.profilePicture ?? "placeholder",
+                                      text: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
+                                      timestamp: Date()
+                                  )
+                                  
+                                  let newComment = try await AuthViewModel.shared.addComment(to: post.id, comment: comment)
+                                  
+                                  await MainActor.run {
+                                      post.comments.append(newComment)
+                                      newCommentText = ""
+                                  }
+                                  print("Comment added successfully.")
+                              } catch {
+                                  print("Failed to add comment: \(error)")
+                              }
+                          }
+                      }) {
+                          Text("Post")
+                              .font(.subheadline)
+                              .foregroundColor(.customOrange)
+                              .padding(.horizontal)
+                      }
+                  }
+                  .padding(.horizontal)
                 }
                 .padding()
                 .background(Color(.systemBackground))
@@ -382,6 +415,4 @@ func timeAgo(from date: Date) -> String {
     
     return "Just now"
 }
-
-
 
