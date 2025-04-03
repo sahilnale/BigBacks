@@ -552,15 +552,7 @@ class RestaurantClusterPopupViewController: UIViewController {
         ratingContainer.addSubview(ratingStack)
 
         // Badge for status or promotion (optional)
-        let badgeLabel = UILabel()
-        badgeLabel.text = "Open"
-        badgeLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
-        badgeLabel.textColor = .white
-        badgeLabel.backgroundColor = UIColor(red: 40/255, green: 167/255, blue: 69/255, alpha: 1)
-        badgeLabel.textAlignment = .center
-        badgeLabel.layer.cornerRadius = 10
-        badgeLabel.layer.masksToBounds = true
-        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        
 
         // Add subviews
         contentContainer.addSubview(nameLabel)
@@ -575,9 +567,7 @@ class RestaurantClusterPopupViewController: UIViewController {
         itemContainer.addSubview(contentContainer)
 
         // Badge is conditionally added
-        if Bool.random() { // Replace with actual condition based on your data
-            contentContainer.addSubview(badgeLabel)
-        }
+       
         
         // Add itemContainer to cardContainer
         cardContainer.addSubview(itemContainer)
@@ -627,14 +617,7 @@ class RestaurantClusterPopupViewController: UIViewController {
         }
 
         // Conditional constraints for badge
-        if badgeLabel.superview != nil {
-            NSLayoutConstraint.activate([
-                badgeLabel.topAnchor.constraint(equalTo: imageView.topAnchor, constant: 12),
-                badgeLabel.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 12),
-                badgeLabel.heightAnchor.constraint(equalToConstant: 20),
-                badgeLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            ])
-        }
+        
 
         return cardContainer
     }
