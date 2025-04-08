@@ -299,6 +299,24 @@ struct CreatePostView: View {
                 starRating: rating
             )
 
+            // Post notification with all necessary details for map annotation
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .postAdded,
+                    object: nil,
+                    userInfo: [
+                        "postId": newPost.id,
+                        "userId": newPost.userId,
+                        "imageData": newPost.imageUrls,
+                        "location": locationString,
+                        "restaurantName": restaurantName,
+                        "review": reviewContent,
+                        "starRating": rating,
+                        "likes": 0
+                    ]
+                )
+            }
+
             resetPostState()
             DispatchQueue.main.async {
                 dismiss()

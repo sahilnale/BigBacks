@@ -933,6 +933,14 @@ class AuthViewModel: ObservableObject {
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else {
+                    // Post successfully deleted, send notification
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(
+                            name: .postDeleted,
+                            object: nil,
+                            userInfo: ["postId": postId]
+                        )
+                    }
                     continuation.resume()
                 }
             }

@@ -1329,6 +1329,14 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             object: nil
         )
         
+        // Add observer for deleting posts
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDeletePostNotification(_:)),
+            name: .postDeleted,
+            object: nil
+        )
+        
         // Start loading annotations immediately
         loadCachedAnnotationsAndRefresh()
     }
@@ -1474,6 +1482,9 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     }
     
     deinit {
+        // Remove notification observers when view model is deallocated
+        NotificationCenter.default.removeObserver(self)
+        
         // Cancel any pending task when view model is deallocated
         loadTask?.cancel()
     }
@@ -1922,12 +1933,26 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     popupView.removeFromSuperview()
                     self.currentPopupView = nil
                     self.isPopupShown = false
+                    
+                    // Deselect any selected annotations
+                    if let selectedAnnotations = self.map.selectedAnnotations as? [MKAnnotation] {
+                        for annotation in selectedAnnotations {
+                            self.map.deselectAnnotation(annotation, animated: false)
+                        }
+                    }
                 })
             } else {
                 // Fallback if no dimming view found
                 popupView.removeFromSuperview()
                 currentPopupView = nil
                 isPopupShown = false
+                
+                // Deselect any selected annotations
+                if let selectedAnnotations = self.map.selectedAnnotations as? [MKAnnotation] {
+                    for annotation in selectedAnnotations {
+                        self.map.deselectAnnotation(annotation, animated: false)
+                    }
+                }
             }
         }
     }
@@ -2000,6 +2025,33 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 // Then add and select the annotation
                 self.map.addAnnotation(newAnnotation)
                 self.map.selectAnnotation(newAnnotation, animated: true)
+            }
+        }
+    }
+    
+    // MARK: - Notification Handlers
+    
+    @objc func handleDeletePostNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let postId = userInfo["postId"] as? String else {
+            print("Delete notification missing postId")
+            return
+        }
+        
+        print("Handling post deletion for postId: \(postId)")
+        
+        // Remove the annotation from the map
+        if let annotation = displayedAnnotations[postId] {
+            DispatchQueue.main.async {
+                self.map.removeAnnotation(annotation)
+                self.displayedAnnotations.removeValue(forKey: postId)
+                self.addedAnnotationIDs.remove(postId)
+                self.cachedAnnotations.removeValue(forKey: postId)
+                
+                // Update the cache
+                if let userId = Auth.auth().currentUser?.uid {
+                    AnnotationDataCache.shared.saveAnnotations(self.cachedAnnotations, for: userId)
+                }
             }
         }
     }
