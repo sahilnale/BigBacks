@@ -1550,7 +1550,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         Task {
             guard let userInfo = notification.userInfo,
-                  let author = userInfo["userId"] as? String,
+                  let authorId = userInfo["userId"] as? String,
                   let imageIdentifiers = userInfo["imageData"] as? [String],
                   let review = userInfo["review"] as? String,
                   let coordinate = userInfo["location"] as? String,
@@ -1559,6 +1559,19 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                   let rating = userInfo["starRating"] as? Int else {
                 print("Guard failed")
                 return
+            }
+            
+            // Fetch user details to get the username
+            let username: String
+            do {
+                if let user = try await AuthViewModel.shared.getUserById(friendId: authorId) {
+                    username = user.username
+                } else {
+                    username = "@user" // Fallback if user not found
+                }
+            } catch {
+                print("Error fetching user details: \(error)")
+                username = "@user" // Fallback username
             }
             
             // Parse the coordinate
@@ -1586,7 +1599,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 title: title,
                 subtitle: review,
                 imageUrls: imageIdentifiers,
-                author: author,
+                author: username,
                 rating: rating,
                 heartC: likes
             )
