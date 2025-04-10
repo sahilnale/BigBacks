@@ -2,12 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>FindMyFood uses your location to help you discover the best food spots and recommendations near you. We only access your location while you&apos;re using the app.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FindMyFood needs access to your photo library to fetch location metadata from your food photos, so you can easily upload and share posts with friends based on where they were taken!</string>
-	<key>NSCameraUsageDescription</key>
-	<string>We need access to your camera so you can capture and post food photos directly in the app</string>
 	<key>Supported Device Families</key>
 	<array>
 		<string>1</string>
