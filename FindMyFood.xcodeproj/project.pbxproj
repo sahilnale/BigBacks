@@ -449,7 +449,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FindMyFood/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = findmyfoodies;
+				INFOPLIST_KEY_CFBundleDisplayName = FindMyFood;
 				INFOPLIST_KEY_NSCameraUsageDescription = "FindMyFood uses your camera so you can take photos of your meals and instantly share them with your friends!";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "FindMyFood uses your location to help you discover the best food spots and recommendations near you. We only access your location while you're using the app!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "FindMyFood uses your location to help you discover the best food spots and recommendations near you. We only access your location while you're using the app!";
@@ -492,7 +492,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FindMyFood/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = findmyfoodies;
+				INFOPLIST_KEY_CFBundleDisplayName = FindMyFood;
 				INFOPLIST_KEY_NSCameraUsageDescription = "FindMyFood uses your camera so you can take photos of your meals and instantly share them with your friends!";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "FindMyFood uses your location to help you discover the best food spots and recommendations near you. We only access your location while you're using the app!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "FindMyFood uses your location to help you discover the best food spots and recommendations near you. We only access your location while you're using the app!";
