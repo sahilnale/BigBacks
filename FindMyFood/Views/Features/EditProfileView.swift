@@ -13,6 +13,7 @@ struct EditProfileView: View {
     
     @State private var showImagePicker = false
     @State private var selectedImage: UIImage?
+    @State private var showDeleteConfirmation = false
     
     var body: some View {
         NavigationStack {
@@ -68,6 +69,19 @@ struct EditProfileView: View {
                 .padding(.horizontal)
                 .opacity(selectedImage == nil ? 0.5 : 1.0)
                 
+                // Delete Account Button
+                Button(action: {
+                    showDeleteConfirmation = true
+                }) {
+                    Text("Delete Account")
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.red)
+                .cornerRadius(10)
+                .padding(.horizontal)
+                
                 Spacer()
             }
             .navigationTitle("Edit Profile Picture")
@@ -90,6 +104,23 @@ struct EditProfileView: View {
                 }
             } message: {
                 Text(authViewModel.error ?? "Unknown error")
+            }
+            .alert("Delete Account", isPresented: $showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    deleteAccount()
+                }
+            } message: {
+                Text("Are you sure you want to delete your account? This action cannot be undone.")
+            }
+        }
+    }
+    
+    private func deleteAccount() {
+        guard let userId = authViewModel.currentUser?.id else { return }
+        authViewModel.deleteAccount(userId: userId) { success in
+            if success {
+                dismiss()
             }
         }
     }

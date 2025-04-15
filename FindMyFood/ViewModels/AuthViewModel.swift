@@ -1415,6 +1415,71 @@ class AuthViewModel: ObservableObject {
         }
     }
 
+    func deleteAccount(userId: String, completion: @escaping (Bool) -> Void) {
+        isLoading = true
+        
+        Task {
+            do {
+                let db = Firestore.firestore()
+                
+                // 1. Get all post IDs associated with the user
+                let userDoc = try await db.collection("users").document(userId).getDocument()
+                guard let userData = userDoc.data(),
+                      let postIds = userData["posts"] as? [String] else {
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch user posts."])
+                }
+                
+                // 2. Delete all posts
+                for postId in postIds {
+                    do {
+                        // Delete post images from Storage
+                        let postDoc = try await db.collection("posts").document(postId).getDocument()
+                        if let postData = postDoc.data(),
+                           let imageUrls = postData["imageUrls"] as? [String] {
+                            for imageUrl in imageUrls {
+                                if let url = URL(string: imageUrl) {
+                                    let imageRef = Storage.storage().reference(forURL: url.absoluteString)
+                                    try await imageRef.delete()
+                                }
+                            }
+                        }
+                        
+                        // Delete post document
+                        try await db.collection("posts").document(postId).delete()
+                    } catch {
+                        print("Error deleting post \(postId): \(error.localizedDescription)")
+                    }
+                }
+                
+                // 3. Delete profile picture from Storage if it exists
+                if let profilePicture = userData["profilePicture"] as? String,
+                   let url = URL(string: profilePicture) {
+                    let imageRef = Storage.storage().reference(forURL: url.absoluteString)
+                    try await imageRef.delete()
+                }
+                
+                // 4. Delete user document from Firestore
+                try await db.collection("users").document(userId).delete()
+                
+                // 5. Delete authentication account
+                try await Auth.auth().currentUser?.delete()
+                
+                await MainActor.run {
+                    self.logout()
+                    self.isLoading = false
+                    completion(true)
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "Failed to delete account: \(error.localizedDescription)"
+                    self.showError = true
+                    self.isLoading = false
+                    completion(false)
+                }
+            }
+        }
+    }
+
 }
 
 import Foundation
