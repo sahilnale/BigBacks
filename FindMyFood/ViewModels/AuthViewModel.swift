@@ -1422,32 +1422,33 @@ class AuthViewModel: ObservableObject {
             do {
                 let db = Firestore.firestore()
                 
-                // 1. Get all post IDs associated with the user
+                // 1. Get user document
                 let userDoc = try await db.collection("users").document(userId).getDocument()
-                guard let userData = userDoc.data(),
-                      let postIds = userData["posts"] as? [String] else {
-                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch user posts."])
+                guard let userData = userDoc.data() else {
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch user data."])
                 }
                 
-                // 2. Delete all posts
-                for postId in postIds {
-                    do {
-                        // Delete post images from Storage
-                        let postDoc = try await db.collection("posts").document(postId).getDocument()
-                        if let postData = postDoc.data(),
-                           let imageUrls = postData["imageUrls"] as? [String] {
-                            for imageUrl in imageUrls {
-                                if let url = URL(string: imageUrl) {
-                                    let imageRef = Storage.storage().reference(forURL: url.absoluteString)
-                                    try await imageRef.delete()
+                // 2. Delete all posts if they exist
+                if let postIds = userData["posts"] as? [String] {
+                    for postId in postIds {
+                        do {
+                            // Delete post images from Storage
+                            let postDoc = try await db.collection("posts").document(postId).getDocument()
+                            if let postData = postDoc.data(),
+                               let imageUrls = postData["imageUrls"] as? [String] {
+                                for imageUrl in imageUrls {
+                                    if let url = URL(string: imageUrl) {
+                                        let imageRef = Storage.storage().reference(forURL: url.absoluteString)
+                                        try await imageRef.delete()
+                                    }
                                 }
                             }
+                            
+                            // Delete post document
+                            try await db.collection("posts").document(postId).delete()
+                        } catch {
+                            print("Error deleting post \(postId): \(error.localizedDescription)")
                         }
-                        
-                        // Delete post document
-                        try await db.collection("posts").document(postId).delete()
-                    } catch {
-                        print("Error deleting post \(postId): \(error.localizedDescription)")
                     }
                 }
                 
