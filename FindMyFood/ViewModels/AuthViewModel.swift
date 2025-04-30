@@ -1428,7 +1428,22 @@ class AuthViewModel: ObservableObject {
                     throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch user data."])
                 }
                 
-                // 2. Delete all posts if they exist
+                // 2. Get all friends of the user
+                let friends = userData["friends"] as? [String] ?? []
+                
+                // 3. Remove this user from all their friends' friend lists
+                for friendId in friends {
+                    do {
+                        let friendRef = db.collection("users").document(friendId)
+                        try await friendRef.updateData([
+                            "friends": FieldValue.arrayRemove([userId])
+                        ])
+                    } catch {
+                        print("Error removing user from friend's list \(friendId): \(error.localizedDescription)")
+                    }
+                }
+                
+                // 4. Delete all posts if they exist
                 if let postIds = userData["posts"] as? [String] {
                     for postId in postIds {
                         do {
@@ -1452,17 +1467,17 @@ class AuthViewModel: ObservableObject {
                     }
                 }
                 
-                // 3. Delete profile picture from Storage if it exists
+                // 5. Delete profile picture from Storage if it exists
                 if let profilePicture = userData["profilePicture"] as? String,
                    let url = URL(string: profilePicture) {
                     let imageRef = Storage.storage().reference(forURL: url.absoluteString)
                     try await imageRef.delete()
                 }
                 
-                // 4. Delete user document from Firestore
+                // 6. Delete user document from Firestore
                 try await db.collection("users").document(userId).delete()
                 
-                // 5. Delete authentication account
+                // 7. Delete authentication account
                 try await Auth.auth().currentUser?.delete()
                 
                 await MainActor.run {
