@@ -46,20 +46,6 @@ struct VerifyEmailView: View {
                 .foregroundColor(.white)
                 .cornerRadius(10)
 
-                Button("Go Back") {
-                    authViewModel.logout()
-                }
-                .font(.headline)
-                .padding()
-                .foregroundColor(.accentColor)
-
-                // Navigation to Main App View
-                NavigationLink(
-                    destination: MainTabView()
-                        .navigationBarBackButtonHidden(true),
-                    isActive: $shouldNavigateToApp,
-                    label: { EmptyView() }
-                )
             }
             .padding()
             .onAppear {
