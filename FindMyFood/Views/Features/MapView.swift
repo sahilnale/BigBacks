@@ -19,9 +19,11 @@ class RestaurantClusterPopupViewController: UIViewController {
     
     private var imageAnnotations: [ImageAnnotation] = []
     private var onSelect: ((ImageAnnotation) -> Void)?
+    private var navigationPath: NavigationPath?
     
-    init(annotations: [ImageAnnotation], onSelect: @escaping (ImageAnnotation) -> Void) {
+    init(annotations: [ImageAnnotation], navigationPath: NavigationPath?, onSelect: @escaping (ImageAnnotation) -> Void) {
         self.imageAnnotations = annotations
+        self.navigationPath = navigationPath
         self.onSelect = onSelect
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .overCurrentContext
@@ -138,328 +140,9 @@ class RestaurantClusterPopupViewController: UIViewController {
         }
     }
     
-//    private func createRestaurantCard(for annotation: ImageAnnotation) -> UIView {
-//        // Create container
-//        let itemContainer = UIView()
-//        itemContainer.translatesAutoresizingMaskIntoConstraints = false
-//        itemContainer.layer.cornerRadius = 12
-//        itemContainer.clipsToBounds = true
-//        itemContainer.backgroundColor = .secondarySystemBackground
-//        
-//        // Add tap gesture
-//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(restaurantCardTapped(_:)))
-//        itemContainer.addGestureRecognizer(tapGesture)
-//        itemContainer.isUserInteractionEnabled = true
-//        
-//        // Store the annotation reference
-//        objc_setAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-//        
-//        // Create image view
-//        let imageView = UIImageView()
-//        imageView.contentMode = .scaleAspectFill
-//        imageView.clipsToBounds = true
-//        imageView.translatesAutoresizingMaskIntoConstraints = false
-//        if let image = annotation.images.first {
-//            imageView.image = image
-//        } else {
-//            imageView.image = UIImage(systemName: "photo")
-//            imageView.tintColor = .gray
-//            imageView.contentMode = .scaleAspectFit
-//            imageView.backgroundColor = UIColor.systemGray6
-//        }
-//        
-//        // Create gradient overlay
-//        let gradientLayer = CAGradientLayer()
-//        gradientLayer.colors = [
-//            UIColor.clear.cgColor,
-//            UIColor.black.withAlphaComponent(0.6).cgColor
-//        ]
-//        gradientLayer.locations = [0.6, 1.0]
-//        
-//        let overlayView = UIView()
-//        overlayView.translatesAutoresizingMaskIntoConstraints = false
-//        overlayView.layer.addSublayer(gradientLayer)
-//        
-//        // Create title label
-//        let nameLabel = UILabel()
-//        nameLabel.text = annotation.title
-//        nameLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
-//        nameLabel.textColor = .white
-//        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        // Create rating view if rating exists
-//        let ratingContainer = UIView()
-//        ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-//        ratingContainer.layer.cornerRadius = 8
-//        ratingContainer.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        let ratingStack = UIStackView()
-//        ratingStack.axis = .horizontal
-//        ratingStack.spacing = 4
-//        ratingStack.alignment = .center
-//        ratingStack.translatesAutoresizingMaskIntoConstraints = false
-//        ratingStack.isLayoutMarginsRelativeArrangement = true
-//        ratingStack.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
-//        
-//        let starIcon = UIImageView(image: UIImage(systemName: "star.fill"))
-//        starIcon.tintColor = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
-//        starIcon.contentMode = .scaleAspectFit
-//        starIcon.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        let ratingLabel = UILabel()
-//        ratingLabel.text = annotation.rating != nil ? "\(annotation.rating!)" : "N/A"
-//        ratingLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-//        ratingLabel.textColor = .white
-//        ratingLabel.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        // Add subviews
-//        ratingStack.addArrangedSubview(starIcon)
-//        ratingStack.addArrangedSubview(ratingLabel)
-//        ratingContainer.addSubview(ratingStack)
-//        
-//        itemContainer.addSubview(imageView)
-//        itemContainer.addSubview(overlayView)
-//        itemContainer.addSubview(nameLabel)
-//        
-//        if annotation.rating != nil {
-//            itemContainer.addSubview(ratingContainer)
-//        }
-//        
-//        // Setup constraints
-//        NSLayoutConstraint.activate([
-//            itemContainer.heightAnchor.constraint(equalToConstant: 120),
-//            
-//            imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
-//            imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-//            imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-//            imageView.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor),
-//            
-//            overlayView.topAnchor.constraint(equalTo: imageView.topAnchor),
-//            overlayView.leadingAnchor.constraint(equalTo: imageView.leadingAnchor),
-//            overlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
-//            overlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
-//            
-//            nameLabel.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor, constant: 12),
-//            nameLabel.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
-//            nameLabel.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor, constant: -12)
-//        ])
-//        
-//        if annotation.rating != nil {
-//            NSLayoutConstraint.activate([
-//                ratingContainer.topAnchor.constraint(equalTo: itemContainer.topAnchor, constant: 12),
-//                ratingContainer.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor, constant: -12),
-//                
-//                ratingStack.topAnchor.constraint(equalTo: ratingContainer.topAnchor),
-//                ratingStack.leadingAnchor.constraint(equalTo: ratingContainer.leadingAnchor),
-//                ratingStack.trailingAnchor.constraint(equalTo: ratingContainer.trailingAnchor),
-//                ratingStack.bottomAnchor.constraint(equalTo: ratingContainer.bottomAnchor),
-//                
-//                starIcon.widthAnchor.constraint(equalToConstant: 14),
-//                starIcon.heightAnchor.constraint(equalToConstant: 14)
-//            ])
-//        }
-//        
-//        return itemContainer
-//    }
-//    private func createRestaurantCard(for annotation: ImageAnnotation) -> UIView {
-//        // Create main container with shadow
-//        let cardContainer = UIView()
-//        cardContainer.translatesAutoresizingMaskIntoConstraints = false
-//        cardContainer.backgroundColor = .clear
-//        
-//        // Inner container with rounded corners
-//        let itemContainer = UIView()
-//        itemContainer.translatesAutoresizingMaskIntoConstraints = false
-//        itemContainer.layer.cornerRadius = 16
-//        itemContainer.clipsToBounds = true
-//        itemContainer.backgroundColor = .systemBackground
-//        itemContainer.layer.masksToBounds = true
-//        
-//        // Add shadow to main container
-//        cardContainer.layer.shadowColor = UIColor.black.cgColor
-//        cardContainer.layer.shadowOffset = CGSize(width: 0, height: 4)
-//        cardContainer.layer.shadowRadius = 12
-//        cardContainer.layer.shadowOpacity = 0.1
-//        
-//        
-//        
-//        // Add tap gesture
-//        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(restaurantCardTapped(_:)))
-//        cardContainer.addGestureRecognizer(tapGesture)
-//        cardContainer.isUserInteractionEnabled = true
-//        
-//        // Store the annotation reference
-//        objc_setAssociatedObject(cardContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-//
-//        
-//        // Create image view with increased height
-//        let imageView = UIImageView()
-//        imageView.contentMode = .scaleAspectFill
-//        imageView.clipsToBounds = true
-//        imageView.translatesAutoresizingMaskIntoConstraints = false
-//        if let image = annotation.images.first {
-//            imageView.image = image
-//        } else {
-//            // Enhanced placeholder
-//            let configuration = UIImage.SymbolConfiguration(pointSize: 32, weight: .light)
-//            imageView.image = UIImage(systemName: "fork.knife", withConfiguration: configuration)
-//            imageView.tintColor = .systemGray3
-//            imageView.contentMode = .scaleAspectFit
-//            imageView.backgroundColor = UIColor.systemGray6
-//        }
-//        
-//        // Content container for text info
-//        let contentContainer = UIView()
-//        contentContainer.translatesAutoresizingMaskIntoConstraints = false
-//        contentContainer.backgroundColor = .systemBackground
-//        
-//        // Create title label with better typography
-//        let nameLabel = UILabel()
-//        nameLabel.text = annotation.title
-//        nameLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
-//        nameLabel.textColor = .label
-//        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        // Category label (example, you might need to adjust based on your data model)
-//        let categoryLabel = UILabel()
-//        categoryLabel.text = annotation.subtitle ?? "Restaurant"
-//        categoryLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
-//        categoryLabel.textColor = .secondaryLabel
-//        categoryLabel.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        // Create modern rating view
-//        let ratingView = UIView()
-//        ratingView.backgroundColor = .systemBackground
-//        ratingView.translatesAutoresizingMaskIntoConstraints = false
-//        
-//                // Create rating view if rating exists
-//                let ratingContainer = UIView()
-//                ratingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-//                ratingContainer.layer.cornerRadius = 8
-//                ratingContainer.translatesAutoresizingMaskIntoConstraints = false
-//        
-//                let ratingStack = UIStackView()
-//                ratingStack.axis = .horizontal
-//                ratingStack.spacing = 4
-//                ratingStack.alignment = .center
-//                ratingStack.translatesAutoresizingMaskIntoConstraints = false
-//                ratingStack.isLayoutMarginsRelativeArrangement = true
-//                ratingStack.layoutMargins = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
-//        
-//                let starIcon = UIImageView(image: UIImage(systemName: "star.fill"))
-//                starIcon.tintColor = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1)
-//                starIcon.contentMode = .scaleAspectFit
-//                starIcon.translatesAutoresizingMaskIntoConstraints = false
-//        
-//                let ratingLabel = UILabel()
-//                ratingLabel.text = annotation.rating != nil ? "\(annotation.rating!)" : "N/A"
-//                ratingLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-//                ratingLabel.textColor = .white
-//                ratingLabel.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        
-//        // Badge for status or promotion (optional)
-//        let badgeLabel = UILabel()
-//        badgeLabel.text = "Open"
-//        badgeLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
-//        badgeLabel.textColor = .white
-//        badgeLabel.backgroundColor = UIColor(red: 40/255, green: 167/255, blue: 69/255, alpha: 1) // Green color
-//        badgeLabel.textAlignment = .center
-//        badgeLabel.layer.cornerRadius = 10
-//        badgeLabel.layer.masksToBounds = true
-//        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
-//        
-//        // Add subviews to containers
-//        ratingStack.addArrangedSubview(starIcon)
-//        ratingStack.addArrangedSubview(ratingLabel)
-//        ratingView.addSubview(ratingStack)
-//        
-//        contentContainer.addSubview(nameLabel)
-//        contentContainer.addSubview(categoryLabel)
-//        contentContainer.addSubview(ratingView)
-//        
-//        itemContainer.addSubview(imageView)
-//        itemContainer.addSubview(contentContainer)
-//        
-//        //        // Add subviews
-//        //        ratingStack.addArrangedSubview(starIcon)
-//        //        ratingStack.addArrangedSubview(ratingLabel)
-//        //        ratingContainer.addSubview(ratingStack)
-//        //
-//        //        itemContainer.addSubview(imageView)
-//        //        itemContainer.addSubview(overlayView)
-//        //        itemContainer.addSubview(nameLabel)
-//        //
-//                if annotation.rating != nil {
-//                    itemContainer.addSubview(ratingContainer)
-//                }
-//        // Badge is conditionally added (you can customize this logic)
-//        if Bool.random() { // Replace with actual condition based on your data
-//            contentContainer.addSubview(badgeLabel)
-//        }
-//        
-//        // Add itemContainer to cardContainer
-//        cardContainer.addSubview(itemContainer)
-//        
-//        // Setup constraints
-//        NSLayoutConstraint.activate([
-//            // Card container constraints
-//            cardContainer.heightAnchor.constraint(equalToConstant: 220),
-//            
-//            // Item container fills card container
-//            itemContainer.topAnchor.constraint(equalTo: cardContainer.topAnchor),
-//            itemContainer.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
-//            itemContainer.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
-//            itemContainer.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor),
-//            
-//            // Image view takes 70% of the card height
-//            imageView.topAnchor.constraint(equalTo: itemContainer.topAnchor),
-//            imageView.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-//            imageView.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-//            imageView.heightAnchor.constraint(equalTo: itemContainer.heightAnchor, multiplier: 0.7),
-//            
-//            // Content container takes the remaining space
-//            contentContainer.topAnchor.constraint(equalTo: imageView.bottomAnchor),
-//            contentContainer.leadingAnchor.constraint(equalTo: itemContainer.leadingAnchor),
-//            contentContainer.trailingAnchor.constraint(equalTo: itemContainer.trailingAnchor),
-//            contentContainer.bottomAnchor.constraint(equalTo: itemContainer.bottomAnchor),
-//            
-//            // Content layout
-//            nameLabel.topAnchor.constraint(equalTo: contentContainer.topAnchor, constant: 12),
-//            nameLabel.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: 16),
-//            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: ratingView.leadingAnchor, constant: -8),
-//            
-//            categoryLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
-//            categoryLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-//            categoryLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentContainer.trailingAnchor, constant: -16),
-//            
-//            // Rating view aligned to the right
-//            ratingView.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
-//            ratingView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -16),
-//            
-//            // Rating stack inside rating view
-//            ratingStack.topAnchor.constraint(equalTo: ratingView.topAnchor),
-//            ratingStack.leadingAnchor.constraint(equalTo: ratingView.leadingAnchor),
-//            ratingStack.trailingAnchor.constraint(equalTo: ratingView.trailingAnchor),
-//            ratingStack.bottomAnchor.constraint(equalTo: ratingView.bottomAnchor),
-//        ])
-//        
-//        
-//        // Conditional constraints for badge
-//        if badgeLabel.superview != nil {
-//            NSLayoutConstraint.activate([
-//                badgeLabel.topAnchor.constraint(equalTo: imageView.topAnchor, constant: 12),
-//                badgeLabel.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 12),
-//                badgeLabel.heightAnchor.constraint(equalToConstant: 20),
-//                badgeLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-//            ])
-//        }
-//        
-//        return cardContainer
-//    }
-    
-//March 14
     private func createRestaurantCard(for annotation: ImageAnnotation) -> UIView {
+        print("Creating restaurant card for annotation with postId: \(annotation.postId ?? "nil")")
+        
         // Create main container with shadow
         let cardContainer = UIView()
         cardContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -481,11 +164,11 @@ class RestaurantClusterPopupViewController: UIViewController {
         
         // Add tap gesture
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(restaurantCardTapped(_:)))
-        cardContainer.addGestureRecognizer(tapGesture)
-        cardContainer.isUserInteractionEnabled = true
+        itemContainer.addGestureRecognizer(tapGesture)
+        itemContainer.isUserInteractionEnabled = true
         
-        // Store the annotation reference
-        objc_setAssociatedObject(cardContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        // Store the annotation reference on the itemContainer instead of cardContainer
+        objc_setAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 
         // Create image view with increased height
         let imageView = UIImageView()
@@ -667,8 +350,31 @@ class RestaurantClusterPopupViewController: UIViewController {
             return
         }
         
+        // Ensure we have a valid post ID
+        guard let postId = annotation.postId, !postId.isEmpty else { return }
+        
+        // Create Post object from annotation data
+        let post = Post(
+            _id: postId,
+            userId: annotation.author ?? "",
+            imageUrls: annotation.imageUrls,
+            timestamp: Timestamp(date: Date()),
+            review: annotation.subtitle ?? "",
+            location: "\(annotation.coordinate.latitude),\(annotation.coordinate.longitude)",
+            restaurantName: annotation.title ?? "",
+            likes: annotation.heartC ?? 0,
+            likedBy: [],
+            starRating: annotation.rating ?? 0,
+            comments: []
+        )
+        
         dismiss(animated: true) { [weak self] in
-            self?.onSelect?(annotation)
+            DispatchQueue.main.async {
+                if var path = self?.navigationPath {
+                    path.append(post)
+                    self?.navigationPath = path
+                }
+            }
         }
     }
     
@@ -697,8 +403,10 @@ class ImageAnnotation: NSObject, MKAnnotation {
     var author: String?
     var rating: Int?
     var heartC: Int?
+    var postId: String?
     
-    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, imageUrls: [String], author: String?, rating: Int?, heartC: Int?) {
+    
+    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, imageUrls: [String], author: String?, rating: Int?, heartC: Int?, postId: String?) {
         self.coordinate = coordinate
         self.title = title
         self.subtitle = subtitle
@@ -706,6 +414,8 @@ class ImageAnnotation: NSObject, MKAnnotation {
         self.author = author
         self.rating = rating
         self.heartC = heartC
+        self.postId = postId
+        
     }
 }
 
@@ -732,13 +442,17 @@ class ClusterAnnotationView: MKAnnotationView {
         didSet {
             guard let cluster = annotation as? MKClusterAnnotation else { return }
             
-            if let latestAnnotation = cluster.memberAnnotations.last as? ImageAnnotation,
-               let latestImage = latestAnnotation.images.first {
-                let clusterImage = generateClusterImage(
-                    baseImage: latestImage,
-                    text: "\(cluster.memberAnnotations.count)"
-                )
-                self.image = clusterImage
+            if let latestAnnotation = cluster.memberAnnotations.last as? ImageAnnotation {
+                print("Cluster member annotations: \(cluster.memberAnnotations.count)")
+                print("Latest annotation postId: \(latestAnnotation.postId ?? "nil")")
+                
+                if let latestImage = latestAnnotation.images.first {
+                    let clusterImage = generateClusterImage(
+                        baseImage: latestImage,
+                        text: "\(cluster.memberAnnotations.count)"
+                    )
+                    self.image = clusterImage
+                }
             }
         }
     }
@@ -1245,7 +959,7 @@ class ImageAnnotationView: MKAnnotationView {
     
     override var image: UIImage? {
         get { return self.imageView.image }
-        set { 
+        set {
             if newValue == nil && !isLoadingImage {
                 // If no image is set and we're not loading, show loading indicator
                 self.activityIndicator.startAnimating()
@@ -1276,6 +990,13 @@ class ImageAnnotationView: MKAnnotationView {
 class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, ObservableObject {
     @Published var isPopupShown: Bool = false
     @Published var isLoadingAnnotations: Bool = false
+    @Published var navigationPath: NavigationPath? {
+        didSet {
+            if let path = navigationPath {
+                print("Navigation path updated with \(path.count) items")
+            }
+        }
+    }
     
     private let locationManager = CLLocationManager()
     private let map: MKMapView = {
@@ -1298,6 +1019,17 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
     // Use a more comprehensive tracking system for annotations
     private var addedAnnotationIDs = Set<String>() // Just track IDs
     private var displayedAnnotations = [String: ImageAnnotation]() // Track actual annotations by ID
+    
+    // Helper method to navigate to PostView
+    private func navigateToPostView(with post: Post) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if var navigationPath = self.navigationPath {
+                navigationPath.append(post)
+                self.navigationPath = navigationPath
+            }
+        }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1407,6 +1139,12 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                         continue
                     }
                     
+                    // Skip if the annotation has no post ID
+                    guard let postId = annotation.postId, !postId.isEmpty else {
+                        print("Skipping cached annotation with empty post ID")
+                        continue
+                    }
+                    
                     // We need to create a new instance to avoid reference issues
                     let newAnnotation = ImageAnnotation(
                         coordinate: annotation.coordinate,
@@ -1415,7 +1153,8 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                         imageUrls: annotation.imageUrls,
                         author: annotation.author,
                         rating: annotation.rating,
-                        heartC: annotation.heartC
+                        heartC: annotation.heartC,
+                        postId: postId // Ensure we pass the post ID
                     )
                     
                     // Load image from disk cache if available
@@ -1556,6 +1295,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                   let coordinate = userInfo["location"] as? String,
                   let title = userInfo["restaurantName"] as? String,
                   let likes = userInfo["likes"] as? Int,
+                  let postId = userInfo["postId"] as? String,
                   let rating = userInfo["starRating"] as? Int else {
                 print("Guard failed")
                 return
@@ -1584,8 +1324,8 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             }
             let coordinateC = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
             
-            // Generate a consistent ID for this annotation
-            let annotationId = "\(latitude),\(longitude)_\(title)"
+            // Use postId as the annotationId
+            let annotationId = postId
             
             // Check if this annotation is already on the map
             if addedAnnotationIDs.contains(annotationId) {
@@ -1601,7 +1341,8 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 imageUrls: imageIdentifiers,
                 author: username,
                 rating: rating,
-                heartC: likes
+                heartC: likes,
+                postId: postId
             )
             
             // Add to the map immediately
@@ -1641,6 +1382,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         
         do {
             let feed = try await AuthViewModel.shared.fetchPostDetailsFromFeed(userId: userId)
+            print("Fetched feed with \(feed.count) posts")
             
             // Check if task was cancelled while waiting for the feed
             if Task.isCancelled { return }
@@ -1649,24 +1391,31 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             var newAnnotations = [String: ImageAnnotation]()
             var newIDs = Set<String>()
             
+            // Clear existing annotations first
+            DispatchQueue.main.async {
+                self.map.removeAnnotations(self.map.annotations.filter { !($0 is MKUserLocation) })
+                self.displayedAnnotations.removeAll()
+                self.addedAnnotationIDs.removeAll()
+            }
+            
             for (post, user) in feed {
                 let annotationID = post._id
-                newIDs.insert(annotationID)
+                print("Processing post with ID: \(annotationID)")
                 
-                // Skip if we've already added this annotation to the map
-                if addedAnnotationIDs.contains(annotationID) {
-                    // But keep the annotation in our cache
-                    if let existingAnnotation = displayedAnnotations[annotationID] {
-                        newAnnotations[annotationID] = existingAnnotation
-                    }
+                // Skip if the post ID is empty
+                guard !annotationID.isEmpty else {
+                    print("Skipping post with empty ID")
                     continue
                 }
+                
+                newIDs.insert(annotationID)
                 
                 // Parse location
                 let locationComponents = post.location.split(separator: ",")
                 guard locationComponents.count == 2,
                       let latitude = Double(locationComponents[0]),
                       let longitude = Double(locationComponents[1]) else {
+                    print("Failed to parse location for post: \(annotationID)")
                     continue
                 }
                 
@@ -1680,8 +1429,11 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                     imageUrls: post.imageUrls,
                     author: user.username,
                     rating: post.starRating,
-                    heartC: post.likes
+                    heartC: post.likes,
+                    postId: annotationID
                 )
+                
+                print("Created annotation with postId: \(annotation.postId ?? "nil")")
                 
                 // Add to the map immediately
                 DispatchQueue.main.async {
@@ -1701,24 +1453,6 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 }
             }
             
-            // Remove annotations that are no longer in the feed
-            let outdatedIDs = self.addedAnnotationIDs.subtracting(newIDs)
-            if !outdatedIDs.isEmpty {
-                DispatchQueue.main.async {
-                    // Remove these annotations from the map
-                    let outdatedAnnotations = outdatedIDs.compactMap { self.displayedAnnotations[$0] }
-                    self.map.removeAnnotations(outdatedAnnotations)
-                    
-                    // Remove them from our tracking dictionaries
-                    for id in outdatedIDs {
-                        self.displayedAnnotations.removeValue(forKey: id)
-                        self.addedAnnotationIDs.remove(id)
-                    }
-                    
-                    print("Removed \(outdatedAnnotations.count) outdated annotations")
-                }
-            }
-            
             // Update our cached annotations
             self.cachedAnnotations = newAnnotations
             
@@ -1728,7 +1462,10 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             // Prefetch all images in the background
             AnnotationDataCache.shared.prefetchImages(for: Array(newAnnotations.values))
             
-            print("Network load complete, showing \(self.displayedAnnotations.count) annotations")
+            // Wait for all annotations to be added to the map
+            await MainActor.run {
+                print("Network load complete, showing \(self.displayedAnnotations.count) annotations")
+            }
         } catch {
             print("Error fetching post details: \(error)")
         }
@@ -1821,109 +1558,54 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             let imageAnnotations = cluster.memberAnnotations.compactMap { $0 as? ImageAnnotation }
             
             // Create and show the modern popup
-            let popupVC = RestaurantClusterPopupViewController(annotations: imageAnnotations) { [weak self] selectedAnnotation in
+            let popupVC = RestaurantClusterPopupViewController(annotations: imageAnnotations, navigationPath: self.navigationPath) { [weak self] selectedAnnotation in
                 guard let self = self else { return }
                 
-                // Center the map on the selected annotation
-                let region = MKCoordinateRegion(
-                    center: selectedAnnotation.coordinate,
-                    latitudinalMeters: 500,
-                    longitudinalMeters: 500
-                )
-                self.map.setRegion(region, animated: true)
+                // Ensure we have a valid post ID
+                guard let postId = selectedAnnotation.postId, !postId.isEmpty else { return }
                 
-                // Create the CustomPopupView directly instead of selecting the annotation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    // Remove any existing popup
-                    self.currentPopupView?.removeFromSuperview()
-                    if let dimmingView = self.map.viewWithTag(999) {
-                        dimmingView.removeFromSuperview()
-                    }
-                    
-                    // Create dimming view
-                    let dimmingView = UIView(frame: self.map.bounds)
-                    dimmingView.backgroundColor = UIColor.black
-                    dimmingView.alpha = 0.0
-                    dimmingView.tag = 999
-                    
-                    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(self.handleMapTap(_:)))
-                    dimmingView.addGestureRecognizer(tapGesture)
-                    
-                    // Create popup view
-                    let popupView = CustomPopupView()
-                    let popupWidth: CGFloat = 350
-                    let popupHeight: CGFloat = 600
-                    
-                    let centerX = self.map.bounds.midX - (popupWidth / 2)
-                    let centerY = self.map.bounds.midY - (popupHeight / 2)
-                    
-                    popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
-                    popupView.layer.cornerRadius = 10
-                    popupView.layer.masksToBounds = true
-                    popupView.setDetails(
-                        title: selectedAnnotation.title,
-                        images: selectedAnnotation.images,
-                        reviewerName: selectedAnnotation.author,
-                        rating: selectedAnnotation.rating,
-                        comment: selectedAnnotation.subtitle,
-                        star: selectedAnnotation.rating,
-                        heart: selectedAnnotation.heartC
-                    )
-                    
-                    self.map.addSubview(dimmingView)
-                    self.map.addSubview(popupView)
-                    self.currentPopupView = popupView
-                    
-                    UIView.animate(withDuration: 0.3) {
-                        dimmingView.alpha = 0.5
-                    }
-                    
-                    self.isPopupShown = true
-                }
+                // Create Post object from ImageAnnotation
+                let post = Post(
+                    _id: postId,
+                    userId: selectedAnnotation.author ?? "",
+                    imageUrls: selectedAnnotation.imageUrls,
+                    timestamp: Timestamp(date: Date()),
+                    review: selectedAnnotation.subtitle ?? "",
+                    location: "\(selectedAnnotation.coordinate.latitude),\(selectedAnnotation.coordinate.longitude)",
+                    restaurantName: selectedAnnotation.title ?? "",
+                    likes: selectedAnnotation.heartC ?? 0,
+                    likedBy: [],
+                    starRating: selectedAnnotation.rating ?? 0,
+                    comments: []
+                )
+                
+                // Navigate to PostView using the helper method
+                self.navigateToPostView(with: post)
             }
             
             present(popupVC, animated: true)
         }
         else if let annotation = view.annotation as? ImageAnnotation {
-            // Your existing code for handling individual annotations...
-            currentPopupView?.removeFromSuperview()
-            let dimmingView = UIView(frame: map.bounds)
-            dimmingView.backgroundColor = UIColor.black
-            dimmingView.alpha = 0.0
-            dimmingView.tag = 999
+            // Ensure we have a valid post ID
+            guard let postId = annotation.postId, !postId.isEmpty else { return }
             
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
-            dimmingView.addGestureRecognizer(tapGesture)
-            
-            let popupView = CustomPopupView()
-            let popupWidth: CGFloat = 350
-            let popupHeight: CGFloat = 600
-            
-            let centerX = map.bounds.midX - (popupWidth / 2)
-            let centerY = map.bounds.midY - (popupHeight / 2)
-            
-            popupView.frame = CGRect(x: centerX, y: centerY, width: popupWidth, height: popupHeight)
-            popupView.layer.cornerRadius = 10
-            popupView.layer.masksToBounds = true
-            popupView.setDetails(
-                title: annotation.title,
-                images: annotation.images,
-                reviewerName: annotation.author,
-                rating: annotation.rating,
-                comment: annotation.subtitle,
-                star: annotation.rating,
-                heart: annotation.heartC
+            // Create Post object from ImageAnnotation
+            let post = Post(
+                _id: postId,
+                userId: annotation.author ?? "",
+                imageUrls: annotation.imageUrls,
+                timestamp: Timestamp(date: Date()),
+                review: annotation.subtitle ?? "",
+                location: "\(annotation.coordinate.latitude),\(annotation.coordinate.longitude)",
+                restaurantName: annotation.title ?? "",
+                likes: annotation.heartC ?? 0,
+                likedBy: [],
+                starRating: annotation.rating ?? 0,
+                comments: []
             )
             
-            map.addSubview(dimmingView)
-            map.addSubview(popupView)
-            currentPopupView = popupView
-            
-            UIView.animate(withDuration: 0.3) {
-                dimmingView.alpha = 0.5
-            }
-            
-            isPopupShown = true
+            // Navigate to PostView using the helper method
+            navigateToPostView(with: post)
         }
     }
     
@@ -1980,7 +1662,7 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             return
         }
         
-        print("✅ Clicked on annotation: \(annotation.title ?? "Unknown")")
+        print("✅ Clicked on annotation: \(annotation.title ?? "Unknown") with postId: \(annotation.postId ?? "nil")")
         
         // Store the annotation data we need
         let coordinate = annotation.coordinate
@@ -1991,53 +1673,39 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         let rating = annotation.rating
         let heartC = annotation.heartC
         let images = annotation.images
+        let postId = annotation.postId
+        
+        // Ensure we have a valid post ID
+        guard let postId = postId, !postId.isEmpty else {
+            print("Error: Empty post ID in showAnnotationPopup")
+            return
+        }
         
         // Close the cluster popup
         topVC.dismiss(animated: true) { [weak self] in
             guard let self = self else { return }
             
-            // Use a delay to ensure the alert controller is fully dismissed
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                // First, check if there's already an annotation at this coordinate
-                let existingAnnotations = self.map.annotations.filter { 
-                    if let imgAnnotation = $0 as? ImageAnnotation {
-                        // Check if coordinates are very close (within ~10 meters)
-                        let distance = MKMapPoint(imgAnnotation.coordinate).distance(to: MKMapPoint(coordinate))
-                        return distance < 10 && imgAnnotation.title == title
-                    }
-                    return false
+            // Create Post object from annotation data
+            let post = Post(
+                _id: postId,
+                userId: author ?? "",
+                imageUrls: imageUrls,
+                timestamp: Timestamp(date: Date()),
+                review: subtitle ?? "",
+                location: "\(coordinate.latitude),\(coordinate.longitude)",
+                restaurantName: title ?? "",
+                likes: heartC ?? 0,
+                likedBy: [],
+                starRating: rating ?? 0,
+                comments: []
+            )
+            
+            // Navigate to PostView
+            DispatchQueue.main.async {
+                if var path = self.navigationPath {
+                    path.append(post)
+                    self.navigationPath = path
                 }
-                
-                // Remove any existing annotations at this location
-                for existingAnnotation in existingAnnotations {
-                    if !(existingAnnotation is MKUserLocation) {
-                        self.map.removeAnnotation(existingAnnotation)
-                    }
-                }
-                
-                // Center the map on the selected annotation first
-                let region = MKCoordinateRegion(
-                    center: coordinate,
-                    latitudinalMeters: 500,
-                    longitudinalMeters: 500
-                )
-                self.map.setRegion(region, animated: false)
-                
-                // Create and add the new annotation
-                let newAnnotation = ImageAnnotation(
-                    coordinate: coordinate,
-                    title: title,
-                    subtitle: subtitle,
-                    imageUrls: imageUrls,
-                    author: author,
-                    rating: rating,
-                    heartC: heartC
-                )
-                newAnnotation.images = images
-                
-                // Then add and select the annotation
-                self.map.addAnnotation(newAnnotation)
-                self.map.selectAnnotation(newAnnotation, animated: true)
             }
         }
     }
@@ -2085,15 +1753,62 @@ extension MKMapView {
     }
 }
 
-// Move the SwiftUI wrapper outside the class
+// SwiftUI wrapper for the UIKit MapViewModel
 struct MapView: UIViewControllerRepresentable {
+    // The view model that manages the map's state and behavior
     let viewModel: MapViewModel
     
+    // Binding to the navigation path from the parent view
+    // This allows two-way communication of navigation state
+    @Binding var navPath: NavigationPath
+    
+    // Creates the initial UIViewController (MapViewModel) instance
+    // Called when the SwiftUI view is first created
     func makeUIViewController(context: Context) -> MapViewModel {
+        // Initialize the view model with the current navigation path
+        viewModel.navigationPath = navPath
         return viewModel
     }
     
+    // Updates the UIViewController when SwiftUI state changes
+    // Called whenever the SwiftUI view updates
     func updateUIViewController(_ uiViewController: MapViewModel, context: Context) {
-        // Handle any updates to the view controller here
+        // Only update the navigation path if it has changed
+        // This prevents unnecessary updates and potential infinite loops
+        if uiViewController.navigationPath != navPath {
+            uiViewController.navigationPath = navPath
+        }
+    }
+}
+
+// SwiftUI view that wraps the MapView with navigation capabilities
+struct MapViewWithNavigation: View {
+    // State object to manage the map's view model
+    // This ensures the view model persists across view updates
+    @StateObject private var mapViewModel = MapViewModel()
+    
+    // State variable to track the navigation path
+    // This manages the navigation stack
+    @State private var navPath = NavigationPath()
+    
+    var body: some View {
+        // Navigation stack that manages the navigation hierarchy
+        NavigationStack(path: $navPath) {
+            // The main map view with the view model and navigation path binding
+            MapView(viewModel: mapViewModel, navPath: $navPath)
+                // Extend the map to the edges of the screen
+                .edgesIgnoringSafeArea(.all)
+                // Define the destination view for Post navigation
+                .navigationDestination(for: Post.self) { post in
+                    PostView(post: post)
+                }
+                // Observe changes to the view model's navigation path
+                // This ensures the SwiftUI navigation stays in sync with the view model
+                .onChange(of: mapViewModel.navigationPath) { newPath in
+                    if let newPath = newPath {
+                        navPath = newPath
+                    }
+                }
+        }
     }
 }

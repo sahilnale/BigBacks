@@ -44,6 +44,7 @@ class AnnotationDataCache {
         let heartCount: Int?
         let timestamp: TimeInterval // When this annotation was cached
         let lastUpdated: TimeInterval // When this annotation was last updated
+        let postId: String
         
         // Convert to ImageAnnotation
         func toImageAnnotation() -> ImageAnnotation {
@@ -55,7 +56,8 @@ class AnnotationDataCache {
                 imageUrls: imageUrls,
                 author: author,
                 rating: rating,
-                heartC: heartCount
+                heartC: heartCount,
+                postId: postId
             )
         }
         
@@ -72,7 +74,8 @@ class AnnotationDataCache {
                 rating: annotation.rating,
                 heartCount: annotation.heartC,
                 timestamp: Date().timeIntervalSince1970,
-                lastUpdated: lastUpdated ?? Date().timeIntervalSince1970
+                lastUpdated: lastUpdated ?? Date().timeIntervalSince1970,
+                postId: annotation.postId ?? ""
             )
         }
     }
@@ -159,7 +162,7 @@ class AnnotationDataCache {
     
     // Check if annotations need refresh (older than the specified maxAge in seconds)
     func needsRefresh(for userId: String, maxAge: TimeInterval = 3600) -> Bool {
-        guard let cachedAnnotations = loadCachedAnnotationsRaw(for: userId), 
+        guard let cachedAnnotations = loadCachedAnnotationsRaw(for: userId),
               !cachedAnnotations.isEmpty else {
             // No cached annotations, definitely need refresh
             return true
