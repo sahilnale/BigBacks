@@ -3,6 +3,7 @@ import SwiftUI
 struct FriendsView: View {
     @State private var showingFriendRequests = false
     @State private var showingAddFriend = false
+    @State private var showingSuggestedFriends = false
 
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel: FriendsViewModel
@@ -57,6 +58,34 @@ struct FriendsView: View {
                 .frame(height: 60)
                 .padding(.horizontal)
                 .padding(.top)
+
+                // Suggested Friends Button
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemGray6))
+                    
+                    Button(action: {
+                        showingSuggestedFriends = true
+                    }) {
+                        HStack {
+                            Image(systemName: "person.2")
+                                .font(.system(size: 16))
+                                .foregroundColor(.accentColor2)
+                            Text("Suggested Friends")
+                                .font(.system(size: 15))
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                    }
+                }
+                .frame(height: 44)
+                .padding(.horizontal)
+                .padding(.top, 8)
 
                 // Friends List or Loading/Error States
                 if viewModel.isLoading {
@@ -208,6 +237,9 @@ struct FriendsView: View {
                 .navigationTitle("Add Friends")
                 .environmentObject(authViewModel)
             }
+        }
+        .sheet(isPresented: $showingSuggestedFriends) {
+            SuggestedFriendsView(authViewModel: authViewModel)
         }
     }
 
@@ -763,4 +795,3 @@ private struct AddFriendButton: View {
         }
     }
 }
-
