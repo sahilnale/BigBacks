@@ -21,6 +21,9 @@
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {onDocumentWritten} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+const axios = require("axios");
+require("dotenv").config();
+
 
 admin.initializeApp();
 
@@ -341,5 +344,174 @@ exports.notifyFriendRequest = onDocumentWritten(
       } catch (error) {
         console.error("Error sending like notification:", error);
       }
+    },
+);
+
+exports.enrichRestaurant = onDocumentCreated(
+    "posts/{postId}",
+    async (event) => {
+      const post = event.data.data();
+      const {restaurantName, location, review} = post;
+
+      if (!restaurantName) return;
+
+      const restaurantId = restaurantName.toLowerCase().replace(/\s+/g, "_");
+      const db = admin.firestore();
+      const existingDoc = await db
+          .collection("restaurants")
+          .doc(restaurantId)
+          .get();
+
+      if (existingDoc.exists) return;
+
+      // --- Google Places API ---
+      let city = "";
+      if (location && typeof location === "string" && location.includes(",")) {
+        const [lat, lng] = location.split(",").map(parseFloat);
+
+        try {
+          const geoRes = await axios.get(
+              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.GOOGLE_API_KEY}`,
+          );
+
+          const addressComponents =
+            (geoRes.data.results &&
+              geoRes.data.results[0] &&
+              geoRes.data.results[0].address_components) ||
+            [];
+
+
+          const cityComponent = addressComponents.find(
+              (comp) =>
+                comp.types.includes("locality") ||
+                comp.types.includes("administrative_area_level_2"),
+          );
+
+          city = (cityComponent && cityComponent.long_name) || "";
+        } catch (err) {
+          console.error("Reverse geocoding failed:", err.message);
+        }
+      }
+
+      const query = encodeURIComponent(restaurantName + " near " + city);
+
+
+      const googleUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${process.env.GOOGLE_API_KEY}`;
+
+      let place = null;
+      try {
+        const googleRes = await axios.get(googleUrl);
+        console.log("Google Places API result:",
+            JSON.stringify(googleRes.data, null, 2));
+        place = (googleRes.data.results && googleRes.data.results[0]) || null;
+      } catch (err) {
+        console.error("Google Places lookup failed:", err.message);
+      }
+
+      // --- OpenAI Tagging ---
+      let tags = [];
+      if (review) {
+        try {
+          const gptRes = await axios.post("https://api.openai.com/v1/chat/completions", {
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content:
+                    "Extract short, comma-separated keywords" +
+                    "describing the restaurant's " +
+                    "vibe or purpose from this review " +
+                    "(e.g. romantic, beach, group-friendly, " +
+                    "casual, rooftop).",
+              },
+              {
+                role: "user",
+                content: review,
+              },
+            ],
+          }, {
+            headers: {
+              "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const tagText = gptRes.data.choices[0].message.content;
+          tags = tagText
+              .split(/[,|\n]/)
+              .map((t) => t.trim().toLowerCase())
+              .filter(Boolean);
+        } catch (err) {
+          console.error("OpenAI tag extraction failed:", err.message);
+        }
+      }
+
+      // --- Save to Firestore under restaurants/{id} ---
+      await db.collection("restaurants").doc(restaurantId).set({
+        name: restaurantName,
+        location: (place && place.geometry && place.geometry.location) || null,
+        formattedAddress: (place && place.formatted_address) || "",
+        googleRating: (place && place.rating) || null,
+        priceLevel: (place && place.price_level) || null,
+        tags,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log(`Enriched and saved restaurant: ${restaurantName}`);
+    },
+);
+
+exports.retagRestaurantOnUpdate = onDocumentWritten(
+    "restaurants/{restaurantId}",
+    async (event) => {
+      const before = event.data.before.exists ? event.data.before.data() : null;
+      const after = event.data.after.exists ? event.data.after.data() : null;
+
+      if (
+        !before ||
+        !after ||
+        JSON.stringify(before) === JSON.stringify(after)
+      ) {
+        return;
+      }
+      const {description} = after;
+      if (!description) return;
+
+      let tags = [];
+      try {
+        const gptRes = await axios.post("https://api.openai.com/v1/chat/completions", {
+          model: "gpt-3.5-turbo",
+          messages: [{
+            role: "system",
+            content: "Extract short, comma-separated keywords describing "+
+            "a restaurant based on its description.",
+          }, {
+            role: "user",
+            content: description,
+          }],
+        }, {
+          headers: {
+            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const text = gptRes.data.choices[0].message.content;
+        tags = text
+            .split(/[,|\n]/)
+            .map((t) => t.trim().toLowerCase())
+            .filter(Boolean);
+      } catch (err) {
+        console.error("OpenAI re-tagging failed:", err.message);
+      }
+
+      await admin
+          .firestore()
+          .collection("restaurants")
+          .doc(event.params.restaurantId)
+          .update({
+            tags,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
     },
 );
