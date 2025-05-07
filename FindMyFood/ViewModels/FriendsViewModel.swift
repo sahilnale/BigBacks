@@ -32,8 +32,13 @@ class FriendsViewModel: ObservableObject {
 
         do {
             let fetchedFriends = try await authViewModel.getFriends()
+            // Deduplicate friends based on their ID
+            let uniqueFriends = Array(Set(fetchedFriends.map { $0.id })).compactMap { id in
+                fetchedFriends.first { $0.id == id }
+            }
+            
             DispatchQueue.main.async {
-                self.friends = fetchedFriends
+                self.friends = uniqueFriends
                 self.isLoading = false
             }
         } catch {
@@ -123,6 +128,34 @@ class FriendsViewModel: ObservableObject {
                         }
                     }
                 }
+            }
+    }
+
+    // Add new function to clean up duplicate friends in Firestore
+    func cleanupDuplicateFriends() async {
+        guard let currentUserId = await authViewModel.currentUser?.id else { return }
+        
+        do {
+            let db = Firestore.firestore()
+            let userRef = db.collection("users").document(currentUserId)
+            
+            // Get current friends array
+            let document = try await userRef.getDocument()
+            guard let data = document.data(),
+                  var friends = data["friends"] as? [String] else { return }
+            
+            // Remove duplicates while preserving order
+            let uniqueFriends = Array(Set(friends))
+            
+            // Only update if there were duplicates
+            if uniqueFriends.count != friends.count {
+                try await userRef.updateData([
+                    "friends": uniqueFriends
+                ])
+                print("Cleaned up duplicate friends in Firestore")
+            }
+        } catch {
+            print("Error cleaning up duplicate friends: \(error)")
             }
     }
 

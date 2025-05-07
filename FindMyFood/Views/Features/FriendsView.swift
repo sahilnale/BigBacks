@@ -172,6 +172,7 @@ struct FriendsView: View {
             }
             .onAppear {
                 Task {
+                    await viewModel.cleanupDuplicateFriends()
                     await viewModel.loadFriends()
                     await viewModel.loadFriendRequests()
                 }
