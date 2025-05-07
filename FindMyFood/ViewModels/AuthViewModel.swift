@@ -563,62 +563,100 @@ class AuthViewModel: ObservableObject {
         )
     }
     
-    func searchUsers(by usernamePrefix: String) async throws -> [User] {
+    func searchUsers(by query: String) async throws -> [User] {
         let db = Firestore.firestore()
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "User is not logged in."])
         }
 
         var users: [User] = []
-        let lowercasedPrefix = usernamePrefix.lowercased()
-        let endString = lowercasedPrefix + "\u{f8ff}"
+        let lowercasedQuery = query.lowercased()
 
         do {
-            let querySnapshot = try await db.collection("users")
-                .whereField("username", isGreaterThanOrEqualTo: lowercasedPrefix)
-                .whereField("username", isLessThanOrEqualTo: endString)
-                .getDocuments()
-
+            // Get all users and filter in memory for more flexible matching
+            let querySnapshot = try await db.collection("users").getDocuments()
+            
             for document in querySnapshot.documents {
-                let data = document.data()
                 let userId = document.documentID
-
-                // Exclude the current user
+                
+                // Skip current user
                 if userId == currentUserId {
                     continue
                 }
-
-                guard let name = data["name"] as? String,
-                      let username = data["username"] as? String,
-                      let email = data["email"] as? String else {
-                    continue
+                
+                let data = document.data()
+                let name = (data["name"] as? String ?? "").lowercased()
+                let username = (data["username"] as? String ?? "").lowercased()
+                
+                // Check if query matches any part of name or username
+                if name.contains(lowercasedQuery) || username.contains(lowercasedQuery) {
+                    if let user = try? createUserFromDocument(document) {
+                        users.append(user)
+                    }
                 }
-
-                let friends = data["friends"] as? [String] ?? []
-                let friendRequests = data["friendRequests"] as? [String] ?? []
-                let pendingRequests = data["pendingRequests"] as? [String] ?? []
-                let posts = data["posts"] as? [String] ?? []
-                let profilePicture = data["profilePicture"] as? String
-                let loggedIn = data["loggedIn"] as? Bool ?? false
-
-                let user = User(
-                    id: userId,
-                    name: name,
-                    username: username,
-                    email: email,
-                    friends: friends,
-                    friendRequests: friendRequests,
-                    pendingRequests: pendingRequests,
-                    posts: [], // Convert string IDs to Post objects if needed
-                    profilePicture: profilePicture,
-                    loggedIn: loggedIn
-                )
-                users.append(user)
             }
+            
+            // Sort results by relevance (exact matches first, then partial matches)
+            users.sort { user1, user2 in
+                let name1 = user1.name.lowercased()
+                let name2 = user2.name.lowercased()
+                let username1 = user1.username.lowercased()
+                let username2 = user2.username.lowercased()
+                
+                // Check for exact matches first
+                let exactMatch1 = name1 == lowercasedQuery || username1 == lowercasedQuery
+                let exactMatch2 = name2 == lowercasedQuery || username2 == lowercasedQuery
+                
+                if exactMatch1 != exactMatch2 {
+                    return exactMatch1
+                }
+                
+                // Then check for starts with
+                let startsWith1 = name1.hasPrefix(lowercasedQuery) || username1.hasPrefix(lowercasedQuery)
+                let startsWith2 = name2.hasPrefix(lowercasedQuery) || username2.hasPrefix(lowercasedQuery)
+                
+                if startsWith1 != startsWith2 {
+                    return startsWith1
+                }
+                
+                // Finally sort by name
+                return name1 < name2
+            }
+            
         } catch {
             throw NetworkError.serverError("Failed to search users: \(error.localizedDescription)")
         }
         return users
+    }
+
+    private func createUserFromDocument(_ document: QueryDocumentSnapshot) throws -> User {
+        let data = document.data()
+        let userId = document.documentID
+
+        guard let name = data["name"] as? String,
+              let username = data["username"] as? String,
+              let email = data["email"] as? String else {
+            throw NetworkError.decodingError
+        }
+
+        let friends = data["friends"] as? [String] ?? []
+        let friendRequests = data["friendRequests"] as? [String] ?? []
+        let pendingRequests = data["pendingRequests"] as? [String] ?? []
+        let profilePicture = data["profilePicture"] as? String
+        let loggedIn = data["loggedIn"] as? Bool ?? false
+
+        return User(
+            id: userId,
+            name: name,
+            username: username,
+            email: email,
+            friends: friends,
+            friendRequests: friendRequests,
+            pendingRequests: pendingRequests,
+            posts: [],
+            profilePicture: profilePicture,
+            loggedIn: loggedIn
+        )
     }
         
     // MARK: - Send Friend Request
