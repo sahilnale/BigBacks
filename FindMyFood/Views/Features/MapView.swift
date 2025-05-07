@@ -167,7 +167,7 @@ class RestaurantClusterPopupViewController: UIViewController {
         itemContainer.addGestureRecognizer(tapGesture)
         itemContainer.isUserInteractionEnabled = true
         
-        // Store the annotation reference on the itemContainer instead of cardContainer
+        // Store the annotation reference on the itemContainer
         objc_setAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!, annotation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 
         // Create image view with increased height
@@ -345,13 +345,20 @@ class RestaurantClusterPopupViewController: UIViewController {
     }
     
     @objc private func restaurantCardTapped(_ gestureRecognizer: UITapGestureRecognizer) {
+        print("Restaurant card tapped")
         guard let itemContainer = gestureRecognizer.view,
               let annotation = objc_getAssociatedObject(itemContainer, UnsafeRawPointer(bitPattern: 1)!) as? ImageAnnotation else {
+            print("Failed to get annotation from tapped view")
             return
         }
         
+        print("Found annotation with postId: \(annotation.postId ?? "nil")")
+        
         // Ensure we have a valid post ID
-        guard let postId = annotation.postId, !postId.isEmpty else { return }
+        guard let postId = annotation.postId, !postId.isEmpty else {
+            print("Invalid post ID")
+            return
+        }
         
         // Create Post object from annotation data
         let post = Post(
@@ -368,14 +375,13 @@ class RestaurantClusterPopupViewController: UIViewController {
             comments: []
         )
         
-        dismiss(animated: true) { [weak self] in
-            DispatchQueue.main.async {
-                if var path = self?.navigationPath {
-                    path.append(post)
-                    self?.navigationPath = path
-                }
-            }
-        }
+        print("Created post for restaurant: \(post.restaurantName)")
+        
+        // First call the onSelect closure
+        onSelect?(annotation)
+        
+        // Then dismiss the popup
+        dismiss(animated: true)
     }
     
     override func dismiss(animated flag: Bool, completion: (() -> Void)? = nil) {
@@ -994,6 +1000,8 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
         didSet {
             if let path = navigationPath {
                 print("Navigation path updated with \(path.count) items")
+                // Notify SwiftUI of the change
+                objectWillChange.send()
             }
         }
     }
@@ -1027,6 +1035,13 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             if var navigationPath = self.navigationPath {
                 navigationPath.append(post)
                 self.navigationPath = navigationPath
+                print("Appending post to navigation path: \(post.restaurantName)")
+            } else {
+                // If no navigation path exists, create a new one
+                var newPath = NavigationPath()
+                newPath.append(post)
+                self.navigationPath = newPath
+                print("Created new navigation path with post: \(post.restaurantName)")
             }
         }
     }
@@ -1580,7 +1595,18 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
                 )
                 
                 // Navigate to PostView using the helper method
-                self.navigateToPostView(with: post)
+                DispatchQueue.main.async {
+                    if var path = self.navigationPath {
+                        path.append(post)
+                        self.navigationPath = path
+                        print("Updated navigation path with post: \(post.restaurantName)")
+                    } else {
+                        var newPath = NavigationPath()
+                        newPath.append(post)
+                        self.navigationPath = newPath
+                        print("Created new navigation path with post: \(post.restaurantName)")
+                    }
+                }
             }
             
             present(popupVC, animated: true)
@@ -1605,7 +1631,18 @@ class MapViewModel: UIViewController, CLLocationManagerDelegate, MKMapViewDelega
             )
             
             // Navigate to PostView using the helper method
-            navigateToPostView(with: post)
+            DispatchQueue.main.async {
+                if var path = self.navigationPath {
+                    path.append(post)
+                    self.navigationPath = path
+                    print("Updated navigation path with post: \(post.restaurantName)")
+                } else {
+                    var newPath = NavigationPath()
+                    newPath.append(post)
+                    self.navigationPath = newPath
+                    print("Created new navigation path with post: \(post.restaurantName)")
+                }
+            }
         }
     }
     
@@ -1783,31 +1820,25 @@ struct MapView: UIViewControllerRepresentable {
 
 // SwiftUI view that wraps the MapView with navigation capabilities
 struct MapViewWithNavigation: View {
-    // State object to manage the map's view model
-    // This ensures the view model persists across view updates
     @StateObject private var mapViewModel = MapViewModel()
-    
-    // State variable to track the navigation path
-    // This manages the navigation stack
     @State private var navPath = NavigationPath()
     
     var body: some View {
-        // Navigation stack that manages the navigation hierarchy
         NavigationStack(path: $navPath) {
-            // The main map view with the view model and navigation path binding
             MapView(viewModel: mapViewModel, navPath: $navPath)
-                // Extend the map to the edges of the screen
                 .edgesIgnoringSafeArea(.all)
-                // Define the destination view for Post navigation
                 .navigationDestination(for: Post.self) { post in
                     PostView(post: post)
                 }
-                // Observe changes to the view model's navigation path
-                // This ensures the SwiftUI navigation stays in sync with the view model
                 .onChange(of: mapViewModel.navigationPath) { newPath in
                     if let newPath = newPath {
+                        print("MapViewModel navigation path changed, updating SwiftUI path")
                         navPath = newPath
                     }
+                }
+                .onChange(of: navPath) { newPath in
+                    print("SwiftUI navigation path changed, updating MapViewModel path")
+                    mapViewModel.navigationPath = newPath
                 }
         }
     }
